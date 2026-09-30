@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Baselines, Leaderboard } from '../../shared/dto';
+import type { Baselines, Leaderboard, PromptStyle } from '../../shared/dto';
 import { missing } from '../test/dtoFixtures';
 import { renderWithHost } from '../test/fakeHost';
 import { LearningView } from './LearningView';
@@ -171,6 +171,85 @@ describe('LearningView — leaderboard', () => {
     expect(
       (await screen.findAllByRole('alert')).some((alert) =>
         alert.textContent.includes('Could not load the leaderboard'),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('LearningView — prompt style', () => {
+  const inferred = (value: number) => ({
+    value,
+    provenance: { kind: 'inferred' as const, source: 'correlation' },
+  });
+  const none = {
+    value: null,
+    provenance: { kind: 'unavailable' as const, source: 'not enough data: 3 of 5 sessions' },
+  };
+  const style: PromptStyle = {
+    rows: [
+      {
+        feature: 'namesFile',
+        withFeature: { sessions: 6, correctionsPerSession: inferred(1 / 3) },
+        without: { sessions: 7, correctionsPerSession: inferred(2.2) },
+      },
+      {
+        feature: 'statesSuccess',
+        withFeature: { sessions: 3, correctionsPerSession: none },
+        without: { sessions: 10, correctionsPerSession: inferred(1) },
+      },
+      {
+        feature: 'statesConstraints',
+        withFeature: { sessions: 0, correctionsPerSession: none },
+        without: { sessions: 0, correctionsPerSession: none },
+      },
+    ],
+  };
+  const view = (results: Record<string, unknown> = {}) =>
+    renderWithHost(<LearningView onOpenSession={() => undefined} />, {
+      getBaselines: { rows: [], outliers: [] },
+      getLeaderboard: { groups: [] },
+      getPromptStyle: style,
+      ...results,
+    });
+
+  it('compares corrections per session with and without each habit, with sample sizes', async () => {
+    view();
+    const list = await screen.findByRole('list', { name: 'Prompt style comparison' });
+    const first = within(list).getByText('Opening prompts that name a file').closest('li') as HTMLElement;
+    expect(within(first).getByText('0.3')).toBeInTheDocument();
+    expect(within(first).getByText('2.2')).toBeInTheDocument();
+    expect(within(first).getByText(/6 sessions/)).toBeInTheDocument();
+    expect(within(first).getByText(/7 sessions/)).toBeInTheDocument();
+    expect(within(first).getAllByText('Inferred')).toHaveLength(2);
+  });
+
+  it('says there is not enough data for a side with too few sessions', async () => {
+    view();
+    const list = await screen.findByRole('list', { name: 'Prompt style comparison' });
+    const second = within(list)
+      .getByText('Opening prompts that state a success condition')
+      .closest('li') as HTMLElement;
+    expect(within(second).getByText('—')).toBeInTheDocument();
+    expect(within(second).getByText(/Not enough data yet/)).toBeInTheDocument();
+  });
+
+  it('states that it is a correlation and needs stored prompt text', async () => {
+    view();
+    expect(
+      await screen.findByText(
+        'Correlation from your own history, not proof that the habit causes fewer corrections. Needs stored prompt text.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('reports a failed query', async () => {
+    renderWithHost(<LearningView onOpenSession={() => undefined} />, {
+      getBaselines: { rows: [], outliers: [] },
+      getLeaderboard: { groups: [] },
+    });
+    expect(
+      (await screen.findAllByRole('alert')).some((alert) =>
+        alert.textContent.includes('Could not load prompt style'),
       ),
     ).toBe(true);
   });

@@ -1,6 +1,7 @@
-import type { Leaderboard } from '../../shared/dto';
-import { derived, unavailable, type Measured } from '../../shared/provenance';
+import type { Leaderboard, PromptStyle } from '../../shared/dto';
+import { derived, inferred, unavailable, type Measured } from '../../shared/provenance';
 import { leaderboard } from '../learning/leaderboard';
+import { promptStyle, type PromptStyleSide } from '../learning/promptStyle';
 import type { SessionFacts } from '../learning/sessionFacts';
 import { notEnough } from '../learning/stats';
 
@@ -44,6 +45,29 @@ export function leaderboardDto(facts: readonly SessionFacts[]): Leaderboard {
           'mean of each session’s mean first-token latency (agent debug log)',
         ),
       })),
+    })),
+  };
+}
+
+const STYLE_SOURCE =
+  'mean corrections per session, split by whether the opening prompt had the feature (keyword rules; a correlation, not a cause)';
+
+function styleSide(side: PromptStyleSide) {
+  return {
+    sessions: side.sessions,
+    correctionsPerSession:
+      side.correctionsPerSession === null
+        ? unavailable<number>(notEnough(side.sessions))
+        : inferred(side.correctionsPerSession, STYLE_SOURCE),
+  };
+}
+
+export function promptStyleDto(facts: readonly SessionFacts[]): PromptStyle {
+  return {
+    rows: promptStyle(facts).map((row) => ({
+      feature: row.feature,
+      withFeature: styleSide(row.withFeature),
+      without: styleSide(row.without),
     })),
   };
 }

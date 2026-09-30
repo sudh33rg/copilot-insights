@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { BaselineRowDto, Leaderboard } from '../../shared/dto';
+import type { BaselineRowDto, Leaderboard, PromptStyle } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { DataTable, type Column } from '../ui/DataTable';
 import { formatCredits, formatDuration, formatInt, formatPercent } from '../ui/format';
@@ -31,6 +31,7 @@ export function LearningView({ onOpenSession }: { onOpenSession: (id: string) =>
     <section aria-label="Learning">
       <Baselines onOpenSession={onOpenSession} />
       <LeaderboardSection />
+      <PromptStyleSection />
     </section>
   );
 }
@@ -169,3 +170,55 @@ function LeaderboardSection() {
     </section>
   );
 }
+
+const FEATURE_LABEL: Record<PromptStyle['rows'][number]['feature'], string> = {
+  namesFile: 'Opening prompts that name a file',
+  statesSuccess: 'Opening prompts that state a success condition',
+  statesConstraints: 'Opening prompts that state constraints',
+};
+
+/** Do opening-prompt habits go with fewer corrections in your history? A correlation, shown with sample sizes. */
+function PromptStyleSection() {
+  const rpc = useRpc();
+  const query = useQuery({ queryKey: ['promptStyle'], queryFn: () => rpc.call('getPromptStyle', {}) });
+  return (
+    <section className="card" aria-label="Prompt style">
+      <h3>Prompt style</h3>
+      {query.isPending && <p className="muted">Loading…</p>}
+      {query.isError && <p role="alert">Could not load prompt style: {query.error.message}</p>}
+      {query.data && (
+        <>
+          <ul className="findings" aria-label="Prompt style comparison">
+            {query.data.rows.map((row) => {
+              const missing =
+                row.withFeature.correctionsPerSession.value === null ||
+                row.without.correctionsPerSession.value === null;
+              return (
+                <li key={row.feature}>
+                  <strong>{FEATURE_LABEL[row.feature]}</strong>
+                  <div>
+                    With: <Measure measure={row.withFeature.correctionsPerSession} format={oneDecimal} />{' '}
+                    corrections per session ({formatInt(row.withFeature.sessions)} sessions)
+                  </div>
+                  <div>
+                    Without: <Measure measure={row.without.correctionsPerSession} format={oneDecimal} />{' '}
+                    corrections per session ({formatInt(row.without.sessions)} sessions)
+                  </div>
+                  {missing && (
+                    <div className="muted">Not enough data yet: each side needs at least 5 sessions.</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="muted">
+            Correlation from your own history, not proof that the habit causes fewer corrections. Needs stored
+            prompt text.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+const oneDecimal = (value: number | string): string => String(Number(Number(value).toFixed(1)));

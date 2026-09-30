@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { many } from '../../../test/fixtures/facts';
-import { leaderboardDto } from './learningQueries';
+import { leaderboardDto, promptStyleDto } from './learningQueries';
 
 describe('leaderboardDto', () => {
   const facts = [
@@ -38,5 +38,36 @@ describe('leaderboardDto', () => {
 
   it('has no groups without enough sessions', () => {
     expect(leaderboardDto(many(3)).groups).toEqual([]);
+  });
+});
+
+describe('promptStyleDto', () => {
+  const opening = (namesFile: boolean) => ({ namesFile, statesSuccess: false, statesConstraints: false });
+
+  it('labels the comparison as an inferred correlation and marks small sides unavailable', () => {
+    const facts = [
+      ...many(6, { corrections: 0, userTurns: 3, opening: opening(true) }),
+      ...many(4, { corrections: 2, userTurns: 3, opening: opening(false) }),
+    ];
+    const rows = promptStyleDto(facts).rows;
+    expect(rows.map((row) => row.feature)).toEqual(['namesFile', 'statesSuccess', 'statesConstraints']);
+    expect(rows[0]?.withFeature).toEqual({
+      sessions: 6,
+      correctionsPerSession: {
+        value: 0,
+        provenance: {
+          kind: 'inferred',
+          source:
+            'mean corrections per session, split by whether the opening prompt had the feature (keyword rules; a correlation, not a cause)',
+        },
+      },
+    });
+    expect(rows[0]?.without).toEqual({
+      sessions: 4,
+      correctionsPerSession: {
+        value: null,
+        provenance: { kind: 'unavailable', source: 'not enough data: 4 of 5 sessions' },
+      },
+    });
   });
 });

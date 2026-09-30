@@ -250,6 +250,21 @@ export const leaderboardSchema = z.object({
 });
 export type Leaderboard = z.infer<typeof leaderboardSchema>;
 
+const promptStyleSideSchema = z.object({
+  sessions: z.number(),
+  correctionsPerSession: measuredNumber,
+});
+export const promptStyleSchema = z.object({
+  rows: z.array(
+    z.object({
+      feature: z.enum(['namesFile', 'statesSuccess', 'statesConstraints']),
+      withFeature: promptStyleSideSchema,
+      without: promptStyleSideSchema,
+    }),
+  ),
+});
+export type PromptStyle = z.infer<typeof promptStyleSchema>;
+
 export const sessionDetailSchema = z.object({
   id: z.string(),
   workspace: z.string(),

@@ -139,6 +139,7 @@ export function activate(context: vscode.ExtensionContext): void {
     getFailureAnalytics: () => queries.getFailureAnalytics(),
     getBaselines: () => queries.getBaselines(),
     getLeaderboard: () => queries.getLeaderboard(),
+    getPromptStyle: () => queries.getPromptStyle(),
     clearData: ({ scope }) => confirmAndClear(dataDeps, scope),
     exportData: () => exportToFile(dataDeps),
     getGithubUsage: ({ days }) => {

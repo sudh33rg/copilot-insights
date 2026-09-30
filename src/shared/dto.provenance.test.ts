@@ -6,6 +6,7 @@ import {
   failureAnalyticsSchema,
   githubUsageSchema,
   leaderboardSchema,
+  promptStyleSchema,
   overviewSchema,
   sessionDetailSchema,
   sessionListSchema,
@@ -86,6 +87,7 @@ const ALLOWED = {
   survivalByModel: ['rows[].edits', 'rows[].sampleSize'],
   commitCosts: ['rows[].committedAt', 'rows[].sessions'],
   baselines: ['rows[].creditSessions', 'rows[].sessions'],
+  promptStyle: ['rows[].withFeature.sessions', 'rows[].without.sessions'],
   leaderboard: [
     'groups[].rows[].creditSessions',
     'groups[].rows[].sessions',
@@ -112,6 +114,7 @@ describe('provenance is enforced on every DTO', () => {
     ['failure analytics', failureAnalyticsSchema, ALLOWED.failureAnalytics],
     ['baselines', baselinesSchema, ALLOWED.baselines],
     ['leaderboard', leaderboardSchema, ALLOWED.leaderboard],
+    ['prompt style', promptStyleSchema, ALLOWED.promptStyle],
   ])('%s has no raw measurement numbers', (_name, schema, allowed) => {
     expect(unmeasured(schema)).toEqual([...allowed].sort());
   });

@@ -46,6 +46,7 @@ const handlers: RpcHandlers = {
   getFailureAnalytics: () => ({ byModel: [], byProvider: [], byMode: [] }),
   getBaselines: () => ({ rows: [], outliers: [] }),
   getLeaderboard: () => ({ groups: [] }),
+  getPromptStyle: () => ({ rows: [] }),
   getOverview: () => {
     const none = { value: null, provenance: { kind: 'unavailable' as const, source: 'test' } };
     const period = {
