@@ -6,6 +6,7 @@ import { formatCredits, formatInt, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
 import { FailureAnalyticsCard } from './FailureAnalyticsCard';
 import { GithubUsageCard } from './GithubUsageCard';
+import { BudgetCard } from './BudgetCard';
 import { CommitsCard, EditSurvivalCard } from './OutcomeOverview';
 
 const HOST_LABEL = { copilot: 'Copilot', byok: 'BYOK / local', unknown: 'Unknown' } as const;
@@ -69,6 +70,7 @@ function OverviewBody({ overview }: { overview: Overview }) {
           />
         </>
       )}
+      <BudgetCard />
       <EditSurvivalCard />
       <CommitsCard />
       <FailureAnalyticsCard />

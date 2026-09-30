@@ -48,6 +48,7 @@ const handlers: RpcHandlers = {
   getLeaderboard: () => ({ groups: [] }),
   getPromptStyle: () => ({ rows: [] }),
   getAutoAudit: () => ({ rows: [], excludedSessions: 0 }),
+  getBudget: () => null,
   getTrends: () => ({ days: [] }),
   getRangeBreakdown: () => ({ byModel: [], byWorkspace: [] }),
   getOverview: () => {

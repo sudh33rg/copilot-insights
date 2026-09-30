@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { parseBudgetSettings, type BudgetSettings } from '../core/budget/settings';
 import { isCaptureLevel, type CaptureLevel } from '../core/privacy/captureLevel';
 
 export const CONFIG_SECTION = 'copilotInsights';
@@ -8,6 +9,7 @@ export interface InsightsConfig {
   retentionDays: number;
   refreshSeconds: number;
   storageRoots: string[];
+  budgets: BudgetSettings;
 }
 
 export function readConfig(): InsightsConfig {
@@ -23,5 +25,9 @@ export function readConfig(): InsightsConfig {
     storageRoots: Array.isArray(storageRoots)
       ? storageRoots.filter((value): value is string => typeof value === 'string' && value.trim() !== '')
       : [],
+    budgets: parseBudgetSettings(
+      config.get<unknown>('monthlyCreditBudget'),
+      config.get<unknown>('workspaceCreditBudgets'),
+    ),
   };
 }

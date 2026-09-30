@@ -30,6 +30,7 @@ import {
   offerLegacyCleanup,
   type DataCommandDeps,
 } from './dataCommands';
+import { BudgetAlerts } from './budgetAlerts';
 import { IngestController } from './ingestController';
 import { snapshotDiagnostics } from './observers/diagnosticsAdapter';
 import { VscodeGit } from './observers/gitAdapter';
@@ -82,6 +83,15 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   });
 
+  const budgetAlerts = new BudgetAlerts({
+    budget: () => queries.getBudget(localDay(), readConfig().budgets),
+    state: context.globalState,
+    notify: (message) => {
+      void vscode.window.showWarningMessage(message);
+    },
+    month: () => localDay().slice(0, 7),
+  });
+
   const service = new IngestService({
     database,
     sessions,
@@ -99,6 +109,9 @@ export function activate(context: vscode.ExtensionContext): void {
     onChanged: () => {
       dataChanged.fire();
       void liveObserver.tick();
+      void budgetAlerts.check().catch((error: unknown) => {
+        log.warn(`Budget check failed: ${error instanceof Error ? error.message : String(error)}`);
+      });
     },
     log: {
       info: (message) => {
@@ -142,6 +155,7 @@ export function activate(context: vscode.ExtensionContext): void {
     getLeaderboard: () => queries.getLeaderboard(),
     getPromptStyle: () => queries.getPromptStyle(),
     getAutoAudit: () => queries.getAutoAudit(),
+    getBudget: () => queries.getBudget(localDay(), readConfig().budgets),
     getTrends: ({ days }) => ({ days: queries.getTrends(localDay(), days) }),
     getRangeBreakdown: ({ from, to }) => {
       assertRange(from, to);

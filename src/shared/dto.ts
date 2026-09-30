@@ -356,6 +356,29 @@ export type TrendDay = z.infer<typeof trendDaySchema>;
 export const trendsParams = z.object({ days: z.number().int().min(1).max(366) });
 export const rangeParams = z.object({ from: dayString, to: dayString });
 
+const budgetStatusSchema = measured(z.enum(['ok', 'watch', 'over']));
+export const budgetSchema = z
+  .object({
+    monthlyBudget: measuredNumber,
+    /** Local Copilot credits recorded this month: a lower bound when other machines or clients also use Copilot. */
+    spent: measuredNumber,
+    projected: measuredNumber,
+    status: budgetStatusSchema,
+    daysElapsed: z.number(),
+    daysInMonth: z.number(),
+    workspaces: z.array(
+      z.object({
+        workspace: z.string(),
+        budget: measuredNumber,
+        spent: measuredNumber,
+        status: budgetStatusSchema,
+      }),
+    ),
+  })
+  .nullable();
+export type BudgetSummary = NonNullable<z.infer<typeof budgetSchema>>;
+export type Budget = z.infer<typeof budgetSchema>;
+
 export const breakdownRowSchema = z.object({
   key: z.string(),
   label: z.string(),

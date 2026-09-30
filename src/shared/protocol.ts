@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   clearScopeSchema,
   baselinesSchema,
+  budgetSchema,
   commitCostRowSchema,
   autoAuditSchema,
   diagnosticsSchema,
@@ -59,6 +60,7 @@ export const rpcSchemas = {
     result: z.object({ outcome: z.enum(['already-enabled', 'declined', 'enabled']) }),
   },
   getDiagnostics: { params: z.object({}), result: diagnosticsSchema },
+  getBudget: { params: z.object({}), result: budgetSchema },
   getTrends: { params: trendsParams, result: trendsSchema },
   getRangeBreakdown: { params: rangeParams, result: rangeBreakdownSchema },
   getAutoAudit: { params: z.object({}), result: autoAuditSchema },

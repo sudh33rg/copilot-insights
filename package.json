@@ -139,6 +139,21 @@
           "default": 60,
           "markdownDescription": "How often to look for new or changed Copilot chat sessions. Sessions in the current workspace also refresh when their files change."
         },
+        "copilotInsights.monthlyCreditBudget": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "markdownDescription": "Monthly Copilot credit budget, measured from credits recorded on this machine. `0` turns budgets off. You are warned at 80% and 100%."
+        },
+        "copilotInsights.workspaceCreditBudgets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          },
+          "default": {},
+          "markdownDescription": "Per-workspace monthly credit budgets keyed by workspace name, for example `{ \"my-app\": 20 }`."
+        },
         "copilotInsights.nativeStorageRoots": {
           "type": "array",
           "items": {

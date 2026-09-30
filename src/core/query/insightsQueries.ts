@@ -1,6 +1,7 @@
 import type {
   AutoAudit,
   Baselines,
+  Budget,
   Leaderboard,
   PromptStyle,
   CommitCostRow,
@@ -14,7 +15,9 @@ import type {
 } from '../../shared/dto';
 import { AnalysisStore } from '../analysis/analysisStore';
 import type { Database } from '../storage/database';
+import type { BudgetSettings } from '../budget/settings';
 import { getBaselines, sessionBaseline } from './baselineQueries';
+import { getBudget } from './budget';
 import { getCommitCosts } from './commitCosts';
 import { getFailureAnalytics } from './failureAnalytics';
 import { autoAuditDto, leaderboardDto, promptStyleDto } from './learningQueries';
@@ -51,6 +54,10 @@ export class InsightsQueries {
       analysis: this.analysis.forDetail(detail),
       baseline: sessionBaseline(this.facts.all(), id),
     };
+  }
+
+  getBudget(today: string, settings: BudgetSettings): Budget {
+    return getBudget(this.database, today, settings);
   }
 
   getTrends(toDay: string, days: number): TrendDay[] {

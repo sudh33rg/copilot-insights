@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   autoAuditSchema,
   baselinesSchema,
+  budgetSchema,
   commitCostRowSchema,
   failureAnalyticsSchema,
   githubUsageSchema,
@@ -89,6 +90,7 @@ const ALLOWED = {
   githubUsage: ['lastSyncedAt'],
   survivalByModel: ['rows[].edits', 'rows[].sampleSize'],
   commitCosts: ['rows[].committedAt', 'rows[].sessions'],
+  budget: ['daysElapsed', 'daysInMonth'],
   autoAudit: ['excludedSessions', 'rows[].auto.sessions', 'rows[].manual.sessions'],
   baselines: ['rows[].creditSessions', 'rows[].sessions'],
   trends: ['days[].sessions', 'days[].turns'],
@@ -119,6 +121,7 @@ describe('provenance is enforced on every DTO', () => {
     ['commit costs', z.object({ rows: z.array(commitCostRowSchema) }), ALLOWED.commitCosts],
     ['failure analytics', failureAnalyticsSchema, ALLOWED.failureAnalytics],
     ['baselines', baselinesSchema, ALLOWED.baselines],
+    ['budget', budgetSchema, ALLOWED.budget],
     ['trends', trendsSchema, ALLOWED.trends],
     ['range breakdown', rangeBreakdownSchema, ALLOWED.rangeBreakdown],
     ['auto audit', autoAuditSchema, ALLOWED.autoAudit],
