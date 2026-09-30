@@ -42,14 +42,25 @@ describe('AnalyticsView', () => {
     ).toBeVisible();
   });
 
-  it('lists the same days in a table with exact totals and unavailable values for empty days', async () => {
+  it('lists the days that had usage with exact totals, and leaves the empty days out of the table', async () => {
     view();
     const table = await screen.findByRole('table', { name: 'Usage by day' });
     const busy = within(table).getByText('2026-09-21').closest('tr') as HTMLElement;
     expect(within(busy).getByText('2.5')).toBeInTheDocument();
     expect(within(busy).getByText('2,500')).toBeInTheDocument();
-    const empty = within(table).getByText('2026-09-20').closest('tr') as HTMLElement;
-    expect(within(empty).getAllByText('—').length).toBe(3);
+    expect(within(table).queryByText('2026-09-20')).toBeNull();
+    expect(
+      screen.getByText('Days without usage are not listed. Select a day to see its sessions.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('From 2026-09-20 to 2026-09-22.')).toBeInTheDocument();
+  });
+
+  it('shows the selected day’s sessions above the day table, where the click happened', async () => {
+    view();
+    const table = await screen.findByRole('table', { name: 'Usage by day' });
+    await userEvent.click(within(table).getByText('2026-09-21'));
+    const sessions = await screen.findByRole('table', { name: 'Sessions on 2026-09-21' });
+    expect(sessions.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('asks for another range when the selection changes', async () => {

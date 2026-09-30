@@ -104,17 +104,22 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
       {trends.data && used.length > 0 && (
         <>
           <CreditsChart days={days} range={range} />
+          <p className="muted">
+            {first !== undefined && last !== undefined && <span>{`From ${first} to ${last}.`} </span>}
+            <span>Days without usage are not listed. Select a day to see its sessions.</span>
+          </p>
+          {selectedDay !== null && <DaySessions day={selectedDay} onOpenSession={onOpenSession} />}
+          <h3>By day</h3>
           <DataTable
             caption="Usage by day"
             columns={dayColumns}
-            rows={[...days].reverse()}
+            rows={[...used].reverse()}
             rowKey={(row) => row.day}
             onRowActivate={(row) => {
               setSelectedDay(row.day);
             }}
             empty=""
           />
-          {selectedDay !== null && <DaySessions day={selectedDay} onOpenSession={onOpenSession} />}
           {breakdown.data && (
             <>
               <h3>By model</h3>
