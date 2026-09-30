@@ -99,6 +99,12 @@ export const turnDetailSchema = z.object({
 });
 export type TurnDetail = z.infer<typeof turnDetailSchema>;
 
+export const outcomesSchema = z.object({
+  linesAdded: measuredNumber,
+  linesRemoved: measuredNumber,
+});
+export type Outcomes = z.infer<typeof outcomesSchema>;
+
 export const sessionDetailSchema = z.object({
   id: z.string(),
   workspace: z.string(),
@@ -112,6 +118,7 @@ export const sessionDetailSchema = z.object({
   outputTokens: measuredNumber,
   credits: measuredNumber,
   analysis: analysisSchema.nullable(),
+  outcomes: outcomesSchema,
   debug: z.object({ calls: z.number(), internalCalls: z.number(), unmatchedCalls: z.number() }).nullable(),
   turns: z.array(turnDetailSchema),
 });

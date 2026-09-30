@@ -14,6 +14,7 @@ import { getCoverage } from '../core/query/coverage';
 import { InsightsQueries } from '../core/query/insightsQueries';
 import { Database } from '../core/storage/database';
 import { IngestStateStore } from '../core/storage/ingestStateStore';
+import { ObservationStore } from '../core/storage/observationStore';
 import { SessionStore } from '../core/storage/sessionStore';
 import { daysAgo, localDay } from '../core/time';
 import { getDiagnostics } from '../core/query/diagnostics';
@@ -29,9 +30,13 @@ import {
   type DataCommandDeps,
 } from './dataCommands';
 import { IngestController } from './ingestController';
+import { VscodeGit } from './observers/gitAdapter';
+import { LiveObserver } from './observers/liveObserver';
 import { DashboardPanel } from './webviewHost/dashboardPanel';
 import type { RpcHandlers } from './webviewHost/rpcHost';
 import { SidebarProvider } from './webviewHost/sidebarProvider';
+
+const LIVE_TICK_MS = 60_000;
 
 export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel('Copilot Insights', { log: true });
@@ -46,6 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const queries = new InsightsQueries(database);
   const clear = new ClearService(database, sessions, state);
   const github = new GithubUsageStore(database);
+  const observations = new ObservationStore(database);
   const lock = new WriterLock(storageDir);
   const dataChanged = new vscode.EventEmitter<void>();
   const dataDeps: DataCommandDeps = {
@@ -57,6 +63,17 @@ export function activate(context: vscode.ExtensionContext): void {
       dataChanged.fire();
     },
   };
+
+  const liveObserver = new LiveObserver({
+    database,
+    observations,
+    git: new VscodeGit(),
+    log: {
+      warn: (message) => {
+        log.warn(message);
+      },
+    },
+  });
 
   const service = new IngestService({
     database,
@@ -74,6 +91,7 @@ export function activate(context: vscode.ExtensionContext): void {
     retentionDays: () => readConfig().retentionDays,
     onChanged: () => {
       dataChanged.fire();
+      void liveObserver.tick();
     },
     log: {
       info: (message) => {
@@ -85,6 +103,7 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   });
   const controller = new IngestController(service, context.storageUri, log);
+  const liveTimer = setInterval(() => void liveObserver.tick(), LIVE_TICK_MS);
 
   // `dashboard` is created after the handlers; the closure reads it lazily.
   const syncGithub = async () => {
@@ -183,6 +202,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Stop background work before the database closes.
     {
       dispose: () => {
+        clearInterval(liveTimer);
         controller.dispose();
         lock.release();
         database.close();
@@ -190,6 +210,7 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
   controller.start();
+  void liveObserver.tick();
   offerLegacyCleanup(dataDeps);
   log.info(`Copilot Insights ${version} activated (storage: ${storageDir})`);
 }

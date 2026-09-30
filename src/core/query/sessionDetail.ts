@@ -5,6 +5,7 @@ import type { Database } from '../storage/database';
 import { exact, unavailable } from '../../shared/provenance';
 import { known, SOURCES, summed, toTurnState } from './measure';
 import { routingFor } from './routing';
+import { getSessionOutcomes } from './sessionOutcomes';
 
 interface SessionHeader {
   id: string;
@@ -146,6 +147,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       turnRows.filter((row) => row.model_host !== 'byok').length,
     ),
     analysis: null,
+    outcomes: getSessionOutcomes(database, id),
     debug:
       callRows.length === 0
         ? null

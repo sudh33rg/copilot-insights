@@ -84,15 +84,126 @@ function owningRoot(path: string, roots: readonly string[]): string | null {
   return best;
 }
 
+/** Read-only access to live observations (usable from the query layer with just `db`). */
+export class ObservationReader {
+  constructor(protected readonly database: Pick<Database, 'db'>) {}
+
+  lastChangeAt(): number {
+    return readLastChangeAt(this.database);
+  }
+
+  getSnapshots(sessionId: string, kind: SnapshotKind): StoredSnapshot[] {
+    const { db } = this.database;
+    const repos = db
+      .prepare(
+        'SELECT repo_root, head, taken_at FROM git_snapshots WHERE session_id = :sessionId AND kind = :kind ORDER BY repo_root',
+      )
+      .all({ sessionId, kind }) as unknown as { repo_root: string; head: string | null; taken_at: number }[];
+    const files = db
+      .prepare(
+        'SELECT path, added, removed FROM git_snapshot_files WHERE session_id = :sessionId AND kind = :kind ORDER BY path',
+      )
+      .all({ sessionId, kind }) as unknown as SnapshotFile[];
+    const roots = repos.map((repo) => repo.repo_root);
+    return repos.map((repo) => ({
+      repoRoot: repo.repo_root,
+      head: repo.head,
+      takenAt: repo.taken_at,
+      files: files
+        .filter((file) => owningRoot(file.path, roots) === repo.repo_root)
+        .map((file) => ({ path: file.path, added: file.added, removed: file.removed })),
+    }));
+  }
+
+  getDiagnostics(sessionId: string, kind: SnapshotKind): DiagEntry[] {
+    return this.database.db
+      .prepare(
+        'SELECT path, errors, warnings FROM diag_snapshots WHERE session_id = :sessionId AND kind = :kind ORDER BY path',
+      )
+      .all({ sessionId, kind }) as unknown as DiagEntry[];
+  }
+
+  terminalRunsBetween(fromMs: number, toMs: number): TerminalRun[] {
+    const rows = this.database.db
+      .prepare(
+        `SELECT started_at, ended_at, exit_code, kind, command_hash FROM terminal_runs
+         WHERE ended_at >= :fromMs AND ended_at <= :toMs ORDER BY ended_at, id`,
+      )
+      .all({ fromMs, toMs }) as unknown as {
+      started_at: number | null;
+      ended_at: number;
+      exit_code: number | null;
+      kind: CommandKind;
+      command_hash: string;
+    }[];
+    return rows.map((row) => ({
+      startedAt: row.started_at,
+      endedAt: row.ended_at,
+      exitCode: row.exit_code,
+      kind: row.kind,
+      commandHash: row.command_hash,
+    }));
+  }
+
+  survivalChecks(sessionId: string): SurvivalCheck[] {
+    const rows = this.database.db
+      .prepare(
+        `SELECT turn_idx, path, check_kind, checked_at, present, total FROM survival_checks
+         WHERE session_id = :sessionId ORDER BY turn_idx, path, check_kind`,
+      )
+      .all({ sessionId }) as unknown as {
+      turn_idx: number;
+      path: string;
+      check_kind: SurvivalCheck['checkKind'];
+      checked_at: number;
+      present: number;
+      total: number;
+    }[];
+    return rows.map((row) => ({
+      sessionId,
+      turnIdx: row.turn_idx,
+      path: row.path,
+      checkKind: row.check_kind,
+      checkedAt: row.checked_at,
+      present: row.present,
+      total: row.total,
+    }));
+  }
+
+  sessionCommits(sessionId: string): SessionCommit[] {
+    const rows = this.database.db
+      .prepare(
+        `SELECT hash, committed_at, overlap_files, edited_files, linked_at FROM session_commits
+         WHERE session_id = :sessionId ORDER BY committed_at, hash`,
+      )
+      .all({ sessionId }) as unknown as {
+      hash: string;
+      committed_at: number;
+      overlap_files: number;
+      edited_files: number;
+      linked_at: number;
+    }[];
+    return rows.map((row) => ({
+      hash: row.hash,
+      committedAt: row.committed_at,
+      overlapFiles: row.overlap_files,
+      editedFiles: row.edited_files,
+      linkedAt: row.linked_at,
+    }));
+  }
+}
+
 /**
  * Live observations. None of these tables reference `sessions`: a rescan deletes and re-inserts the session row,
  * so cleanup is explicit (clear, retention, capture-level downgrade).
  */
-export class ObservationStore {
+export class ObservationStore extends ObservationReader {
   constructor(
-    private readonly database: Database,
+    protected override readonly database: Database,
     private readonly now: () => number = Date.now,
-  ) {}
+  ) {
+    super(database);
+  }
 
   touch(now: number): void {
     this.database.db
@@ -100,10 +211,6 @@ export class ObservationStore {
         'INSERT INTO meta (key, value) VALUES (:key, :value) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
       )
       .run({ key: META_LAST_CHANGE, value: String(now) });
-  }
-
-  lastChangeAt(): number {
-    return readLastChangeAt(this.database);
   }
 
   saveSnapshot(snapshot: SnapshotInput): void {
@@ -142,29 +249,6 @@ export class ObservationStore {
     });
   }
 
-  getSnapshots(sessionId: string, kind: SnapshotKind): StoredSnapshot[] {
-    const { db } = this.database;
-    const repos = db
-      .prepare(
-        'SELECT repo_root, head, taken_at FROM git_snapshots WHERE session_id = :sessionId AND kind = :kind ORDER BY repo_root',
-      )
-      .all({ sessionId, kind }) as unknown as { repo_root: string; head: string | null; taken_at: number }[];
-    const files = db
-      .prepare(
-        'SELECT path, added, removed FROM git_snapshot_files WHERE session_id = :sessionId AND kind = :kind ORDER BY path',
-      )
-      .all({ sessionId, kind }) as unknown as SnapshotFile[];
-    const roots = repos.map((repo) => repo.repo_root);
-    return repos.map((repo) => ({
-      repoRoot: repo.repo_root,
-      head: repo.head,
-      takenAt: repo.taken_at,
-      files: files
-        .filter((file) => owningRoot(file.path, roots) === repo.repo_root)
-        .map((file) => ({ path: file.path, added: file.added, removed: file.removed })),
-    }));
-  }
-
   saveDiagnostics(sessionId: string, kind: SnapshotKind, entries: DiagEntry[]): void {
     const { db } = this.database;
     this.database.transaction(() => {
@@ -183,14 +267,6 @@ export class ObservationStore {
     });
   }
 
-  getDiagnostics(sessionId: string, kind: SnapshotKind): DiagEntry[] {
-    return this.database.db
-      .prepare(
-        'SELECT path, errors, warnings FROM diag_snapshots WHERE session_id = :sessionId AND kind = :kind ORDER BY path',
-      )
-      .all({ sessionId, kind }) as unknown as DiagEntry[];
-  }
-
   addTerminalRun(run: TerminalRun): void {
     this.database.db
       .prepare(
@@ -199,28 +275,6 @@ export class ObservationStore {
       )
       .run({ ...run });
     this.touch(this.now());
-  }
-
-  terminalRunsBetween(fromMs: number, toMs: number): TerminalRun[] {
-    const rows = this.database.db
-      .prepare(
-        `SELECT started_at, ended_at, exit_code, kind, command_hash FROM terminal_runs
-         WHERE ended_at >= :fromMs AND ended_at <= :toMs ORDER BY ended_at, id`,
-      )
-      .all({ fromMs, toMs }) as unknown as {
-      started_at: number | null;
-      ended_at: number;
-      exit_code: number | null;
-      kind: CommandKind;
-      command_hash: string;
-    }[];
-    return rows.map((row) => ({
-      startedAt: row.started_at,
-      endedAt: row.ended_at,
-      exitCode: row.exit_code,
-      kind: row.kind,
-      commandHash: row.command_hash,
-    }));
   }
 
   saveSurvivalCheck(check: SurvivalCheck): void {
@@ -235,31 +289,6 @@ export class ObservationStore {
     this.touch(this.now());
   }
 
-  survivalChecks(sessionId: string): SurvivalCheck[] {
-    const rows = this.database.db
-      .prepare(
-        `SELECT turn_idx, path, check_kind, checked_at, present, total FROM survival_checks
-         WHERE session_id = :sessionId ORDER BY turn_idx, path, check_kind`,
-      )
-      .all({ sessionId }) as unknown as {
-      turn_idx: number;
-      path: string;
-      check_kind: SurvivalCheck['checkKind'];
-      checked_at: number;
-      present: number;
-      total: number;
-    }[];
-    return rows.map((row) => ({
-      sessionId,
-      turnIdx: row.turn_idx,
-      path: row.path,
-      checkKind: row.check_kind,
-      checkedAt: row.checked_at,
-      present: row.present,
-      total: row.total,
-    }));
-  }
-
   replaceSessionCommits(sessionId: string, links: SessionCommit[]): void {
     const { db } = this.database;
     this.database.transaction(() => {
@@ -271,28 +300,6 @@ export class ObservationStore {
       for (const link of links) insert.run({ sessionId, ...link });
       this.touch(this.now());
     });
-  }
-
-  sessionCommits(sessionId: string): SessionCommit[] {
-    const rows = this.database.db
-      .prepare(
-        `SELECT hash, committed_at, overlap_files, edited_files, linked_at FROM session_commits
-         WHERE session_id = :sessionId ORDER BY committed_at, hash`,
-      )
-      .all({ sessionId }) as unknown as {
-      hash: string;
-      committed_at: number;
-      overlap_files: number;
-      edited_files: number;
-      linked_at: number;
-    }[];
-    return rows.map((row) => ({
-      hash: row.hash,
-      committedAt: row.committed_at,
-      overlapFiles: row.overlap_files,
-      editedFiles: row.edited_files,
-      linkedAt: row.linked_at,
-    }));
   }
 
   deleteSessions(ids: readonly string[]): void {
