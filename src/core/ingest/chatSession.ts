@@ -94,6 +94,7 @@ const KNOWN_REQUEST_KEYS = new Set([
 export interface NormalizeContext {
   file: string;
   workspace: string;
+  workspacePath?: string | null;
   /** Per-install salt. Without it no fingerprints or command hashes are produced. */
   salt?: string;
 }
@@ -124,6 +125,7 @@ export function normalizeChatSession(state: unknown, context: NormalizeContext):
     id: sessionId ?? basename(context.file).replace(/\.jsonl?$/i, ''),
     sourceFile: context.file,
     workspace: context.workspace,
+    workspacePath: context.workspacePath ?? null,
     title: nonEmpty(typeof state.customTitle === 'string' ? state.customTitle : undefined),
     location: typeof state.initialLocation === 'string' ? state.initialLocation : null,
     startedAt,

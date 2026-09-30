@@ -38,7 +38,7 @@ describe('getSessionOutcomes — lines changed', () => {
     expect(outcomes.linesAdded.value).toBe(7);
     expect(outcomes.linesRemoved.value).toBe(2);
     expect(outcomes.linesAdded.provenance.kind).toBe('derived');
-    expect(outcomes.linesAdded.provenance.source).toContain('tracked files only');
+    expect(outcomes.linesAdded.provenance.source).toContain('new untracked text files');
   });
 
   it('is unavailable, not zero, when HEAD moved during the session', () => {
@@ -287,6 +287,19 @@ describe('getSessionOutcomes — diagnostics delta', () => {
     observations.saveDiagnostics('fx-auto-1', 'start', [{ path: '/r/a.ts', errors: 3, warnings: 0 }]);
     observations.saveDiagnostics('fx-auto-1', 'latest', []);
     expect(getSessionOutcomes(database, 'fx-auto-1').errorsDelta.value).toBe(-3);
+  });
+
+  it('is unavailable when a snapshot was cut short, because missing files would read as zero problems', () => {
+    const { database, observations } = withEditedFiles(['/r/a.ts']);
+    observations.saveDiagnostics('fx-auto-1', 'start', [], true);
+    observations.saveDiagnostics('fx-auto-1', 'latest', []);
+    expect(getSessionOutcomes(database, 'fx-auto-1').errorsDelta).toEqual({
+      value: null,
+      provenance: {
+        kind: 'unavailable',
+        source: 'a diagnostics snapshot was incomplete (too many files with problems)',
+      },
+    });
   });
 
   it('is unavailable when the session edited no files', () => {

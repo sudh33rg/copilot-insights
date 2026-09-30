@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { seededStore } from '../../../test/fixtures/sessions';
 import { Database } from './database';
 import { ObservationStore, type SnapshotInput } from './observationStore';
 
@@ -84,6 +85,16 @@ describe('ObservationStore', () => {
     expect(store.getDiagnostics('a', 'start')).toEqual([]);
     store.deleteSessions(['a']);
     expect(store.hasDiagnostics('a', 'start')).toBe(false);
+  });
+
+  it('remembers when a diagnostics snapshot was truncated', () => {
+    const { store } = newStore();
+    store.saveDiagnostics('a', 'start', [], true);
+    store.saveDiagnostics('a', 'latest', []);
+    expect(store.diagnosticsTruncated('a', 'start')).toBe(true);
+    expect(store.diagnosticsTruncated('a', 'latest')).toBe(false);
+    store.saveDiagnostics('a', 'start', [], false);
+    expect(store.diagnosticsTruncated('a', 'start')).toBe(false);
   });
 
   it('returns terminal runs inclusive of both bounds and ordered by end time', () => {
@@ -186,23 +197,21 @@ describe('ObservationStore', () => {
     expect(store.terminalRunsBetween(0, 100).map((r) => r.endedAt)).toEqual([15]);
   });
 
-  it('tracks the last change time, defaulting to zero', () => {
+  it('tracks change time per session, defaulting to zero', () => {
     const { store } = newStore();
-    expect(store.lastChangeAt()).toBe(0);
-    store.touch(5);
-    expect(store.lastChangeAt()).toBe(5);
+    expect(store.changedAt('a')).toBe(0);
+    store.touchSession('a', 5);
+    expect(store.changedAt('a')).toBe(5);
+    expect(store.changedAt('b')).toBe(0);
   });
 
-  it('touches on every mutation using the injected clock', () => {
+  it('touches only the session a mutation is about, using the injected clock', () => {
     const mutations: ((s: ObservationStore) => void)[] = [
       (s) => {
         s.saveSnapshot(snapshot());
       },
       (s) => {
         s.saveDiagnostics('a', 'start', []);
-      },
-      (s) => {
-        s.addTerminalRun({ startedAt: null, endedAt: 1, exitCode: 0, kind: 'test', commandHash: 'h' });
       },
       (s) => {
         s.saveSurvivalCheck({
@@ -219,19 +228,70 @@ describe('ObservationStore', () => {
         s.replaceSessionCommits('a', []);
       },
       (s) => {
-        s.deleteSessions(['a']);
-      },
-      (s) => {
-        s.deleteAll();
-      },
-      (s) => {
-        s.pruneBefore(1);
+        s.deleteSurvivalChecks(['a']);
       },
     ];
     for (const mutate of mutations) {
       const { store } = newStore(777);
       mutate(store);
-      expect(store.lastChangeAt()).toBe(777);
+      expect(store.changedAt('a')).toBe(777);
+      expect(store.changedAt('b')).toBe(0);
     }
+  });
+
+  it('forgets the change times of deleted sessions', () => {
+    const { store } = newStore(777);
+    store.touchSession('a', 5);
+    store.touchSession('b', 6);
+    store.deleteSessions(['a']);
+    expect(store.changedAt('a')).toBe(0);
+    expect(store.changedAt('b')).toBe(6);
+    store.deleteAll();
+    expect(store.changedAt('b')).toBe(0);
+  });
+
+  describe('terminal runs touch the sessions they could belong to', () => {
+    const run = (endedAt: number) => ({
+      startedAt: null,
+      endedAt,
+      exitCode: 0,
+      kind: 'test' as const,
+      commandHash: 'h',
+    });
+
+    it('only touches sessions whose time window contains the run', () => {
+      const { database } = seededStore();
+      const store = new ObservationStore(database, () => 777);
+      // fx-auto-1 ran at 1790000001000–1790000070000; fx-byok-1 is a day later.
+      store.addTerminalRun(run(1_790_000_030_000));
+      expect(store.changedAt('fx-auto-1')).toBe(777);
+      expect(store.changedAt('fx-byok-1')).toBe(0);
+    });
+
+    it('ignores a run far outside every session', () => {
+      const { database } = seededStore();
+      const store = new ObservationStore(database, () => 777);
+      store.addTerminalRun(run(1_700_000_000_000));
+      expect(store.changedAt('fx-auto-1')).toBe(0);
+      expect(store.changedAt('fx-byok-1')).toBe(0);
+    });
+
+    it('touches every session when command hashes are blanked', () => {
+      const { database } = seededStore();
+      const store = new ObservationStore(database, () => 777);
+      store.clearCommandHashes();
+      expect(store.changedAt('fx-auto-1')).toBe(777);
+      expect(store.changedAt('fx-byok-1')).toBe(777);
+    });
+
+    it('touches sessions on pruning only when a run was actually removed', () => {
+      const { database } = seededStore();
+      const store = new ObservationStore(database, () => 777);
+      store.pruneBefore(10);
+      expect(store.changedAt('fx-auto-1')).toBe(0);
+      store.addTerminalRun(run(5));
+      store.pruneBefore(10);
+      expect(store.changedAt('fx-auto-1')).toBe(777);
+    });
   });
 });

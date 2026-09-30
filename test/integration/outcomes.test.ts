@@ -1,9 +1,14 @@
 import * as assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
+import { snapshotDiagnostics } from '../../src/extension/observers/diagnosticsAdapter';
+import { Database } from '../../src/core/storage/database';
+import { ObservationStore } from '../../src/core/storage/observationStore';
 import { VscodeGit } from '../../src/extension/observers/gitAdapter';
+import { registerTerminalObserver } from '../../src/extension/observers/terminalObserver';
 
 /** The git extension fills repository state asynchronously; poll until `read` yields a value that `accept` likes. */
 async function eventually<T>(
@@ -29,6 +34,8 @@ describe('vscode.git adapter', function () {
     const dir = folder.uri.fsPath;
     const git = (...args: string[]) => execFileSync('git', args, { cwd: dir });
     writeFileSync(join(dir, 'a.txt'), 'one\ntwo\nthree\nfour\n');
+    // A new file git does not track yet still counts as added lines.
+    writeFileSync(join(dir, 'b.txt'), 'x\ny\nz\n');
     const findRepo = async () => (await new VscodeGit().repos()).find((candidate) => candidate.root === dir);
     const repo = await eventually(findRepo, (found) => found !== undefined, 'the repository to open');
     assert.ok(repo);
@@ -40,13 +47,53 @@ describe('vscode.git adapter', function () {
     assert.match(head ?? '', /^[0-9a-f]{40}$/);
     const numstat = await eventually(
       () => repo.workingTreeNumstat(),
-      (files) => files.length > 0,
-      'working tree changes',
+      (files) => files.length >= 2,
+      'tracked and untracked working tree changes',
     );
-    assert.deepEqual(numstat, [{ path: join(dir, 'a.txt'), added: 2, removed: 0 }]);
+    assert.deepEqual(
+      [...numstat].sort((a, b) => a.path.localeCompare(b.path)),
+      [
+        { path: join(dir, 'a.txt'), added: 2, removed: 0 },
+        { path: join(dir, 'b.txt'), added: 3, removed: 0 },
+      ],
+    );
     git('commit', '-qam', 'second');
     const commits = await repo.commitsSince(Date.now() - 60_000);
     assert.equal(commits.length >= 1, true);
     assert.deepEqual(commits[0]?.files, [join(dir, 'a.txt')]);
+  });
+});
+
+describe('diagnostics adapter', () => {
+  it('counts errors and warnings per file and never reads message text', () => {
+    const collection = vscode.languages.createDiagnosticCollection('copilot-insights-test');
+    const uri = vscode.Uri.file(join(tmpdir(), 'ci-diagnostics-target.ts'));
+    const range = new vscode.Range(0, 0, 0, 1);
+    collection.set(uri, [
+      new vscode.Diagnostic(range, 'SECRET-message', vscode.DiagnosticSeverity.Error),
+      new vscode.Diagnostic(range, 'SECRET-message', vscode.DiagnosticSeverity.Error),
+      new vscode.Diagnostic(range, 'SECRET-message', vscode.DiagnosticSeverity.Warning),
+      new vscode.Diagnostic(range, 'SECRET-message', vscode.DiagnosticSeverity.Information),
+    ]);
+    try {
+      const { entries, truncated } = snapshotDiagnostics();
+      assert.equal(truncated, false);
+      const entry = entries.find((candidate) => candidate.path === uri.fsPath);
+      assert.deepEqual(entry, { path: uri.fsPath, errors: 2, warnings: 1 });
+      assert.ok(!JSON.stringify(entries).includes('SECRET'));
+    } finally {
+      collection.dispose();
+    }
+  });
+});
+
+describe('terminal observer', () => {
+  it('registers and disposes cleanly', () => {
+    const disposable = registerTerminalObserver(
+      new ObservationStore(new Database(':memory:')),
+      () => 'salt',
+      () => 'summaries',
+    );
+    disposable.dispose();
   });
 });

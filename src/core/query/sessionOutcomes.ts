@@ -10,7 +10,7 @@ import { getSessionCredits } from './sessionCredits';
 import { ObservationReader, type StoredSnapshot, type SurvivalCheck } from '../storage/observationStore';
 
 const GIT_SOURCE =
-  'git working-tree diff between first and latest observation while VS Code was open (tracked files only)';
+  'git working-tree diff between first and latest observation while VS Code was open (including new untracked text files)';
 
 /** Everything the extension observed about what a session achieved. Missing evidence is `unavailable`, never 0. */
 export function getSessionOutcomes(database: Pick<Database, 'db'>, id: string): Outcomes {
@@ -207,6 +207,10 @@ function diagnosticsOutcomes(
   ).map((row) => row.path);
   const snapshot = (kind: 'start' | 'latest') =>
     observations.hasDiagnostics(id, kind) ? observations.getDiagnostics(id, kind) : null;
+  if (observations.diagnosticsTruncated(id, 'start') || observations.diagnosticsTruncated(id, 'latest')) {
+    const cut = unavailable<number>('a diagnostics snapshot was incomplete (too many files with problems)');
+    return { errorsDelta: cut, warningsDelta: cut };
+  }
   const delta = diagnosticsDelta(snapshot('start'), snapshot('latest'), edited);
   if (delta === null) {
     const none = unavailable<number>('diagnostics were not observed before and after this session');

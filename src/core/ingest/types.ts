@@ -88,6 +88,8 @@ export interface NormalizedSession {
   id: string;
   sourceFile: string;
   workspace: string;
+  /** Folder the workspace points at, to tell which git repositories belong to the session. */
+  workspacePath: string | null;
   title: string | null;
   location: string | null;
   startedAt: number;

@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { basename, dirname, join } from 'node:path';
 import { isRecord } from '../json';
 import { applyCaptureLevel, type CaptureLevel } from '../privacy/captureLevel';
 import { normalizeChatSession } from './chatSession';
@@ -12,6 +13,8 @@ const SESSION_FILE = /\.jsonl?$/i;
 export interface SessionFile {
   file: string;
   workspace: string;
+  /** Folder the workspace points at; null when unknown (no workspace.json, remote workspace). */
+  workspacePath: string | null;
 }
 
 export interface ScanInput {
@@ -51,8 +54,9 @@ export function listChatSessionFiles(roots: readonly StorageRoot[]): SessionFile
   const files: SessionFile[] = [];
   for (const root of roots) {
     if (root.kind === 'emptyWindow') {
-      for (const name of sessionFileNames(root.dir))
-        files.push({ file: join(root.dir, name), workspace: 'No workspace' });
+      for (const name of sessionFileNames(root.dir)) {
+        files.push({ file: join(root.dir, name), workspace: 'No workspace', workspacePath: null });
+      }
       continue;
     }
     for (const entry of safeReaddir(root.dir)) {
@@ -60,7 +64,10 @@ export function listChatSessionFiles(roots: readonly StorageRoot[]): SessionFile
       const names = sessionFileNames(join(workspaceDir, 'chatSessions'));
       if (names.length === 0) continue;
       const workspace = readWorkspaceLabel(workspaceDir);
-      for (const name of names) files.push({ file: join(workspaceDir, 'chatSessions', name), workspace });
+      const workspacePath = readWorkspaceFolder(workspaceDir);
+      for (const name of names) {
+        files.push({ file: join(workspaceDir, 'chatSessions', name), workspace, workspacePath });
+      }
     }
   }
   return files;
@@ -78,7 +85,7 @@ export function scanChatSessions(input: ScanInput): ScanOutput {
     errors: [],
   };
   const results: ScanResult[] = [];
-  for (const { file, workspace } of listChatSessionFiles(input.roots)) {
+  for (const { file, workspace, workspacePath } of listChatSessionFiles(input.roots)) {
     stats.files++;
     const fingerprint = fileFingerprint(file);
     if (fingerprint === null) continue;
@@ -89,7 +96,7 @@ export function scanChatSessions(input: ScanInput): ScanOutput {
     try {
       const { state, badLines } = loadChatSessionState(file);
       stats.badLines += badLines;
-      const session = normalizeChatSession(state, { file, workspace, salt: input.salt });
+      const session = normalizeChatSession(state, { file, workspace, workspacePath, salt: input.salt });
       if (session === null) {
         stats.empty++;
         results.push({
@@ -127,6 +134,33 @@ export function scanChatSessions(input: ScanInput): ScanOutput {
     }
   }
   return { results, stats };
+}
+
+/**
+ * The folder a workspace storage directory belongs to: the folder of a single-folder workspace, or the directory
+ * holding a multi-root `.code-workspace` file (its folders usually live there). Null when it cannot be told.
+ */
+export function readWorkspaceFolder(workspaceDir: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(join(workspaceDir, 'workspace.json'), 'utf8'));
+    if (!isRecord(parsed)) return null;
+    if (typeof parsed.folder === 'string') return fileUriToPath(parsed.folder);
+    if (typeof parsed.workspace === 'string') {
+      const file = fileUriToPath(parsed.workspace);
+      return file === null ? null : dirname(file);
+    }
+  } catch {
+    // Missing or corrupt workspace.json.
+  }
+  return null;
+}
+
+function fileUriToPath(uri: string): string | null {
+  try {
+    return uri.startsWith('file:') ? fileURLToPath(uri) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function readWorkspaceLabel(workspaceDir: string): string {

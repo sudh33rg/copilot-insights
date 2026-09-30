@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countPatchLines } from './numstat';
+import { countPatchLines, countTextLines } from './numstat';
 
 const PATCH = [
   'diff --git a/x.ts b/x.ts',
@@ -24,5 +24,20 @@ describe('countPatchLines', () => {
   it('returns zeros for empty or binary patches', () => {
     expect(countPatchLines('')).toEqual({ added: 0, removed: 0 });
     expect(countPatchLines('Binary files a/x and b/x differ\n')).toEqual({ added: 0, removed: 0 });
+  });
+});
+
+describe('countTextLines', () => {
+  it('counts lines whether or not the file ends with a newline', () => {
+    expect(countTextLines('one\ntwo\nthree\n')).toBe(3);
+    expect(countTextLines('one\ntwo\nthree')).toBe(3);
+    expect(countTextLines('single')).toBe(1);
+  });
+  it('counts an empty file as zero lines and handles CRLF', () => {
+    expect(countTextLines('')).toBe(0);
+    expect(countTextLines('a\r\nb\r\n')).toBe(2);
+  });
+  it('returns null for binary content, which has no meaningful line count', () => {
+    expect(countTextLines('PK\u0000\u0003binary')).toBeNull();
   });
 });

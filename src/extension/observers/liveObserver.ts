@@ -1,9 +1,16 @@
 import type { Database } from '../../core/storage/database';
 import { LIVE_WINDOW_MS, shouldBaseline, takeSnapshot } from '../../core/git/snapshots';
 import type { GitPort, GitRepo } from '../../core/git/types';
+import { isWithin, pathsRelated } from '../../core/git/paths';
 import { linkCommits } from '../../core/outcomes/commitLink';
 import { SurvivalChecker } from '../../core/outcomes/survival';
 import type { DiagEntry, ObservationStore, SnapshotKind } from '../../core/storage/observationStore';
+
+interface PlanEntry {
+  id: string;
+  kind: SnapshotKind;
+  workspacePath: string | null;
+}
 
 const LINK_LOOKBACK_MS = 7 * 86_400_000;
 const LINK_THROTTLE_MS = 5 * 60_000;
@@ -16,7 +23,7 @@ export interface LiveObserverDeps {
   readFile(path: string): Promise<string | null>;
   salt(): string;
   /** Current error/warning counts per file; counts only, never message text. */
-  diagnostics(): DiagEntry[];
+  diagnostics(): { entries: DiagEntry[]; truncated: boolean };
   now?: () => number;
   log: { warn(message: string): void };
 }
@@ -84,13 +91,20 @@ export class LiveObserver {
       }));
   }
 
-  private liveSessions(now: number): { id: string; firstTurnStartedAt: number | null }[] {
+  private liveSessions(
+    now: number,
+  ): { id: string; firstTurnStartedAt: number | null; workspacePath: string | null }[] {
     return this.deps.database.db
       .prepare(
-        `SELECT s.id, (SELECT MIN(started_at) FROM turns t WHERE t.session_id = s.id) AS firstTurnStartedAt
+        `SELECT s.id, s.workspace_path AS workspacePath,
+                (SELECT MIN(started_at) FROM turns t WHERE t.session_id = s.id) AS firstTurnStartedAt
            FROM sessions s WHERE s.ended_at >= :since`,
       )
-      .all({ since: now - LIVE_WINDOW_MS }) as unknown as { id: string; firstTurnStartedAt: number | null }[];
+      .all({ since: now - LIVE_WINDOW_MS }) as unknown as {
+      id: string;
+      firstTurnStartedAt: number | null;
+      workspacePath: string | null;
+    }[];
   }
 
   /**
@@ -98,37 +112,41 @@ export class LiveObserver {
    * agrees on whether this is the session's baseline (`start`) or a later observation (`latest`). A session
    * whose first turn is too old to baseline is skipped: a late "start" would hide what had already changed.
    */
-  private plan(now: number): { id: string; kind: SnapshotKind }[] {
+  private plan(now: number): PlanEntry[] {
     const { observations } = this.deps;
-    return this.liveSessions(now).flatMap((session): { id: string; kind: SnapshotKind }[] => {
+    return this.liveSessions(now).flatMap((session): PlanEntry[] => {
       const hasStart =
         observations.getSnapshots(session.id, 'start').length > 0 ||
         observations.hasDiagnostics(session.id, 'start');
-      if (hasStart) return [{ id: session.id, kind: 'latest' }];
+      if (hasStart) return [{ id: session.id, kind: 'latest', workspacePath: session.workspacePath }];
       return shouldBaseline({ hasStart, firstTurnStartedAt: session.firstTurnStartedAt, now })
-        ? [{ id: session.id, kind: 'start' }]
+        ? [{ id: session.id, kind: 'start', workspacePath: session.workspacePath }]
         : [];
     });
   }
 
   private async observeGit(
-    plan: readonly { id: string; kind: SnapshotKind }[],
+    plan: readonly PlanEntry[],
     now: number,
     getRepos: () => Promise<GitRepo[]>,
   ): Promise<void> {
     if (plan.length === 0) return;
     const repos = await getRepos();
-    for (const { id, kind } of plan) {
-      for (const repo of repos) {
+    for (const { id, kind, workspacePath } of plan) {
+      // Only repositories that belong to the session's workspace: another window's repo must not count.
+      const related = repos.filter(
+        (repo) => workspacePath === null || pathsRelated(repo.root, workspacePath),
+      );
+      for (const repo of related) {
         this.deps.observations.saveSnapshot({ sessionId: id, kind, ...(await takeSnapshot(repo, now)) });
       }
     }
   }
 
-  private observeDiagnostics(plan: readonly { id: string; kind: SnapshotKind }[]): void {
+  private observeDiagnostics(plan: readonly PlanEntry[]): void {
     if (plan.length === 0) return;
-    const entries = this.deps.diagnostics();
-    for (const { id, kind } of plan) this.deps.observations.saveDiagnostics(id, kind, entries);
+    const { entries, truncated } = this.deps.diagnostics();
+    for (const { id, kind } of plan) this.deps.observations.saveDiagnostics(id, kind, entries, truncated);
   }
 
   /**
@@ -152,7 +170,7 @@ export class LiveObserver {
       if (last !== undefined && now - last.at < LINK_THROTTLE_MS && last.endedAt === session.ended_at)
         continue;
       const repos = await getRepos();
-      const owning = repos.filter((repo) => editedPaths.some((path) => isInside(path, repo.root)));
+      const owning = repos.filter((repo) => editedPaths.some((path) => isWithin(path, repo.root)));
       this.linked.set(session.id, { at: now, endedAt: session.ended_at });
       if (owning.length === 0) continue;
       try {
@@ -196,6 +214,3 @@ export class LiveObserver {
     ).map((row) => row.path);
   }
 }
-
-const isInside = (path: string, root: string): boolean =>
-  path === root || path.startsWith(`${root}/`) || path.startsWith(`${root}\\`);

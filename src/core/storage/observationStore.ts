@@ -1,6 +1,5 @@
+import { SLACK_AFTER_MS, SYSTEM_LEAD_MS } from '../outcomes/terminalMatch';
 import type { Database } from './database';
-
-const META_LAST_CHANGE = 'observation.lastChangeAt';
 
 export type SnapshotKind = 'start' | 'latest';
 export type CommandKind = 'test' | 'build' | 'lint' | 'other';
@@ -63,15 +62,8 @@ export const OBSERVATION_SESSION_TABLES = [
   'diag_snapshot_meta',
   'survival_checks',
   'session_commits',
+  'observation_changes',
 ];
-
-/** When any live observation last changed; 0 if none ever did. Cached analyses older than this are stale. */
-export function readLastChangeAt(database: Pick<Database, 'db'>): number {
-  const row = database.db
-    .prepare('SELECT value FROM meta WHERE key = :key')
-    .get({ key: META_LAST_CHANGE }) as { value: string } | undefined;
-  return row === undefined ? 0 : Number(row.value);
-}
 
 const isUnder = (path: string, root: string): boolean =>
   path === root || path.startsWith(`${root}/`) || path.startsWith(`${root}\\`);
@@ -89,8 +81,12 @@ function owningRoot(path: string, roots: readonly string[]): string | null {
 export class ObservationReader {
   constructor(protected readonly database: Pick<Database, 'db'>) {}
 
-  lastChangeAt(): number {
-    return readLastChangeAt(this.database);
+  /** When this session's live observations last changed; 0 if never. Cached analyses older than this are stale. */
+  changedAt(sessionId: string): number {
+    const row = this.database.db
+      .prepare('SELECT changed_at FROM observation_changes WHERE session_id = :sessionId')
+      .get({ sessionId }) as { changed_at: number } | undefined;
+    return row?.changed_at ?? 0;
   }
 
   getSnapshots(sessionId: string, kind: SnapshotKind): StoredSnapshot[] {
@@ -123,6 +119,14 @@ export class ObservationReader {
         .prepare('SELECT 1 FROM diag_snapshot_meta WHERE session_id = :sessionId AND kind = :kind')
         .get({ sessionId, kind }) !== undefined
     );
+  }
+
+  /** A truncated snapshot left out files with problems, so absent files do not mean zero problems. */
+  diagnosticsTruncated(sessionId: string, kind: SnapshotKind): boolean {
+    const row = this.database.db
+      .prepare('SELECT truncated FROM diag_snapshot_meta WHERE session_id = :sessionId AND kind = :kind')
+      .get({ sessionId, kind }) as { truncated: number } | undefined;
+    return row?.truncated === 1;
   }
 
   getDiagnostics(sessionId: string, kind: SnapshotKind): DiagEntry[] {
@@ -215,12 +219,23 @@ export class ObservationStore extends ObservationReader {
     super(database);
   }
 
-  touch(now: number): void {
+  touchSession(sessionId: string, now: number): void {
     this.database.db
       .prepare(
-        'INSERT INTO meta (key, value) VALUES (:key, :value) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        `INSERT INTO observation_changes (session_id, changed_at) VALUES (:sessionId, :now)
+         ON CONFLICT(session_id) DO UPDATE SET changed_at = excluded.changed_at`,
       )
-      .run({ key: META_LAST_CHANGE, value: String(now) });
+      .run({ sessionId, now });
+  }
+
+  /** Every session: for changes that are not about one session (blanked hashes, pruned terminal runs). */
+  private touchAllSessions(): void {
+    this.database.db
+      .prepare(
+        `INSERT INTO observation_changes (session_id, changed_at) SELECT id, :now FROM sessions WHERE true
+         ON CONFLICT(session_id) DO UPDATE SET changed_at = excluded.changed_at`,
+      )
+      .run({ now: this.now() });
   }
 
   saveSnapshot(snapshot: SnapshotInput): void {
@@ -255,11 +270,11 @@ export class ObservationStore extends ObservationReader {
       for (const file of snapshot.files) {
         insert.run({ sessionId, kind, path: file.path, added: file.added, removed: file.removed });
       }
-      this.touch(this.now());
+      this.touchSession(sessionId, this.now());
     });
   }
 
-  saveDiagnostics(sessionId: string, kind: SnapshotKind, entries: DiagEntry[]): void {
+  saveDiagnostics(sessionId: string, kind: SnapshotKind, entries: DiagEntry[], truncated = false): void {
     const { db } = this.database;
     this.database.transaction(() => {
       db.prepare('DELETE FROM diag_snapshots WHERE session_id = :sessionId AND kind = :kind').run({
@@ -267,9 +282,10 @@ export class ObservationStore extends ObservationReader {
         kind,
       });
       db.prepare(
-        `INSERT INTO diag_snapshot_meta (session_id, kind, taken_at) VALUES (:sessionId, :kind, :takenAt)
-         ON CONFLICT(session_id, kind) DO UPDATE SET taken_at = excluded.taken_at`,
-      ).run({ sessionId, kind, takenAt: this.now() });
+        `INSERT INTO diag_snapshot_meta (session_id, kind, taken_at, truncated)
+         VALUES (:sessionId, :kind, :takenAt, :truncated)
+         ON CONFLICT(session_id, kind) DO UPDATE SET taken_at = excluded.taken_at, truncated = excluded.truncated`,
+      ).run({ sessionId, kind, takenAt: this.now(), truncated: truncated ? 1 : 0 });
       const insert = db.prepare(
         `INSERT INTO diag_snapshots (session_id, kind, path, errors, warnings)
          VALUES (:sessionId, :kind, :path, :errors, :warnings)`,
@@ -277,7 +293,7 @@ export class ObservationStore extends ObservationReader {
       for (const entry of entries) {
         insert.run({ sessionId, kind, path: entry.path, errors: entry.errors, warnings: entry.warnings });
       }
-      this.touch(this.now());
+      this.touchSession(sessionId, this.now());
     });
   }
 
@@ -288,7 +304,14 @@ export class ObservationStore extends ObservationReader {
          VALUES (:startedAt, :endedAt, :exitCode, :kind, :commandHash)`,
       )
       .run({ ...run });
-    this.touch(this.now());
+    // A terminal run is not about one session: touch those whose time window could include it.
+    this.database.db
+      .prepare(
+        `INSERT INTO observation_changes (session_id, changed_at)
+         SELECT id, :now FROM sessions WHERE started_at - :lead <= :at AND ended_at + :after >= :at
+         ON CONFLICT(session_id) DO UPDATE SET changed_at = excluded.changed_at`,
+      )
+      .run({ now: this.now(), lead: SYSTEM_LEAD_MS, after: SLACK_AFTER_MS, at: run.endedAt });
   }
 
   saveSurvivalCheck(check: SurvivalCheck): void {
@@ -300,7 +323,7 @@ export class ObservationStore extends ObservationReader {
          DO UPDATE SET checked_at = excluded.checked_at, present = excluded.present, total = excluded.total`,
       )
       .run({ ...check });
-    this.touch(this.now());
+    this.touchSession(check.sessionId, this.now());
   }
 
   replaceSessionCommits(sessionId: string, links: SessionCommit[]): void {
@@ -312,7 +335,7 @@ export class ObservationStore extends ObservationReader {
          VALUES (:sessionId, :hash, :committedAt, :overlapFiles, :editedFiles, :linkedAt)`,
       );
       for (const link of links) insert.run({ sessionId, ...link });
-      this.touch(this.now());
+      this.touchSession(sessionId, this.now());
     });
   }
 
@@ -323,7 +346,6 @@ export class ObservationStore extends ObservationReader {
       for (const table of OBSERVATION_SESSION_TABLES) {
         db.prepare(`DELETE FROM ${table} WHERE session_id IN (${IDS})`).run(params);
       }
-      this.touch(this.now());
     });
   }
 
@@ -332,7 +354,7 @@ export class ObservationStore extends ObservationReader {
     this.database.db
       .prepare(`DELETE FROM survival_checks WHERE session_id IN (${IDS})`)
       .run({ ids: JSON.stringify(ids) });
-    this.touch(this.now());
+    for (const id of ids) this.touchSession(id, this.now());
   }
 
   deleteAll(): void {
@@ -340,18 +362,17 @@ export class ObservationStore extends ObservationReader {
       for (const table of [...OBSERVATION_SESSION_TABLES, 'terminal_runs']) {
         this.database.db.exec(`DELETE FROM ${table}`);
       }
-      this.touch(this.now());
     });
   }
 
   /** Drops the only command-derived data kept outside sessions; the runs themselves (exit codes, timing) stay. */
   clearCommandHashes(): void {
     this.database.db.exec("UPDATE terminal_runs SET command_hash = ''");
-    this.touch(this.now());
+    this.touchAllSessions();
   }
 
   pruneBefore(ms: number): void {
-    this.database.db.prepare('DELETE FROM terminal_runs WHERE ended_at < :ms').run({ ms });
-    this.touch(this.now());
+    const removed = this.database.db.prepare('DELETE FROM terminal_runs WHERE ended_at < :ms').run({ ms });
+    if (Number(removed.changes) > 0) this.touchAllSessions();
   }
 }

@@ -149,6 +149,12 @@ describe('SessionStore', () => {
     expect(cached()).toBe(0);
   });
 
+  it('stores the workspace folder of a session', () => {
+    const { database, sessions } = newStore();
+    sessions.replaceSession({ ...fixture(), workspacePath: '/work/app' }, 'full', 1);
+    expect(database.db.prepare('SELECT workspace_path AS p FROM sessions').get()).toEqual({ p: '/work/app' });
+  });
+
   describe('observations and fingerprints', () => {
     const SECRET = 'SECRET-CODE-LINE-do-not-store-me';
 

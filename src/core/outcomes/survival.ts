@@ -134,7 +134,6 @@ export class SurvivalChecker {
         // Git unavailable: try again next tick.
       }
     }
-    if (written > 0) observations.touch(now);
     return written;
   }
 

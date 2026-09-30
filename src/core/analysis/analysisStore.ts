@@ -1,7 +1,7 @@
 import { analysisSchema, type Analysis, type SessionDetail } from '../../shared/dto';
 import type { Database } from '../storage/database';
 import { getSessionDetail } from '../query/sessionDetail';
-import { readLastChangeAt } from '../storage/observationStore';
+import { ObservationReader } from '../storage/observationStore';
 import { ANALYZER_VERSION, analyzeSession } from './analyzeSession';
 
 interface CacheRow {
@@ -33,6 +33,8 @@ export class AnalysisStore {
   }
 
   private compute(detail: SessionDetail): Analysis {
+    // Read before computing: a change that lands mid-compute then still marks the cached row stale.
+    const observedAt = new ObservationReader(this.database).changedAt(detail.id);
     const analysis = analyzeSession(detail);
     const ingestedAt = this.ingestedAt(detail.id);
     if (ingestedAt !== null) {
@@ -47,7 +49,7 @@ export class AnalysisStore {
           id: detail.id,
           version: ANALYZER_VERSION,
           ingestedAt,
-          observedAt: readLastChangeAt(this.database),
+          observedAt,
           json: JSON.stringify(analysis),
         });
     }
@@ -69,7 +71,7 @@ export class AnalysisStore {
       .get({ id }) as unknown as CacheRow | undefined;
     if (row === undefined) return 'missing-session';
     if (row.json === null || row.analyzer_version !== ANALYZER_VERSION) return null;
-    if ((row.observed_at ?? 0) < readLastChangeAt(this.database)) return null;
+    if ((row.observed_at ?? 0) < new ObservationReader(this.database).changedAt(id)) return null;
     try {
       const parsed = analysisSchema.safeParse(JSON.parse(row.json));
       return parsed.success ? parsed.data : null;

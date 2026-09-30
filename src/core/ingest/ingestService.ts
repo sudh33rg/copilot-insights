@@ -12,7 +12,7 @@ import type { FullScanOutput } from './scanAll';
 import type { ScanInput, ScanStats } from './scanner';
 
 /** Bump when parsing or normalization changes so every source file is re-parsed on the next sync. */
-export const INGEST_VERSION = 2;
+export const INGEST_VERSION = 3;
 
 export const META = {
   ingestVersion: 'ingest.version',

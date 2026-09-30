@@ -1,9 +1,10 @@
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createFixtureUserDir } from '../../../test/fixtures/fixtures';
 import { resolveStorageRoots } from './roots';
-import { listChatSessionFiles, scanChatSessions, type ScanInput } from './scanner';
+import { listChatSessionFiles, readWorkspaceFolder, scanChatSessions, type ScanInput } from './scanner';
 
 function setup(overrides: Partial<ScanInput> = {}) {
   const { userDir } = createFixtureUserDir();
@@ -91,5 +92,45 @@ describe('scanner', () => {
     const { stats } = scanChatSessions(input);
     expect(stats.errors).toHaveLength(1);
     expect(stats.parsed).toBe(2);
+  });
+});
+
+describe('readWorkspaceFolder', () => {
+  const storageWith = (json: unknown) => {
+    const dir = mkdtempSync(join(tmpdir(), 'ci-ws-'));
+    if (json !== undefined) writeFileSync(join(dir, 'workspace.json'), JSON.stringify(json));
+    return dir;
+  };
+
+  it('returns the folder a single-folder workspace points at', () => {
+    expect(readWorkspaceFolder(storageWith({ folder: 'file:///work/my%20app' }))).toBe('/work/my app');
+  });
+
+  it('uses the directory holding a multi-root .code-workspace file', () => {
+    expect(readWorkspaceFolder(storageWith({ workspace: 'file:///work/team/team.code-workspace' }))).toBe(
+      '/work/team',
+    );
+  });
+
+  it('returns null when it cannot tell: no workspace.json, corrupt JSON, or a remote workspace', () => {
+    expect(readWorkspaceFolder(storageWith(undefined))).toBeNull();
+    const corrupt = mkdtempSync(join(tmpdir(), 'ci-ws-'));
+    writeFileSync(join(corrupt, 'workspace.json'), '{not json');
+    expect(readWorkspaceFolder(corrupt)).toBeNull();
+    expect(
+      readWorkspaceFolder(storageWith({ folder: 'vscode-remote://ssh-remote+box/home/me/app' })),
+    ).toBeNull();
+  });
+
+  it('is attached to each listed session file', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ci-ws-root-'));
+    const ws = join(root, 'ws1');
+    mkdirSync(join(ws, 'chatSessions'), { recursive: true });
+    writeFileSync(join(ws, 'workspace.json'), JSON.stringify({ folder: 'file:///work/app' }));
+    writeFileSync(join(ws, 'chatSessions', 'a.jsonl'), '');
+    const files = listChatSessionFiles(
+      resolveStorageRoots({ userDirs: [], extraWorkspaceStorageRoots: [root] }),
+    );
+    expect(files.map((file) => file.workspacePath)).toEqual(['/work/app']);
   });
 });

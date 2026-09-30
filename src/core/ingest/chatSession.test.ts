@@ -171,6 +171,17 @@ function stateWith(parts: unknown[], toolCalls: unknown[] = []) {
   return clone;
 }
 
+describe('workspace path', () => {
+  it('carries the workspace folder from the scan context, or null', () => {
+    const state = stateWith([]);
+    expect(normalizeChatSession(state, { file: 'x.jsonl', workspace: 'w' })?.workspacePath).toBeNull();
+    expect(
+      normalizeChatSession(state, { file: 'x.jsonl', workspace: 'w', workspacePath: '/work/app' })
+        ?.workspacePath,
+    ).toBe('/work/app');
+  });
+});
+
 describe('content-derived fingerprints', () => {
   const SECRET = 'SECRET-CODE-LINE-do-not-store-me';
   it('stores salted line fingerprints of inserted text and no text', () => {

@@ -243,4 +243,15 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (session_id, kind)
   );
   `,
+  `
+  -- When each session's live observations last changed; cached analyses older than this are stale.
+  CREATE TABLE observation_changes (
+    session_id TEXT PRIMARY KEY,
+    changed_at INTEGER NOT NULL
+  );
+  -- A diagnostics snapshot that hit the file cap is incomplete and must not feed a delta.
+  ALTER TABLE diag_snapshot_meta ADD COLUMN truncated INTEGER NOT NULL DEFAULT 0;
+  -- The folder the session's workspace points at, to tell which git repositories belong to it.
+  ALTER TABLE sessions ADD COLUMN workspace_path TEXT;
+  `,
 ];

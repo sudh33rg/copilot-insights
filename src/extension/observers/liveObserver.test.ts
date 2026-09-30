@@ -19,7 +19,7 @@ function fakeRepo(state: { head: string; added: number }): GitRepo {
 
 function setup(
   ports: { repos: () => Promise<GitRepo[]> },
-  diagnostics: { current: DiagEntry[] } = { current: [] },
+  diagnostics: { current: DiagEntry[]; truncated?: boolean } = { current: [] },
 ) {
   const { database } = seededStore();
   // Make fx-auto-1 a live session whose first turn began a second ago; fx-byok-1 is long finished.
@@ -38,7 +38,7 @@ function setup(
     git,
     readFile: () => Promise.resolve('const a = computeSomethingLong();\n'),
     salt: () => 'salt',
-    diagnostics: () => diagnostics.current,
+    diagnostics: () => ({ entries: diagnostics.current, truncated: diagnostics.truncated ?? false }),
     now: () => now,
     log: { warn: (message) => warnings.push(message) },
   });
@@ -151,6 +151,15 @@ describe('LiveObserver.tick', () => {
       expect(observations.getDiagnostics('fx-auto-1', 'start')).toHaveLength(1);
     });
 
+    it('keeps the truncated flag so an incomplete snapshot can be recognised later', async () => {
+      const { observer, observations } = setup(
+        { repos: () => Promise.resolve([]) },
+        { current: [], truncated: true },
+      );
+      await observer.tick();
+      expect(observations.diagnosticsTruncated('fx-auto-1', 'start')).toBe(true);
+    });
+
     it('records nothing for a session whose start was missed', async () => {
       const { observer, observations, database, advance } = setup({ repos: () => Promise.resolve([]) });
       advance(3_600_000);
@@ -244,6 +253,34 @@ describe('LiveObserver.tick', () => {
       await observer.tick();
       expect(observations.sessionCommits('fx-auto-1')).toEqual([]);
       expect(warnings).toEqual(['Could not link commits for session fx-auto-1: git log exploded']);
+    });
+  });
+
+  describe('repository scoping', () => {
+    async function snapshotsFor(workspacePath: string | null) {
+      const { observer, observations, database } = setup({
+        repos: () => Promise.resolve([fakeRepo({ head: 'h1', added: 1 })]),
+      });
+      database.db
+        .prepare("UPDATE sessions SET workspace_path = :p WHERE id = 'fx-auto-1'")
+        .run({ p: workspacePath });
+      await observer.tick();
+      return observations.getSnapshots('fx-auto-1', 'start');
+    }
+
+    it('snapshots a repository that is the workspace, inside it, or contains it', async () => {
+      expect(await snapshotsFor('/repo')).toHaveLength(1);
+      expect(await snapshotsFor('/repo/packages/app')).toHaveLength(1);
+      expect(await snapshotsFor('/')).toHaveLength(1);
+    });
+
+    it('does not snapshot a repository unrelated to the session’s workspace', async () => {
+      expect(await snapshotsFor('/elsewhere/app')).toEqual([]);
+      expect(await snapshotsFor('/repository-two')).toEqual([]);
+    });
+
+    it('falls back to every repository when the workspace folder is unknown', async () => {
+      expect(await snapshotsFor(null)).toHaveLength(1);
     });
   });
 });

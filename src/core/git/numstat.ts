@@ -18,3 +18,11 @@ export function countPatchLines(patch: string): { added: number; removed: number
   }
   return { added, removed };
 }
+
+/** Lines in a new (untracked) text file, all of which count as added; null for binary content. */
+export function countTextLines(text: string): number | null {
+  if (text.includes('\u0000')) return null;
+  if (text === '') return 0;
+  const newlines = text.split('\n').length - 1;
+  return text.endsWith('\n') ? newlines : newlines + 1;
+}
