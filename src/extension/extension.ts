@@ -30,6 +30,7 @@ import {
   type DataCommandDeps,
 } from './dataCommands';
 import { IngestController } from './ingestController';
+import { snapshotDiagnostics } from './observers/diagnosticsAdapter';
 import { VscodeGit } from './observers/gitAdapter';
 import { LiveObserver } from './observers/liveObserver';
 import { readWorkspaceFile } from './observers/readFile';
@@ -71,6 +72,7 @@ export function activate(context: vscode.ExtensionContext): void {
     observations,
     git: new VscodeGit(),
     readFile: readWorkspaceFile,
+    diagnostics: snapshotDiagnostics,
     salt: () => getOrCreateSalt(state),
     log: {
       warn: (message) => {

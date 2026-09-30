@@ -115,6 +115,9 @@ export const outcomesSchema = z.object({
   testFailures: measuredNumber,
   /** Whether the last test run with a known exit code passed. */
   lastTestPassed: measured(z.boolean()),
+  /** Change in VS Code error / warning counts over the files this session edited; negative means fewer. */
+  errorsDelta: measuredNumber,
+  warningsDelta: measuredNumber,
 });
 export type Outcomes = z.infer<typeof outcomesSchema>;
 

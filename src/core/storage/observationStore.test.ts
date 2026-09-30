@@ -75,6 +75,17 @@ describe('ObservationStore', () => {
     expect(store.getDiagnostics('a', 'latest')).toEqual([{ path: '/repo/x.ts', errors: 0, warnings: 0 }]);
   });
 
+  it('remembers that a diagnostics snapshot was taken even when it was empty (a clean workspace)', () => {
+    const { store } = newStore();
+    expect(store.hasDiagnostics('a', 'start')).toBe(false);
+    store.saveDiagnostics('a', 'start', []);
+    expect(store.hasDiagnostics('a', 'start')).toBe(true);
+    expect(store.hasDiagnostics('a', 'latest')).toBe(false);
+    expect(store.getDiagnostics('a', 'start')).toEqual([]);
+    store.deleteSessions(['a']);
+    expect(store.hasDiagnostics('a', 'start')).toBe(false);
+  });
+
   it('returns terminal runs inclusive of both bounds and ordered by end time', () => {
     const { store } = newStore();
     const run = (endedAt: number, hash: string) => ({

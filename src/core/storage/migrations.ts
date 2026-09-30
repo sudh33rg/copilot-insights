@@ -234,4 +234,13 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX idx_session_commits_hash ON session_commits(hash);
   `,
+  `
+  -- Snapshots omit files with no problems, so "taken but empty" needs its own marker.
+  CREATE TABLE diag_snapshot_meta (
+    session_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('start', 'latest')),
+    taken_at INTEGER NOT NULL,
+    PRIMARY KEY (session_id, kind)
+  );
+  `,
 ];

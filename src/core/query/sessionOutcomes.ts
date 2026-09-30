@@ -2,6 +2,7 @@ import type { Outcomes } from '../../shared/dto';
 import { derived, exact, unavailable, type Measured } from '../../shared/provenance';
 import { diffSnapshots } from '../git/snapshots';
 import { TERMINAL_TOOL } from '../ingest/toolNames';
+import { diagnosticsDelta } from '../outcomes/diagnosticsDelta';
 import { attributeEditOutcomes } from '../outcomes/editOutcomes';
 import { matchTerminalRuns, SLACK_AFTER_MS, SYSTEM_LEAD_MS, type MatchTurn } from '../outcomes/terminalMatch';
 import type { Database } from '../storage/database';
@@ -21,6 +22,7 @@ export function getSessionOutcomes(database: Pick<Database, 'db'>, id: string): 
     ...edits,
     laterSurvival: laterSurvival(observations.survivalChecks(id)),
     ...terminalOutcomes(database, observations, id),
+    ...diagnosticsOutcomes(database, observations, id),
   };
 }
 
@@ -187,4 +189,27 @@ function matchTurns(database: Pick<Database, 'db'>, id: string): MatchTurn[] {
       .filter((call) => call.turn_idx === turn.idx && TERMINAL_TOOL.test(call.name))
       .map((call) => ({ commandHash: call.command_hash })),
   }));
+}
+
+function diagnosticsOutcomes(
+  database: Pick<Database, 'db'>,
+  observations: ObservationReader,
+  id: string,
+): Pick<Outcomes, 'errorsDelta' | 'warningsDelta'> {
+  const edited = (
+    database.db
+      .prepare(
+        "SELECT DISTINCT path FROM file_events WHERE session_id = :id AND action IN ('edited', 'created')",
+      )
+      .all({ id }) as unknown as { path: string }[]
+  ).map((row) => row.path);
+  const snapshot = (kind: 'start' | 'latest') =>
+    observations.hasDiagnostics(id, kind) ? observations.getDiagnostics(id, kind) : null;
+  const delta = diagnosticsDelta(snapshot('start'), snapshot('latest'), edited);
+  if (delta === null) {
+    const none = unavailable<number>('diagnostics were not observed before and after this session');
+    return { errorsDelta: none, warningsDelta: none };
+  }
+  const source = 'VS Code diagnostics for edited files at first vs latest observation';
+  return { errorsDelta: derived(delta.errors, source), warningsDelta: derived(delta.warnings, source) };
 }

@@ -237,3 +237,62 @@ describe('getSessionOutcomes — terminal and test results', () => {
     expect(passing.lastTestPassed).toMatchObject({ value: true, provenance: { kind: 'derived' } });
   });
 });
+
+describe('getSessionOutcomes — diagnostics delta', () => {
+  function withEditedFiles(paths: string[]) {
+    const { database } = seededStore();
+    database.db.exec('DELETE FROM file_events');
+    const insert = database.db.prepare(
+      "INSERT INTO file_events (session_id, turn_idx, seq, path, action, source) VALUES ('fx-auto-1', 1, :q, :p, 'edited', 't')",
+    );
+    paths.forEach((p, q) => insert.run({ q, p }));
+    return { database, observations: new ObservationStore(database) };
+  }
+  const NOT_OBSERVED = 'diagnostics were not observed before and after this session';
+
+  it('is unavailable when diagnostics were never observed', () => {
+    const { database } = withEditedFiles(['/r/a.ts']);
+    const outcomes = getSessionOutcomes(database, 'fx-auto-1');
+    for (const measured of [outcomes.errorsDelta, outcomes.warningsDelta]) {
+      expect(measured).toEqual({ value: null, provenance: { kind: 'unavailable', source: NOT_OBSERVED } });
+    }
+  });
+
+  it('is unavailable when only the baseline exists', () => {
+    const { database, observations } = withEditedFiles(['/r/a.ts']);
+    observations.saveDiagnostics('fx-auto-1', 'start', []);
+    expect(getSessionOutcomes(database, 'fx-auto-1').errorsDelta.value).toBeNull();
+  });
+
+  it('derives the change over edited files, and a clean baseline is a real zero not a missing snapshot', () => {
+    const { database, observations } = withEditedFiles(['/r/a.ts']);
+    observations.saveDiagnostics('fx-auto-1', 'start', []);
+    observations.saveDiagnostics('fx-auto-1', 'latest', [
+      { path: '/r/a.ts', errors: 2, warnings: 1 },
+      { path: '/r/unrelated.ts', errors: 40, warnings: 0 },
+    ]);
+    const outcomes = getSessionOutcomes(database, 'fx-auto-1');
+    expect(outcomes.errorsDelta).toEqual({
+      value: 2,
+      provenance: {
+        kind: 'derived',
+        source: 'VS Code diagnostics for edited files at first vs latest observation',
+      },
+    });
+    expect(outcomes.warningsDelta.value).toBe(1);
+  });
+
+  it('can be negative when the edits fixed problems', () => {
+    const { database, observations } = withEditedFiles(['/r/a.ts']);
+    observations.saveDiagnostics('fx-auto-1', 'start', [{ path: '/r/a.ts', errors: 3, warnings: 0 }]);
+    observations.saveDiagnostics('fx-auto-1', 'latest', []);
+    expect(getSessionOutcomes(database, 'fx-auto-1').errorsDelta.value).toBe(-3);
+  });
+
+  it('is unavailable when the session edited no files', () => {
+    const { database, observations } = withEditedFiles([]);
+    observations.saveDiagnostics('fx-auto-1', 'start', []);
+    observations.saveDiagnostics('fx-auto-1', 'latest', []);
+    expect(getSessionOutcomes(database, 'fx-auto-1').errorsDelta.value).toBeNull();
+  });
+});

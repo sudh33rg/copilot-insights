@@ -60,6 +60,7 @@ export const OBSERVATION_SESSION_TABLES = [
   'git_snapshots',
   'git_snapshot_files',
   'diag_snapshots',
+  'diag_snapshot_meta',
   'survival_checks',
   'session_commits',
 ];
@@ -113,6 +114,15 @@ export class ObservationReader {
         .filter((file) => owningRoot(file.path, roots) === repo.repo_root)
         .map((file) => ({ path: file.path, added: file.added, removed: file.removed })),
     }));
+  }
+
+  /** Whether a diagnostics snapshot was taken; it may have been empty (a clean workspace). */
+  hasDiagnostics(sessionId: string, kind: SnapshotKind): boolean {
+    return (
+      this.database.db
+        .prepare('SELECT 1 FROM diag_snapshot_meta WHERE session_id = :sessionId AND kind = :kind')
+        .get({ sessionId, kind }) !== undefined
+    );
   }
 
   getDiagnostics(sessionId: string, kind: SnapshotKind): DiagEntry[] {
@@ -256,6 +266,10 @@ export class ObservationStore extends ObservationReader {
         sessionId,
         kind,
       });
+      db.prepare(
+        `INSERT INTO diag_snapshot_meta (session_id, kind, taken_at) VALUES (:sessionId, :kind, :takenAt)
+         ON CONFLICT(session_id, kind) DO UPDATE SET taken_at = excluded.taken_at`,
+      ).run({ sessionId, kind, takenAt: this.now() });
       const insert = db.prepare(
         `INSERT INTO diag_snapshots (session_id, kind, path, errors, warnings)
          VALUES (:sessionId, :kind, :path, :errors, :warnings)`,

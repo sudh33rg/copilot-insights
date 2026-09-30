@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { seededStore } from '../../../test/fixtures/sessions';
 import type { GitPort, GitRepo } from '../../core/git/types';
 import { saltedHash } from '../../core/privacy/fingerprint';
-import { ObservationStore } from '../../core/storage/observationStore';
+import { ObservationStore, type DiagEntry } from '../../core/storage/observationStore';
 import { LiveObserver } from './liveObserver';
 
 const NOW = 2_000_000_000_000;
@@ -17,7 +17,10 @@ function fakeRepo(state: { head: string; added: number }): GitRepo {
   };
 }
 
-function setup(ports: { repos: () => Promise<GitRepo[]> }) {
+function setup(
+  ports: { repos: () => Promise<GitRepo[]> },
+  diagnostics: { current: DiagEntry[] } = { current: [] },
+) {
   const { database } = seededStore();
   // Make fx-auto-1 a live session whose first turn began a second ago; fx-byok-1 is long finished.
   database.db.prepare('UPDATE sessions SET ended_at = :t WHERE id = :id').run({ t: NOW, id: 'fx-auto-1' });
@@ -35,6 +38,7 @@ function setup(ports: { repos: () => Promise<GitRepo[]> }) {
     git,
     readFile: () => Promise.resolve('const a = computeSomethingLong();\n'),
     salt: () => 'salt',
+    diagnostics: () => diagnostics.current,
     now: () => now,
     log: { warn: (message) => warnings.push(message) },
   });
@@ -130,5 +134,38 @@ describe('LiveObserver.tick', () => {
     expect(observations.survivalChecks('fx-auto-1')).toEqual([
       expect.objectContaining({ checkKind: '1h', present: 1, total: 1 }),
     ]);
+  });
+
+  describe('diagnostics', () => {
+    it('saves start diagnostics with the baseline and latest ones on a later tick', async () => {
+      const diagnostics = { current: [{ path: '/repo/a.ts', errors: 3, warnings: 1 }] };
+      const { observer, observations, advance } = setup({ repos: () => Promise.resolve([]) }, diagnostics);
+      await observer.tick();
+      expect(observations.getDiagnostics('fx-auto-1', 'start')).toEqual(diagnostics.current);
+      expect(observations.hasDiagnostics('fx-auto-1', 'latest')).toBe(false);
+      advance(60_000);
+      diagnostics.current = [];
+      await observer.tick();
+      expect(observations.hasDiagnostics('fx-auto-1', 'latest')).toBe(true);
+      expect(observations.getDiagnostics('fx-auto-1', 'latest')).toEqual([]);
+      expect(observations.getDiagnostics('fx-auto-1', 'start')).toHaveLength(1);
+    });
+
+    it('records nothing for a session whose start was missed', async () => {
+      const { observer, observations, database, advance } = setup({ repos: () => Promise.resolve([]) });
+      advance(3_600_000);
+      database.db
+        .prepare('UPDATE sessions SET ended_at = :t WHERE id = :id')
+        .run({ t: NOW + 3_600_000, id: 'fx-auto-1' });
+      await observer.tick();
+      expect(observations.hasDiagnostics('fx-auto-1', 'start')).toBe(false);
+      expect(observations.hasDiagnostics('fx-auto-1', 'latest')).toBe(false);
+    });
+
+    it('still records diagnostics when git is unavailable', async () => {
+      const { observer, observations } = setup({ repos: () => Promise.reject(new Error('no git')) });
+      await observer.tick();
+      expect(observations.hasDiagnostics('fx-auto-1', 'start')).toBe(true);
+    });
   });
 });
