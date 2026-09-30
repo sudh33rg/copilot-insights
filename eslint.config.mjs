@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 const layer = (message, paths, patterns) => ({
@@ -51,5 +52,19 @@ export default defineConfig([
   {
     files: ['src/extension/**/*.ts'],
     rules: layer('extension must not import the webview.', ['react', 'react-dom'], ['**/webview/**']),
+  },
+  {
+    files: ['src/webview/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    languageOptions: { globals: globals.browser },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'error',
+      ...layer(
+        'The webview may only import from src/webview and src/shared.',
+        ['vscode'],
+        ['node:*', '**/core/**', '**/extension/**'],
+      ),
+    },
   },
 ]);

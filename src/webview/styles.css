@@ -1,0 +1,33 @@
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.app {
+  padding: 16px 20px;
+}
+
+.app--sidebar {
+  padding: 12px;
+  background: var(--vscode-sideBar-background);
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 1.3em;
+}
+
+.muted {
+  color: var(--vscode-descriptionForeground);
+}
+
+[role='alert'] {
+  color: var(--vscode-errorForeground);
+}
