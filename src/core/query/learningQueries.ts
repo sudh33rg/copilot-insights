@@ -1,5 +1,6 @@
-import type { Leaderboard, PromptStyle } from '../../shared/dto';
+import type { AutoAudit, Leaderboard, PromptStyle } from '../../shared/dto';
 import { derived, inferred, unavailable, type Measured } from '../../shared/provenance';
+import { autoAudit, type AuditSide } from '../learning/autoAudit';
 import { leaderboard } from '../learning/leaderboard';
 import { promptStyle, type PromptStyleSide } from '../learning/promptStyle';
 import type { SessionFacts } from '../learning/sessionFacts';
@@ -69,5 +70,39 @@ export function promptStyleDto(facts: readonly SessionFacts[]): PromptStyle {
       withFeature: styleSide(row.withFeature),
       without: styleSide(row.without),
     })),
+  };
+}
+
+function auditSide(side: AuditSide) {
+  return {
+    sessions: side.sessions,
+    creditsPerSession: statistic(
+      side.creditsPerSession,
+      side.creditSamples,
+      'mean exact credits of Copilot sessions on this side',
+    ),
+    failureRate: statistic(
+      side.failureRate,
+      side.sessions,
+      'failed user turns ÷ user turns across these sessions',
+    ),
+    editKeepRate: statistic(
+      side.editKeepRate,
+      side.keepSamples,
+      'mean of each session’s kept ÷ (kept + undone + modified) from Copilot editedFileEvents',
+    ),
+  };
+}
+
+export function autoAuditDto(facts: readonly SessionFacts[]): AutoAudit {
+  return {
+    rows: autoAudit(facts).map((row) => ({
+      taskType: row.taskType,
+      auto: auditSide(row.auto),
+      manual: auditSide(row.manual),
+    })),
+    excludedSessions: facts.filter(
+      (session) => session.selection !== 'auto' && session.selection !== 'manual',
+    ).length,
   };
 }

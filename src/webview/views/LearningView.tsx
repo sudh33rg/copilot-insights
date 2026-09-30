@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { BaselineRowDto, Leaderboard, PromptStyle } from '../../shared/dto';
+import type { AutoAudit, BaselineRowDto, Leaderboard, PromptStyle } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { DataTable, type Column } from '../ui/DataTable';
 import { formatCredits, formatDuration, formatInt, formatPercent } from '../ui/format';
@@ -32,6 +32,7 @@ export function LearningView({ onOpenSession }: { onOpenSession: (id: string) =>
       <Baselines onOpenSession={onOpenSession} />
       <LeaderboardSection />
       <PromptStyleSection />
+      <AutoAuditSection />
     </section>
   );
 }
@@ -222,3 +223,87 @@ function PromptStyleSection() {
 }
 
 const oneDecimal = (value: number | string): string => String(Number(Number(value).toFixed(1)));
+
+type AuditRow = AutoAudit['rows'][number];
+
+const auditColumns: readonly Column<AuditRow>[] = [
+  { id: 'task', header: 'Task', cell: (row) => row.taskType },
+  { id: 'autoSessions', header: 'Auto sessions', align: 'end', cell: (row) => formatInt(row.auto.sessions) },
+  {
+    id: 'autoCredits',
+    header: 'Auto credits',
+    align: 'end',
+    cell: (row) => (
+      <Measure measure={row.auto.creditsPerSession} format={(value) => formatCredits(Number(value))} />
+    ),
+  },
+  {
+    id: 'autoFailure',
+    header: 'Auto failure rate',
+    align: 'end',
+    cell: (row) => <Measure measure={row.auto.failureRate} format={percent} />,
+  },
+  {
+    id: 'autoKeep',
+    header: 'Auto edits kept',
+    align: 'end',
+    cell: (row) => <Measure measure={row.auto.editKeepRate} format={percent} />,
+  },
+  {
+    id: 'manualSessions',
+    header: 'Manual sessions',
+    align: 'end',
+    cell: (row) => formatInt(row.manual.sessions),
+  },
+  {
+    id: 'manualCredits',
+    header: 'Manual credits',
+    align: 'end',
+    cell: (row) => (
+      <Measure measure={row.manual.creditsPerSession} format={(value) => formatCredits(Number(value))} />
+    ),
+  },
+  {
+    id: 'manualFailure',
+    header: 'Manual failure rate',
+    align: 'end',
+    cell: (row) => <Measure measure={row.manual.failureRate} format={percent} />,
+  },
+  {
+    id: 'manualKeep',
+    header: 'Manual edits kept',
+    align: 'end',
+    cell: (row) => <Measure measure={row.manual.editKeepRate} format={percent} />,
+  },
+];
+
+/** Auto routing against your own manual picks, per task type. Numbers and sample sizes only, no verdict. */
+function AutoAuditSection() {
+  const rpc = useRpc();
+  const query = useQuery({ queryKey: ['autoAudit'], queryFn: () => rpc.call('getAutoAudit', {}) });
+  const data = query.data;
+  return (
+    <section className="card" aria-label="Auto routing audit">
+      <h3>Auto routing vs your own picks</h3>
+      {query.isPending && <p className="muted">Loading…</p>}
+      {query.isError && <p role="alert">Could not load the Auto audit: {query.error.message}</p>}
+      {data?.rows.length === 0 && (
+        <p className="muted">Needs at least 5 sessions on one side and some on the other.</p>
+      )}
+      {data && data.rows.length > 0 && (
+        <DataTable
+          caption="Auto routing versus your own picks"
+          columns={auditColumns}
+          rows={data.rows}
+          rowKey={(row) => row.taskType}
+          empty=""
+        />
+      )}
+      {data !== undefined && (
+        <p className="muted">
+          Sessions where the routing was mixed or unknown are left out ({formatInt(data.excludedSessions)}).
+        </p>
+      )}
+    </section>
+  );
+}

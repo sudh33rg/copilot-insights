@@ -1,4 +1,5 @@
 import type {
+  AutoAudit,
   Baselines,
   Leaderboard,
   PromptStyle,
@@ -14,7 +15,7 @@ import type { Database } from '../storage/database';
 import { getBaselines, sessionBaseline } from './baselineQueries';
 import { getCommitCosts } from './commitCosts';
 import { getFailureAnalytics } from './failureAnalytics';
-import { leaderboardDto, promptStyleDto } from './learningQueries';
+import { autoAuditDto, leaderboardDto, promptStyleDto } from './learningQueries';
 import { getOverview } from './overview';
 import { SessionFactsStore } from './sessionFactsStore';
 import { getSessionDetail } from './sessionDetail';
@@ -47,6 +48,10 @@ export class InsightsQueries {
       analysis: this.analysis.forDetail(detail),
       baseline: sessionBaseline(this.facts.all(), id),
     };
+  }
+
+  getAutoAudit(): AutoAudit {
+    return autoAuditDto(this.facts.all());
   }
 
   getPromptStyle(): PromptStyle {

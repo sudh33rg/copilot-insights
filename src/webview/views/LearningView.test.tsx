@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Baselines, Leaderboard, PromptStyle } from '../../shared/dto';
+import type { AutoAudit, Baselines, Leaderboard, PromptStyle } from '../../shared/dto';
 import { missing } from '../test/dtoFixtures';
 import { renderWithHost } from '../test/fakeHost';
 import { LearningView } from './LearningView';
@@ -250,6 +250,87 @@ describe('LearningView — prompt style', () => {
     expect(
       (await screen.findAllByRole('alert')).some((alert) =>
         alert.textContent.includes('Could not load prompt style'),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('LearningView — Auto routing audit', () => {
+  const measure = (value: number | null) =>
+    value === null
+      ? { value, provenance: { kind: 'unavailable' as const, source: 'not enough data: 3 of 5 sessions' } }
+      : { value, provenance: { kind: 'derived' as const, source: 'rule' } };
+  const audit: AutoAudit = {
+    rows: [
+      {
+        taskType: 'bugfix',
+        auto: {
+          sessions: 8,
+          creditsPerSession: measure(1.5),
+          failureRate: measure(0.2),
+          editKeepRate: measure(0.6),
+        },
+        manual: {
+          sessions: 3,
+          creditsPerSession: measure(null),
+          failureRate: measure(null),
+          editKeepRate: measure(null),
+        },
+      },
+    ],
+    excludedSessions: 4,
+  };
+  const view = (results: Record<string, unknown> = {}) =>
+    renderWithHost(<LearningView onOpenSession={() => undefined} />, {
+      getBaselines: { rows: [], outliers: [] },
+      getLeaderboard: { groups: [] },
+      getPromptStyle: { rows: [] },
+      getAutoAudit: audit,
+      ...results,
+    });
+
+  it('shows Auto and manual side by side for each task type, with sample sizes', async () => {
+    view();
+    const table = await screen.findByRole('table', { name: 'Auto routing versus your own picks' });
+    const row = within(table).getByText('bugfix').closest('tr') as HTMLElement;
+    expect(within(row).getByText('8')).toBeInTheDocument();
+    expect(within(row).getByText('3')).toBeInTheDocument();
+    expect(within(row).getByText('1.5')).toBeInTheDocument();
+    expect(within(row).getByText('20%')).toBeInTheDocument();
+    expect(within(row).getByText('60%')).toBeInTheDocument();
+  });
+
+  it('shows placeholders for the side with too few sessions and gives no verdict', async () => {
+    view();
+    const table = await screen.findByRole('table', { name: 'Auto routing versus your own picks' });
+    const row = within(table).getByText('bugfix').closest('tr') as HTMLElement;
+    expect(within(row).getAllByText('—')).toHaveLength(3);
+    expect(screen.queryByText(/better|worse|recommend/i)).toBeNull();
+  });
+
+  it('says how many sessions were left out', async () => {
+    view();
+    expect(
+      await screen.findByText('Sessions where the routing was mixed or unknown are left out (4).'),
+    ).toBeInTheDocument();
+  });
+
+  it('explains an empty audit', async () => {
+    view({ getAutoAudit: { rows: [], excludedSessions: 0 } });
+    expect(
+      await screen.findByText('Needs at least 5 sessions on one side and some on the other.'),
+    ).toBeInTheDocument();
+  });
+
+  it('reports a failed query', async () => {
+    renderWithHost(<LearningView onOpenSession={() => undefined} />, {
+      getBaselines: { rows: [], outliers: [] },
+      getLeaderboard: { groups: [] },
+      getPromptStyle: { rows: [] },
+    });
+    expect(
+      (await screen.findAllByRole('alert')).some((alert) =>
+        alert.textContent.includes('Could not load the Auto audit'),
       ),
     ).toBe(true);
   });

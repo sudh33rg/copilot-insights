@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
+  autoAuditSchema,
   baselinesSchema,
   commitCostRowSchema,
   failureAnalyticsSchema,
@@ -86,6 +87,7 @@ const ALLOWED = {
   githubUsage: ['lastSyncedAt'],
   survivalByModel: ['rows[].edits', 'rows[].sampleSize'],
   commitCosts: ['rows[].committedAt', 'rows[].sessions'],
+  autoAudit: ['excludedSessions', 'rows[].auto.sessions', 'rows[].manual.sessions'],
   baselines: ['rows[].creditSessions', 'rows[].sessions'],
   promptStyle: ['rows[].withFeature.sessions', 'rows[].without.sessions'],
   leaderboard: [
@@ -113,6 +115,7 @@ describe('provenance is enforced on every DTO', () => {
     ['commit costs', z.object({ rows: z.array(commitCostRowSchema) }), ALLOWED.commitCosts],
     ['failure analytics', failureAnalyticsSchema, ALLOWED.failureAnalytics],
     ['baselines', baselinesSchema, ALLOWED.baselines],
+    ['auto audit', autoAuditSchema, ALLOWED.autoAudit],
     ['leaderboard', leaderboardSchema, ALLOWED.leaderboard],
     ['prompt style', promptStyleSchema, ALLOWED.promptStyle],
   ])('%s has no raw measurement numbers', (_name, schema, allowed) => {

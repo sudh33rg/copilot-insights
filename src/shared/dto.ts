@@ -265,6 +265,19 @@ export const promptStyleSchema = z.object({
 });
 export type PromptStyle = z.infer<typeof promptStyleSchema>;
 
+const auditSideSchema = z.object({
+  sessions: z.number(),
+  creditsPerSession: measuredNumber,
+  failureRate: measuredNumber,
+  editKeepRate: measuredNumber,
+});
+export const autoAuditSchema = z.object({
+  rows: z.array(z.object({ taskType: z.string(), auto: auditSideSchema, manual: auditSideSchema })),
+  /** Sessions whose model routing was mixed or unknown, which take part on neither side. */
+  excludedSessions: z.number(),
+});
+export type AutoAudit = z.infer<typeof autoAuditSchema>;
+
 export const sessionDetailSchema = z.object({
   id: z.string(),
   workspace: z.string(),

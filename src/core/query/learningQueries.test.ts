@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { many } from '../../../test/fixtures/facts';
-import { leaderboardDto, promptStyleDto } from './learningQueries';
+import { autoAuditDto, leaderboardDto, promptStyleDto } from './learningQueries';
 
 describe('leaderboardDto', () => {
   const facts = [
@@ -68,6 +68,28 @@ describe('promptStyleDto', () => {
         value: null,
         provenance: { kind: 'unavailable', source: 'not enough data: 4 of 5 sessions' },
       },
+    });
+  });
+});
+
+describe('autoAuditDto', () => {
+  it('shows both sides as derived numbers with their sample size, and counts what it left out', () => {
+    const dto = autoAuditDto([
+      ...many(6, { selection: 'auto', credits: 2 }),
+      ...many(4, { selection: 'manual', credits: 1 }),
+      ...many(3, { selection: 'mixed' }),
+      ...many(2, { selection: 'unknown' }),
+    ]);
+    expect(dto.excludedSessions).toBe(5);
+    const [row] = dto.rows;
+    expect(row?.auto.sessions).toBe(6);
+    expect(row?.auto.creditsPerSession).toEqual({
+      value: 2,
+      provenance: { kind: 'derived', source: 'mean exact credits of Copilot sessions on this side' },
+    });
+    expect(row?.manual.creditsPerSession).toEqual({
+      value: null,
+      provenance: { kind: 'unavailable', source: 'not enough data: 4 of 5 sessions' },
     });
   });
 });

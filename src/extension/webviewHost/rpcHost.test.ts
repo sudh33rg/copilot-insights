@@ -47,6 +47,7 @@ const handlers: RpcHandlers = {
   getBaselines: () => ({ rows: [], outliers: [] }),
   getLeaderboard: () => ({ groups: [] }),
   getPromptStyle: () => ({ rows: [] }),
+  getAutoAudit: () => ({ rows: [], excludedSessions: 0 }),
   getOverview: () => {
     const none = { value: null, provenance: { kind: 'unavailable' as const, source: 'test' } };
     const period = {
