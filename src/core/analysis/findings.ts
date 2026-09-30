@@ -6,7 +6,7 @@ export interface Finding {
   evidence: string;
 }
 
-const CORRECTION = /^\s*(no|nope|wrong|that'?s (?:not|wrong)|still|again|actually|instead|don'?t)\b/i;
+export const CORRECTION = /^\s*(no|nope|wrong|that'?s (?:not|wrong)|still|again|actually|instead|don'?t)\b/i;
 
 /**
  * Prompt-quality findings. Text rules need stored prompt text (skipped when there is none); the failure rule

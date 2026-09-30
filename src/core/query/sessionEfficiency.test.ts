@@ -105,4 +105,38 @@ describe('getSessionEfficiency via getSessionDetail', () => {
       expect(getSessionDetail(database, 'fx-auto-1')?.efficiency.priceAlternatives).toEqual([]);
     });
   });
+
+  describe('model-selection findings', () => {
+    function withCatalog(database: ReturnType<typeof seededStore>['database'], cheaperModels: number) {
+      const insert = database.db.prepare(
+        `INSERT INTO models (id, name, input_price, output_price, cache_read_price, price_batch_size, first_seen, last_seen)
+         VALUES (:id, :id, :price, :price, NULL, 1000000, 1, 1)`,
+      );
+      for (let i = 0; i < cheaperModels; i++) insert.run({ id: `cheap-${String(i)}`, price: 0.1 + i / 10 });
+      database.db.exec("DELETE FROM file_events WHERE session_id = 'fx-auto-1'");
+      database.db.exec(
+        "INSERT INTO file_events (session_id, turn_idx, seq, path, action, source) VALUES ('fx-auto-1', 1, 0, '/r/a.ts', 'edited', 't')",
+      );
+    }
+
+    it('flags a small task that Auto routed to a top-third-priced model, when the catalog can rank it', () => {
+      const { database } = seededStore();
+      withCatalog(database, 5);
+      const findings = getSessionDetail(database, 'fx-auto-1')?.efficiency.findings ?? [];
+      expect(findings.map((finding) => finding.id)).toContain('auto-over-routing');
+      expect(findings.find((finding) => finding.id === 'auto-over-routing')?.provenance.kind).toBe(
+        'inferred',
+      );
+    });
+
+    it('says nothing about model choice when the catalog is too small to rank models', () => {
+      const { database } = seededStore();
+      withCatalog(database, 2);
+      const ids = (getSessionDetail(database, 'fx-auto-1')?.efficiency.findings ?? []).map(
+        (finding) => finding.id,
+      );
+      expect(ids).not.toContain('auto-over-routing');
+      expect(ids).not.toContain('oversized-model');
+    });
+  });
 });
