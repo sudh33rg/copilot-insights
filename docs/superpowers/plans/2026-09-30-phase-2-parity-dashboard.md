@@ -208,7 +208,8 @@ export function fakeHost(results: Record<string, unknown>, calls: RpcCall[] = []
           return;
         }
         const entry = results[request.method];
-        const result = typeof entry === 'function' ? (entry as (params: unknown) => unknown)(request.params) : entry;
+        const result =
+          typeof entry === 'function' ? (entry as (params: unknown) => unknown)(request.params) : entry;
         listener?.({ kind: 'rpc-result', id: request.id, ok: true, result });
       });
     },
@@ -286,14 +287,22 @@ import { Measure } from './Measure';
 
 describe('Measure', () => {
   it('shows the value with its provenance', () => {
-    render(<Measure measure={{ value: 54000, provenance: { kind: 'exact', source: 'chatSessions.promptTokens' } }} />);
+    render(
+      <Measure
+        measure={{ value: 54000, provenance: { kind: 'exact', source: 'chatSessions.promptTokens' } }}
+      />,
+    );
     expect(screen.getByText('54,000')).toBeInTheDocument();
     const badge = screen.getByText('Exact');
     expect(badge).toHaveAttribute('title', 'Exact — chatSessions.promptTokens');
   });
 
   it('shows a dash and the reason when unavailable', () => {
-    render(<Measure measure={{ value: null, provenance: { kind: 'unavailable', source: 'no credits reported' } }} />);
+    render(
+      <Measure
+        measure={{ value: null, provenance: { kind: 'unavailable', source: 'no credits reported' } }}
+      />,
+    );
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.getByText('Unavailable')).toHaveAttribute('title', 'Unavailable — no credits reported');
   });
@@ -325,14 +334,18 @@ const rows: Person[] = [
 
 describe('DataTable', () => {
   it('renders a captioned table with headers and rows', () => {
-    render(<DataTable caption="People" columns={columns} rows={rows} rowKey={(row) => row.id} empty="None" />);
+    render(
+      <DataTable caption="People" columns={columns} rows={rows} rowKey={(row) => row.id} empty="None" />,
+    );
     expect(screen.getByRole('table', { name: 'People' })).toBeInTheDocument();
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual(['Name', 'Id']);
     expect(screen.getByText('Ada')).toBeInTheDocument();
   });
 
   it('shows the empty message instead of an empty table', () => {
-    render(<DataTable caption="People" columns={columns} rows={[]} rowKey={(row) => row.id} empty="Nobody here" />);
+    render(
+      <DataTable caption="People" columns={columns} rows={[]} rowKey={(row) => row.id} empty="Nobody here" />,
+    );
     expect(screen.getByText('Nobody here')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
@@ -432,6 +445,10 @@ export function ProvenanceBadge({ provenance }: { provenance: { kind: Provenance
 
 ```tsx
 import { ProvenanceBadge, type ProvenanceKind } from './Badge';
+import { formatInt } from './format';
+
+const defaultFormat = (value: number | string): string =>
+  typeof value === 'number' ? formatInt(value) : value;
 
 export interface MeasureLike {
   value: number | string | null;
@@ -440,7 +457,7 @@ export interface MeasureLike {
 
 export function Measure({
   measure,
-  format = String,
+  format = defaultFormat,
 }: {
   measure: MeasureLike;
   format?: (value: number | string) => string;
@@ -465,7 +482,9 @@ export function Button({
   type = 'button',
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' }) {
-  return <button type={type} className={`btn btn--${variant}${className ? ` ${className}` : ''}`} {...rest} />;
+  return (
+    <button type={type} className={`btn btn--${variant}${className ? ` ${className}` : ''}`} {...rest} />
+  );
 }
 ```
 
@@ -477,7 +496,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 export interface Column<Row> {
   id: string;
   header: string;
-  cell(row: Row): ReactNode;
+  cell: (row: Row) => ReactNode;
   align?: 'end';
 }
 
@@ -492,7 +511,7 @@ export function DataTable<Row>({
   caption: string;
   columns: readonly Column<Row>[];
   rows: readonly Row[];
-  rowKey(row: Row): string;
+  rowKey: (row: Row) => string;
   onRowActivate?: (row: Row) => void;
   empty: string;
 }) {
@@ -520,7 +539,13 @@ export function DataTable<Row>({
             key={rowKey(row)}
             tabIndex={onRowActivate ? 0 : undefined}
             className={onRowActivate ? 'row--interactive' : undefined}
-            onClick={onRowActivate ? () => onRowActivate(row) : undefined}
+            onClick={
+              onRowActivate
+                ? () => {
+                    onRowActivate(row);
+                  }
+                : undefined
+            }
             onKeyDown={onRowActivate ? activate(row) : undefined}
           >
             {columns.map((column) => (
@@ -660,7 +685,9 @@ describe('dto', () => {
   it('validates a measured value and rejects an unknown provenance kind', () => {
     const schema = measured(z.number());
     expect(schema.safeParse({ value: 1, provenance: { kind: 'exact', source: 's' } }).success).toBe(true);
-    expect(schema.safeParse({ value: null, provenance: { kind: 'unavailable', source: 's' } }).success).toBe(true);
+    expect(schema.safeParse({ value: null, provenance: { kind: 'unavailable', source: 's' } }).success).toBe(
+      true,
+    );
     expect(schema.safeParse({ value: 1, provenance: { kind: 'guess', source: 's' } }).success).toBe(false);
   });
 
@@ -958,7 +985,10 @@ describe('routingFor', () => {
   });
 
   it('handles unknown mode and missing model', () => {
-    expect(routingFor([{ mode: 'UNKNOWN', model: null }])).toEqual({ kind: 'unknown', label: 'Unknown model' });
+    expect(routingFor([{ mode: 'UNKNOWN', model: null }])).toEqual({
+      kind: 'unknown',
+      label: 'Unknown model',
+    });
     expect(routingFor([])).toEqual({ kind: 'unknown', label: 'Unknown' });
   });
 });
@@ -986,7 +1016,12 @@ export const SOURCES = {
  * `expected` how many should have: exact when all did, a derived lower bound when only some did, and
  * unavailable (never zero) when none did.
  */
-export function summed(sum: number | null, withValue: number, expected: number, source: string): Measured<number> {
+export function summed(
+  sum: number | null,
+  withValue: number,
+  expected: number,
+  source: string,
+): Measured<number> {
   if (sum === null || withValue === 0) return unavailable(source);
   if (withValue >= expected) return exact(sum, source);
   return derived(
@@ -1079,7 +1114,13 @@ describe('listSessions', () => {
   it('marks partial sums as derived and absent values as unavailable', () => {
     const { database } = seededStore();
     const byok = listSessions(database, page).rows[0];
-    expect(byok).toMatchObject({ id: 'fx-byok-1', workspace: 'beta', title: null, failedTurns: 1, state: 'cancelled' });
+    expect(byok).toMatchObject({
+      id: 'fx-byok-1',
+      workspace: 'beta',
+      title: null,
+      failedTurns: 1,
+      state: 'cancelled',
+    });
     expect(byok?.routing).toEqual({ kind: 'manual', label: 'Manual · qwen3.5:35b' });
     expect(byok?.inputTokens.value).toBe(5000);
     expect(byok?.inputTokens.provenance.kind).toBe('derived');
@@ -1124,8 +1165,12 @@ describe('listSessions', () => {
 
   it('filters by failed turns, workspace and day range', () => {
     const { database } = seededStore();
-    expect(listSessions(database, { ...page, failedOnly: true }).rows.map((row) => row.id)).toEqual(['fx-byok-1']);
-    expect(listSessions(database, { ...page, workspace: 'alpha' }).rows.map((row) => row.id)).toEqual(['fx-auto-1']);
+    expect(listSessions(database, { ...page, failedOnly: true }).rows.map((row) => row.id)).toEqual([
+      'fx-byok-1',
+    ]);
+    expect(listSessions(database, { ...page, workspace: 'alpha' }).rows.map((row) => row.id)).toEqual([
+      'fx-auto-1',
+    ]);
     const day = listSessions(database, page).rows[1]?.day ?? '';
     expect(listSessions(database, { ...page, fromDay: day, toDay: day }).rows.map((row) => row.id)).toContain(
       'fx-auto-1',
@@ -1211,24 +1256,22 @@ export function listSessions(
     database,
     list.map((row) => row.id),
   );
-  const rows = list.map(
-    (row): SessionRow => ({
-      id: row.id,
-      day: row.day,
-      startedAt: row.started_at,
-      workspace: row.workspace,
-      title: row.title,
-      outcome: null,
-      routing: routingFor(routing.get(row.id) ?? []),
-      state: toTurnState(row.last_state),
-      turns: row.turns,
-      failedTurns: row.failed_turns,
-      inputTokens: summed(row.in_sum, row.in_known, row.turns, SOURCES.inputTokens),
-      outputTokens: summed(row.out_sum, row.out_known, row.turns, SOURCES.outputTokens),
-      // Credits exist only for Copilot-hosted requests; BYOK turns are not expected to report any.
-      credits: summed(row.credit_sum, row.credit_known, row.billable, SOURCES.credits),
-    }),
-  );
+  const rows = list.map((row): SessionRow => ({
+    id: row.id,
+    day: row.day,
+    startedAt: row.started_at,
+    workspace: row.workspace,
+    title: row.title,
+    outcome: null,
+    routing: routingFor(routing.get(row.id) ?? []),
+    state: toTurnState(row.last_state),
+    turns: row.turns,
+    failedTurns: row.failed_turns,
+    inputTokens: summed(row.in_sum, row.in_known, row.turns, SOURCES.inputTokens),
+    outputTokens: summed(row.out_sum, row.out_known, row.turns, SOURCES.outputTokens),
+    // Credits exist only for Copilot-hosted requests; BYOK turns are not expected to report any.
+    credits: summed(row.credit_sum, row.credit_known, row.billable, SOURCES.credits),
+  }));
   return { rows, total };
 }
 
@@ -1269,7 +1312,10 @@ function buildFilter(query: SessionListQuery): { where: string; params: Record<s
   return { where: clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '', params };
 }
 
-function routingBySession(database: Pick<Database, 'db'>, ids: readonly string[]): Map<string, RoutingEntry[]> {
+function routingBySession(
+  database: Pick<Database, 'db'>,
+  ids: readonly string[],
+): Map<string, RoutingEntry[]> {
   const result = new Map<string, RoutingEntry[]>();
   if (ids.length === 0) return result;
   const rows = database.db
@@ -1280,7 +1326,11 @@ function routingBySession(database: Pick<Database, 'db'>, ids: readonly string[]
         GROUP BY session_id, selection_mode, coalesce(resolved_model, requested_model)
         ORDER BY session_id, min(idx)`,
     )
-    .all({ ids: JSON.stringify(ids) }) as unknown as { session_id: string; mode: string; model: string | null }[];
+    .all({ ids: JSON.stringify(ids) }) as unknown as {
+    session_id: string;
+    mode: string;
+    model: string | null;
+  }[];
   for (const row of rows) {
     const entries = result.get(row.session_id) ?? [];
     entries.push({ mode: row.mode, model: row.model });
@@ -1433,33 +1483,31 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     (row) => row.turn_idx,
   );
 
-  const turns = turnRows.map(
-    (row): TurnDetail => {
-      const model = row.resolved_model ?? row.requested_model;
-      return {
-        index: row.idx,
-        startedAt: row.started_at,
-        state: toTurnState(row.state),
-        systemInitiated: row.system_initiated === 1,
-        mode: row.mode,
-        userText: row.user_text,
-        assistantText: row.assistant_text,
-        routing: routingFor([{ mode: row.selection_mode, model }]),
-        model: model === null ? null : modelNameFromId(model),
-        host: row.model_host === 'copilot' || row.model_host === 'byok' ? row.model_host : 'unknown',
-        inputTokens: known(row.prompt_tokens, SOURCES.inputTokens),
-        outputTokens: known(row.completion_tokens, SOURCES.outputTokens),
-        credits: known(row.credits, SOURCES.credits),
-        reasoningMs: row.reasoning_ms,
-        toolRounds: row.tool_rounds,
-        compactions: countJsonArray(row.compactions),
-        toolCalls: (tools.get(row.idx) ?? []).map((call) => ({ name: call.name, status: call.status })),
-        fileEvents: (files.get(row.idx) ?? []).map((file) => ({ path: file.path, action: file.action })),
-        errorCode: row.error_code,
-        errorMessage: row.error_message,
-      };
-    },
-  );
+  const turns = turnRows.map((row): TurnDetail => {
+    const model = row.resolved_model ?? row.requested_model;
+    return {
+      index: row.idx,
+      startedAt: row.started_at,
+      state: toTurnState(row.state),
+      systemInitiated: row.system_initiated === 1,
+      mode: row.mode,
+      userText: row.user_text,
+      assistantText: row.assistant_text,
+      routing: routingFor([{ mode: row.selection_mode, model }]),
+      model: model === null ? null : modelNameFromId(model),
+      host: row.model_host === 'copilot' || row.model_host === 'byok' ? row.model_host : 'unknown',
+      inputTokens: known(row.prompt_tokens, SOURCES.inputTokens),
+      outputTokens: known(row.completion_tokens, SOURCES.outputTokens),
+      credits: known(row.credits, SOURCES.credits),
+      reasoningMs: row.reasoning_ms,
+      toolRounds: row.tool_rounds,
+      compactions: countJsonArray(row.compactions),
+      toolCalls: (tools.get(row.idx) ?? []).map((call) => ({ name: call.name, status: call.status })),
+      fileEvents: (files.get(row.idx) ?? []).map((file) => ({ path: file.path, action: file.action })),
+      errorCode: row.error_code,
+      errorMessage: row.error_message,
+    };
+  });
 
   const total = (pick: (row: TurnRow) => number | null, source: string, expected = turnRows.length) => {
     const values = turnRows.map(pick).filter((value): value is number => value !== null);
@@ -1528,7 +1576,12 @@ describe('getOverview', () => {
   it('buckets today by the local day of each turn', () => {
     const { database } = seededStore();
     const overview = getOverview(database, localDay(AUTO_START));
-    expect(overview.today).toMatchObject({ from: localDay(AUTO_START), to: localDay(AUTO_START), sessions: 1, turns: 2 });
+    expect(overview.today).toMatchObject({
+      from: localDay(AUTO_START),
+      to: localDay(AUTO_START),
+      sessions: 1,
+      turns: 2,
+    });
     expect(overview.today.inputTokens).toEqual({
       value: 54000,
       provenance: { kind: 'exact', source: 'chatSessions.promptTokens' },
@@ -1674,7 +1727,12 @@ function breakdown(
     .all({ from, to }) as unknown as (SumRow & { group_key: string; host: string | null })[];
   return rows.map((row) => ({
     key: row.group_key,
-    label: by === 'model' ? (row.group_key === 'unknown' ? 'Unknown model' : modelNameFromId(row.group_key)) : row.group_key,
+    label:
+      by === 'model'
+        ? row.group_key === 'unknown'
+          ? 'Unknown model'
+          : modelNameFromId(row.group_key)
+        : row.group_key,
     host: row.host === 'copilot' || row.host === 'byok' ? row.host : row.host === null ? null : 'unknown',
     ...measures(row),
   }));
@@ -1735,34 +1793,38 @@ git commit -m "feat(query): add provenance-aware session list, detail and overvi
 Append to `src/core/storage/database.test.ts` inside the existing `describe`:
 
 ```ts
-  it('creates the analysis cache table', () => {
-    const database = new Database(':memory:');
-    const tables = (
-      database.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]
-    ).map((row) => row.name);
-    expect(tables).toContain('session_analysis');
-  });
+it('creates the analysis cache table', () => {
+  const database = new Database(':memory:');
+  const tables = (
+    database.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]
+  ).map((row) => row.name);
+  expect(tables).toContain('session_analysis');
+});
 ```
 
 Append to `src/core/storage/sessionStore.test.ts` inside the `SessionStore` describe:
 
 ```ts
-  it('drops cached analysis when content is cleared or downgraded', () => {
-    const { database, sessions } = newStore();
-    const cached = () =>
-      (database.db.prepare('SELECT count(*) AS n FROM session_analysis').get() as { n: number }).n;
-    sessions.replaceSession(fixture(), 'full', 1);
-    database.db
-      .prepare("INSERT INTO session_analysis (session_id, analyzer_version, ingested_at, json) VALUES ('fx-auto-1', 1, 1, '{}')")
-      .run();
-    sessions.downgradeStoredContent('summaries');
-    expect(cached()).toBe(0);
-    database.db
-      .prepare("INSERT INTO session_analysis (session_id, analyzer_version, ingested_at, json) VALUES ('fx-auto-1', 1, 1, '{}')")
-      .run();
-    sessions.clearContent(['fx-auto-1']);
-    expect(cached()).toBe(0);
-  });
+it('drops cached analysis when content is cleared or downgraded', () => {
+  const { database, sessions } = newStore();
+  const cached = () =>
+    (database.db.prepare('SELECT count(*) AS n FROM session_analysis').get() as { n: number }).n;
+  sessions.replaceSession(fixture(), 'full', 1);
+  database.db
+    .prepare(
+      "INSERT INTO session_analysis (session_id, analyzer_version, ingested_at, json) VALUES ('fx-auto-1', 1, 1, '{}')",
+    )
+    .run();
+  sessions.downgradeStoredContent('summaries');
+  expect(cached()).toBe(0);
+  database.db
+    .prepare(
+      "INSERT INTO session_analysis (session_id, analyzer_version, ingested_at, json) VALUES ('fx-auto-1', 1, 1, '{}')",
+    )
+    .run();
+  sessions.clearContent(['fx-auto-1']);
+  expect(cached()).toBe(0);
+});
 ```
 
 Run: `pnpm vitest run src/core/storage` — Expected: FAIL (`no such table: session_analysis`).
@@ -1785,13 +1847,13 @@ In `src/core/storage/sessionStore.ts`:
 - in `clearContent`, inside the transaction, add before the `UPDATE sessions` statement:
 
 ```ts
-      db.prepare(`DELETE FROM session_analysis WHERE session_id IN (${IDS})`).run(params);
+db.prepare(`DELETE FROM session_analysis WHERE session_id IN (${IDS})`).run(params);
 ```
 
 - in `downgradeStoredContent`, in the `summaries` branch transaction, add before the `UPDATE sessions` statement:
 
 ```ts
-      db.exec(`DELETE FROM session_analysis WHERE session_id IN (${full})`);
+db.exec(`DELETE FROM session_analysis WHERE session_id IN (${full})`);
 ```
 
 Run: `pnpm vitest run src/core/storage` — Expected: PASS.
@@ -1943,9 +2005,15 @@ import { estimateComplexity } from './complexity';
 
 describe('estimateComplexity', () => {
   it('scores turns, tool calls, changed files and compactions', () => {
-    expect(estimateComplexity({ userTurns: 1, toolCalls: 0, changedFiles: 0, compactions: 0 })).toBe('simple');
-    expect(estimateComplexity({ userTurns: 2, toolCalls: 3, changedFiles: 2, compactions: 1 })).toBe('moderate');
-    expect(estimateComplexity({ userTurns: 20, toolCalls: 40, changedFiles: 10, compactions: 3 })).toBe('complex');
+    expect(estimateComplexity({ userTurns: 1, toolCalls: 0, changedFiles: 0, compactions: 0 })).toBe(
+      'simple',
+    );
+    expect(estimateComplexity({ userTurns: 2, toolCalls: 3, changedFiles: 2, compactions: 1 })).toBe(
+      'moderate',
+    );
+    expect(estimateComplexity({ userTurns: 20, toolCalls: 40, changedFiles: 10, compactions: 3 })).toBe(
+      'complex',
+    );
   });
 });
 ```
@@ -1957,14 +2025,15 @@ import { describe, expect, it } from 'vitest';
 import { makeTurn } from '../../../test/fixtures/turns';
 import { promptFindings } from './findings';
 
-const ids = (turns: Parameters<typeof promptFindings>[0]) => promptFindings(turns).map((finding) => finding.id);
+const ids = (turns: Parameters<typeof promptFindings>[0]) =>
+  promptFindings(turns).map((finding) => finding.id);
 
 describe('promptFindings', () => {
   it('flags a very short opening prompt', () => {
     expect(ids([makeTurn({ index: 1, userText: 'fix it' })])).toContain('vague-first-prompt');
-    expect(ids([makeTurn({ index: 1, userText: 'Fix the timeout race in src/execution/manager.ts' })])).not.toContain(
-      'vague-first-prompt',
-    );
+    expect(
+      ids([makeTurn({ index: 1, userText: 'Fix the timeout race in src/execution/manager.ts' })]),
+    ).not.toContain('vague-first-prompt');
   });
 
   it('flags repeated corrections from user turns only', () => {
@@ -1979,7 +2048,9 @@ describe('promptFindings', () => {
   });
 
   it('flags long sessions by user turns or compactions', () => {
-    const many = Array.from({ length: 12 }, (_, index) => makeTurn({ index: index + 1, userText: 'a'.repeat(40) }));
+    const many = Array.from({ length: 12 }, (_, index) =>
+      makeTurn({ index: index + 1, userText: 'a'.repeat(40) }),
+    );
     expect(ids(many)).toContain('long-session');
     expect(ids([makeTurn({ index: 1, userText: 'a'.repeat(40), compactions: 2 })])).toContain('long-session');
   });
@@ -1996,9 +2067,9 @@ describe('promptFindings', () => {
   });
 
   it('returns nothing for a healthy session', () => {
-    expect(ids([makeTurn({ index: 1, userText: 'Add retry logic to the fetch helper with a 3 attempt limit' })])).toEqual(
-      [],
-    );
+    expect(
+      ids([makeTurn({ index: 1, userText: 'Add retry logic to the fetch helper with a 3 attempt limit' })]),
+    ).toEqual([]);
   });
 });
 ```
@@ -2011,15 +2082,7 @@ Run: `pnpm vitest run src/core/analysis` — Expected: FAIL (modules not found).
 
 ```ts
 export type Intent =
-  | 'debug'
-  | 'bugfix'
-  | 'refactor'
-  | 'test'
-  | 'docs'
-  | 'config'
-  | 'explain'
-  | 'feature'
-  | 'other';
+  'debug' | 'bugfix' | 'refactor' | 'test' | 'docs' | 'config' | 'explain' | 'feature' | 'other';
 
 // Ordered: the first rule that matches wins. Keyword rules, so the result is always `inferred`.
 const RULES: readonly (readonly [Intent, RegExp])[] = [
@@ -2028,7 +2091,10 @@ const RULES: readonly (readonly [Intent, RegExp])[] = [
   ['refactor', /\b(refactor|clean ?up|rename|restructure|simplif(?:y|ied))\b/i],
   ['test', /\b(tests?|specs?|coverage|unit ?tests?)\b/i],
   ['docs', /\b(docs?|readme|documentation|document|changelog|comments?)\b/i],
-  ['config', /\b(config(?:ure|uration)?|set ?up|install|dependenc(?:y|ies)|ci|pipeline|docker|eslint|prettier)\b/i],
+  [
+    'config',
+    /\b(config(?:ure|uration)?|set ?up|install|dependenc(?:y|ies)|ci|pipeline|docker|eslint|prettier)\b/i,
+  ],
   ['explain', /\b(explain|what (?:is|does)|how (?:does|do)|why|walk me through|understand)\b/i],
   ['feature', /\b(add|implement|create|build|support|introduce)\b/i],
 ];
@@ -2184,7 +2250,8 @@ export function promptFindings(turns: readonly TurnDetail[]): Finding[] {
   if (corrections.length >= 2) {
     findings.push({
       id: 'repeated-corrections',
-      message: 'Several follow-ups corrected the previous answer. Restating the requirement in one message may converge faster.',
+      message:
+        'Several follow-ups corrected the previous answer. Restating the requirement in one message may converge faster.',
       evidence: `${String(corrections.length)} follow-up prompts read as corrections (turns ${corrections.map((turn) => String(turn.index)).join(', ')})`,
     });
   }
@@ -2193,7 +2260,8 @@ export function promptFindings(turns: readonly TurnDetail[]): Finding[] {
   if (userTurns.length >= 12 || compactions >= 2) {
     findings.push({
       id: 'long-session',
-      message: 'Long sessions carry a growing context. Starting a fresh session for the next task usually costs less.',
+      message:
+        'Long sessions carry a growing context. Starting a fresh session for the next task usually costs less.',
       evidence: `${String(userTurns.length)} user turns, ${String(compactions)} context compactions`,
     });
   }
@@ -2361,7 +2429,9 @@ export function analyzeSession(input: Pick<SessionDetail, 'turns'>): Analysis {
   const { turns } = input;
   const userTurns = turns.filter((turn) => !turn.systemInitiated);
   const changes = summarizeChanges(turns);
-  const firstPrompt = userTurns.find((turn) => turn.userText !== null && turn.userText.trim() !== '')?.userText;
+  const firstPrompt = userTurns.find(
+    (turn) => turn.userText !== null && turn.userText.trim() !== '',
+  )?.userText;
   const intent =
     firstPrompt === undefined
       ? unavailable<string>('no prompt text stored at this capture level')
@@ -2438,8 +2508,7 @@ export class AnalysisStore {
 
   private ingestedAt(id: string): number | null {
     const row = this.database.db.prepare('SELECT ingested_at FROM sessions WHERE id = :id').get({ id }) as
-      | { ingested_at: number }
-      | undefined;
+      { ingested_at: number } | undefined;
     return row?.ingested_at ?? null;
   }
 
@@ -2541,14 +2610,14 @@ git commit -m "feat(analysis): add deterministic intent, outcome, areas and prom
 Append to `src/shared/protocol.test.ts` inside the `describe`:
 
 ```ts
-  it('declares the Phase 2 methods and validates their params', () => {
-    for (const method of ['listSessions', 'getSession', 'getOverview', 'openDashboard']) {
-      expect(isRpcMethod(method)).toBe(true);
-    }
-    expect(rpcSchemas.listSessions.params.safeParse({ offset: 0, limit: 50 }).success).toBe(true);
-    expect(rpcSchemas.listSessions.params.safeParse({ offset: 0, limit: 5000 }).success).toBe(false);
-    expect(rpcSchemas.getSession.params.safeParse({ id: '' }).success).toBe(false);
-  });
+it('declares the Phase 2 methods and validates their params', () => {
+  for (const method of ['listSessions', 'getSession', 'getOverview', 'openDashboard']) {
+    expect(isRpcMethod(method)).toBe(true);
+  }
+  expect(rpcSchemas.listSessions.params.safeParse({ offset: 0, limit: 50 }).success).toBe(true);
+  expect(rpcSchemas.listSessions.params.safeParse({ offset: 0, limit: 5000 }).success).toBe(false);
+  expect(rpcSchemas.getSession.params.safeParse({ id: '' }).success).toBe(false);
+});
 ```
 
 (Add `rpcSchemas` to the import from `./protocol`.) Run: `pnpm vitest run src/shared/protocol.test.ts` —
@@ -2557,7 +2626,13 @@ Expected: FAIL.
 In `src/shared/protocol.ts` add the import and the four entries:
 
 ```ts
-import { overviewSchema, sessionDetailSchema, sessionIdParams, sessionListParams, sessionListSchema } from './dto';
+import {
+  overviewSchema,
+  sessionDetailSchema,
+  sessionIdParams,
+  sessionListParams,
+  sessionListSchema,
+} from './dto';
 ```
 
 ```ts
@@ -2588,19 +2663,19 @@ from `../core/time`; after `const state = …` add `const queries = new Insights
 `handlers` object becomes:
 
 ```ts
-  // `dashboard` is created after the handlers; the closure reads it lazily.
-  const handlers: RpcHandlers = {
-    ping: () => ({ version, now: Date.now() }),
-    getIndexStatus: () => indexStatus(service, sessions, state, readConfig().captureLevel),
-    listSessions: (params) => queries.listSessions(params),
-    getSession: ({ id }) => queries.getSession(id),
-    getOverview: () => queries.getOverview(localDay()),
-    openDashboard: () => {
-      dashboard.show();
-      return { opened: true };
-    },
-  };
-  const dashboard = new DashboardPanel(context.extensionUri, handlers, log);
+// `dashboard` is created after the handlers; the closure reads it lazily.
+const handlers: RpcHandlers = {
+  ping: () => ({ version, now: Date.now() }),
+  getIndexStatus: () => indexStatus(service, sessions, state, readConfig().captureLevel),
+  listSessions: (params) => queries.listSessions(params),
+  getSession: ({ id }) => queries.getSession(id),
+  getOverview: () => queries.getOverview(localDay()),
+  openDashboard: () => {
+    dashboard.show();
+    return { opened: true };
+  },
+};
+const dashboard = new DashboardPanel(context.extensionUri, handlers, log);
 ```
 
 (`const handlers` referencing `dashboard` declared after it is fine because the handler runs later; ESLint's
@@ -2731,13 +2806,18 @@ describe('SessionsView', () => {
   it('shows unavailable credits as a dash with its badge, not zero', async () => {
     renderWithHost(<SessionsView onOpen={vi.fn()} debounceMs={0} />, {
       listSessions: {
-        rows: [sessionRow({ id: 'b', title: null, outcome: null, credits: missing('BYOK: no Copilot credits') })],
+        rows: [
+          sessionRow({ id: 'b', title: null, outcome: null, credits: missing('BYOK: no Copilot credits') }),
+        ],
         total: 1,
       },
     });
     expect(await screen.findByText('Untitled session')).toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
-    expect(screen.getByText('Unavailable')).toHaveAttribute('title', 'Unavailable — BYOK: no Copilot credits');
+    expect(screen.getByText('Unavailable')).toHaveAttribute(
+      'title',
+      'Unavailable — BYOK: no Copilot credits',
+    );
   });
 
   it('opens a session from a click or the keyboard', async () => {
@@ -2869,7 +2949,13 @@ const columns: Column<SessionRow>[] = [
   },
 ];
 
-export function SessionsView({ onOpen, debounceMs = 250 }: { onOpen(id: string): void; debounceMs?: number }) {
+export function SessionsView({
+  onOpen,
+  debounceMs = 250,
+}: {
+  onOpen: (id: string) => void;
+  debounceMs?: number;
+}) {
   const rpc = useRpc();
   const [text, setText] = useState('');
   const [failedOnly, setFailedOnly] = useState(false);
@@ -2930,7 +3016,11 @@ export function SessionsView({ onOpen, debounceMs = 250 }: { onOpen(id: string):
             onRowActivate={(row) => {
               onOpen(row.id);
             }}
-            empty={filtered ? 'No sessions match your search.' : 'No sessions indexed yet. Use Copilot Chat, then refresh.'}
+            empty={
+              filtered
+                ? 'No sessions match your search.'
+                : 'No sessions indexed yet. Use Copilot Chat, then refresh.'
+            }
           />
           {rows.length > 0 && (
             <p className="muted">
@@ -3022,9 +3112,9 @@ Update `src/webview/App.test.tsx`: the dashboard now also calls `listSessions`, 
 extension fails") now yields two alerts; change its assertions to:
 
 ```tsx
-    const alerts = await screen.findAllByRole('alert');
-    expect(alerts.length).toBeGreaterThan(0);
-    expect(alerts[0]).toHaveTextContent('boom');
+const alerts = await screen.findAllByRole('alert');
+expect(alerts.length).toBeGreaterThan(0);
+expect(alerts[0]).toHaveTextContent('boom');
 ```
 
 Append to `src/webview/styles.css`:
@@ -3129,12 +3219,18 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
     outputTokens: exactNumber(2600, 'chatSessions.completionTokens'),
     credits: exactNumber(1.626141, 'chatSessions.copilotCredits'),
     analysis: {
-      intent: { value: 'bugfix', provenance: { kind: 'inferred', source: 'keyword rules on the first user prompt' } },
+      intent: {
+        value: 'bugfix',
+        provenance: { kind: 'inferred', source: 'keyword rules on the first user prompt' },
+      },
       outcome: {
         value: 'Changed 2 files (1 edited, 1 created) — in execution, test.',
         provenance: { kind: 'derived', source: 'file events, terminal tool calls and turn state' },
       },
-      areas: { value: ['execution', 'test'], provenance: { kind: 'derived', source: 'parent directories of changed files' } },
+      areas: {
+        value: ['execution', 'test'],
+        provenance: { kind: 'derived', source: 'parent directories of changed files' },
+      },
       complexity: { value: 'moderate', provenance: { kind: 'inferred', source: 'heuristic' } },
       commandCount: exactNumber(0, 'tool calls whose name mentions a terminal'),
       findings: [
@@ -3281,10 +3377,14 @@ const STATE_LABEL: Record<TurnDetail['state'], string> = {
   pending: 'In progress',
   unknown: 'Unknown',
 };
-const HOST_LABEL: Record<TurnDetail['host'], string> = { copilot: 'Copilot', byok: 'BYOK / local', unknown: 'Unknown host' };
+const HOST_LABEL: Record<TurnDetail['host'], string> = {
+  copilot: 'Copilot',
+  byok: 'BYOK / local',
+  unknown: 'Unknown host',
+};
 const NOT_STORED = 'Not stored at this capture level.';
 
-export function SessionDetailView({ id, onBack }: { id: string; onBack(): void }) {
+export function SessionDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const rpc = useRpc();
   const query = useQuery({ queryKey: ['session', id], queryFn: () => rpc.call('getSession', { id }) });
   return (
@@ -3309,8 +3409,8 @@ function Detail({ session }: { session: SessionDetail }) {
     <>
       <h2>{session.title ?? 'Untitled session'}</h2>
       <p className="muted">
-        {session.workspace} · {formatDateTime(session.startedAt)} · active {formatDuration(session.activeMs)} ·
-        capture level: {session.captureLevel}
+        {session.workspace} · {formatDateTime(session.startedAt)} · active {formatDuration(session.activeMs)}{' '}
+        · capture level: {session.captureLevel}
       </p>
       <dl className="facts">
         <dt>Input tokens</dt>
@@ -3350,7 +3450,12 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
         </dd>
         <dt>Areas touched</dt>
         <dd>
-          <Measure measure={{ value: analysis.areas.value?.join(', ') ?? null, provenance: analysis.areas.provenance }} />
+          <Measure
+            measure={{
+              value: analysis.areas.value?.join(', ') ?? null,
+              provenance: analysis.areas.provenance,
+            }}
+          />
         </dd>
         <dt>Complexity</dt>
         <dd>
@@ -3379,12 +3484,15 @@ function TurnCard({ turn }: { turn: TurnDetail }) {
   const extras = [
     turn.reasoningMs > 0 ? `reasoning ${formatDuration(turn.reasoningMs)}` : null,
     turn.toolRounds > 0 ? `${String(turn.toolRounds)} tool round${turn.toolRounds === 1 ? '' : 's'}` : null,
-    turn.compactions > 0 ? `${String(turn.compactions)} compaction${turn.compactions === 1 ? '' : 's'}` : null,
+    turn.compactions > 0
+      ? `${String(turn.compactions)} compaction${turn.compactions === 1 ? '' : 's'}`
+      : null,
   ].filter((item): item is string => item !== null);
   return (
     <article className="turn" aria-label={`Turn ${String(turn.index)}`}>
       <header>
-        <strong>Turn {turn.index}</strong> <span className={`state state--${turn.state}`}>{STATE_LABEL[turn.state]}</span>
+        <strong>Turn {turn.index}</strong>{' '}
+        <span className={`state state--${turn.state}`}>{STATE_LABEL[turn.state]}</span>
         {turn.systemInitiated && <span className="tag">System-initiated</span>}
         <div className="muted">
           <span>{turn.routing.label}</span> · {HOST_LABEL[turn.host]}
@@ -3392,9 +3500,17 @@ function TurnCard({ turn }: { turn: TurnDetail }) {
         </div>
       </header>
       <p className="label">Prompt</p>
-      {turn.userText === null ? <p className="muted">{NOT_STORED}</p> : <pre className="text">{turn.userText}</pre>}
+      {turn.userText === null ? (
+        <p className="muted">{NOT_STORED}</p>
+      ) : (
+        <pre className="text">{turn.userText}</pre>
+      )}
       <p className="label">Response</p>
-      {turn.assistantText === null ? <p className="muted">{NOT_STORED}</p> : <pre className="text">{turn.assistantText}</pre>}
+      {turn.assistantText === null ? (
+        <p className="muted">{NOT_STORED}</p>
+      ) : (
+        <pre className="text">{turn.assistantText}</pre>
+      )}
       <dl className="facts facts--row">
         <dt>Input</dt>
         <dd>
@@ -3585,7 +3701,13 @@ export function overview(overrides: Partial<Overview> = {}): Overview {
     to: '2026-09-30',
     sessions: 2,
     turns: 4,
-    inputTokens: { value: 59000, provenance: { kind: 'derived' as const, source: 'chatSessions.promptTokens (lower bound: 3 of 4 turns reported it)' } },
+    inputTokens: {
+      value: 59000,
+      provenance: {
+        kind: 'derived' as const,
+        source: 'chatSessions.promptTokens (lower bound: 3 of 4 turns reported it)',
+      },
+    },
     outputTokens: exactNumber(2650),
     credits: exactNumber(1.626141),
   };
@@ -3593,8 +3715,14 @@ export function overview(overrides: Partial<Overview> = {}): Overview {
     today: { ...period, from: '2026-09-30', sessions: 1, turns: 2, inputTokens: exactNumber(54000) },
     month: period,
     failureRate: { value: 1 / 3, provenance: { kind: 'derived', source: 'turns.state' } },
-    byModel: [breakdownRow(), breakdownRow({ key: 'qwen3.5:35b', label: 'qwen3.5:35b', host: 'byok', credits: missing('BYOK') })],
-    byWorkspace: [breakdownRow({ key: 'alpha', label: 'alpha', host: null }), breakdownRow({ key: 'beta', label: 'beta', host: null })],
+    byModel: [
+      breakdownRow(),
+      breakdownRow({ key: 'qwen3.5:35b', label: 'qwen3.5:35b', host: 'byok', credits: missing('BYOK') }),
+    ],
+    byWorkspace: [
+      breakdownRow({ key: 'alpha', label: 'alpha', host: null }),
+      breakdownRow({ key: 'beta', label: 'beta', host: null }),
+    ],
     hostSplit: [
       { host: 'byok', turns: 2, sessions: 1 },
       { host: 'copilot', turns: 2, sessions: 1 },
@@ -3649,7 +3777,12 @@ describe('OverviewView', () => {
 
   it('shows friendly empty states', async () => {
     renderWithHost(<OverviewView />, {
-      getOverview: overview({ byModel: [], byWorkspace: [], hostSplit: [], failureRate: missing('turns.state') }),
+      getOverview: overview({
+        byModel: [],
+        byWorkspace: [],
+        hostSplit: [],
+        failureRate: missing('turns.state'),
+      }),
     });
     expect(await screen.findByText('No usage recorded this month yet.')).toBeInTheDocument();
   });
@@ -3738,16 +3871,29 @@ function OverviewBody({ overview }: { overview: Overview }) {
         <PeriodCard title="This month" totals={overview.month} />
       </div>
       <p>
-        Failure rate this month: <Measure measure={overview.failureRate} format={(value) => formatPercent(Number(value))} />
+        Failure rate this month:{' '}
+        <Measure measure={overview.failureRate} format={(value) => formatPercent(Number(value))} />
       </p>
       {overview.byModel.length === 0 ? (
         <p className="muted">No usage recorded this month yet.</p>
       ) : (
         <>
           <h3>By model</h3>
-          <DataTable caption="Usage by model" columns={modelColumns} rows={overview.byModel} rowKey={(row) => `${row.key}|${row.host ?? ''}`} empty="" />
+          <DataTable
+            caption="Usage by model"
+            columns={modelColumns}
+            rows={overview.byModel}
+            rowKey={(row) => `${row.key}|${row.host ?? ''}`}
+            empty=""
+          />
           <h3>By workspace</h3>
-          <DataTable caption="Usage by workspace" columns={workspaceColumns} rows={overview.byWorkspace} rowKey={(row) => row.key} empty="" />
+          <DataTable
+            caption="Usage by workspace"
+            columns={workspaceColumns}
+            rows={overview.byWorkspace}
+            rowKey={(row) => row.key}
+            empty=""
+          />
           <h3>By host</h3>
           <DataTable
             caption="Usage by host"
@@ -3770,9 +3916,7 @@ function PeriodCard({ title, totals }: { title: string; totals: PeriodTotals }) 
   return (
     <section className="card" aria-label={title}>
       <h3>{title}</h3>
-      <p className="muted">
-        {totals.from === totals.to ? totals.from : `${totals.from} → ${totals.to}`}
-      </p>
+      <p className="muted">{totals.from === totals.to ? totals.from : `${totals.from} → ${totals.to}`}</p>
       <dl className="facts">
         <dt>Sessions</dt>
         <dd>{formatInt(totals.sessions)}</dd>
@@ -3798,9 +3942,24 @@ function PeriodCard({ title, totals }: { title: string; totals: PeriodTotals }) 
 const usageColumns: Column<BreakdownRow>[] = [
   { id: 'sessions', header: 'Sessions', align: 'end', cell: (row) => formatInt(row.sessions) },
   { id: 'turns', header: 'Turns', align: 'end', cell: (row) => formatInt(row.turns) },
-  { id: 'input', header: 'Input', align: 'end', cell: (row) => <Measure measure={row.inputTokens} format={int} /> },
-  { id: 'output', header: 'Output', align: 'end', cell: (row) => <Measure measure={row.outputTokens} format={int} /> },
-  { id: 'credits', header: 'Credits', align: 'end', cell: (row) => <Measure measure={row.credits} format={credits} /> },
+  {
+    id: 'input',
+    header: 'Input',
+    align: 'end',
+    cell: (row) => <Measure measure={row.inputTokens} format={int} />,
+  },
+  {
+    id: 'output',
+    header: 'Output',
+    align: 'end',
+    cell: (row) => <Measure measure={row.outputTokens} format={int} />,
+  },
+  {
+    id: 'credits',
+    header: 'Credits',
+    align: 'end',
+    cell: (row) => <Measure measure={row.credits} format={credits} />,
+  },
 ];
 const modelColumns: Column<BreakdownRow>[] = [
   { id: 'model', header: 'Model', cell: (row) => row.label },
@@ -3836,15 +3995,24 @@ export function SidebarView() {
           <dl className="facts">
             <dt>Input tokens</dt>
             <dd>
-              <Measure measure={overview.data.today.inputTokens} format={(value) => formatInt(Number(value))} />
+              <Measure
+                measure={overview.data.today.inputTokens}
+                format={(value) => formatInt(Number(value))}
+              />
             </dd>
             <dt>Output tokens</dt>
             <dd>
-              <Measure measure={overview.data.today.outputTokens} format={(value) => formatInt(Number(value))} />
+              <Measure
+                measure={overview.data.today.outputTokens}
+                format={(value) => formatInt(Number(value))}
+              />
             </dd>
             <dt>Credits</dt>
             <dd>
-              <Measure measure={overview.data.today.credits} format={(value) => formatCredits(Number(value))} />
+              <Measure
+                measure={overview.data.today.credits}
+                format={(value) => formatCredits(Number(value))}
+              />
             </dd>
           </dl>
         </section>
@@ -4020,7 +4188,9 @@ describe('ClearService', () => {
     const { clear, database, state } = setup();
     clear.clear({ kind: 'sessionContent', id: 'fx-auto-1' });
     const row = database.db
-      .prepare("SELECT count(user_text) AS text, sum(prompt_tokens) AS tokens FROM turns WHERE session_id = 'fx-auto-1'")
+      .prepare(
+        "SELECT count(user_text) AS text, sum(prompt_tokens) AS tokens FROM turns WHERE session_id = 'fx-auto-1'",
+      )
       .get() as { text: number; tokens: number };
     expect(row).toEqual({ text: 0, tokens: 54000 });
     expect(state.getTombstones()).toEqual({ 'fx-auto-1': 'content-cleared' });
@@ -4040,9 +4210,9 @@ describe('ClearService', () => {
     const d = setup();
     d.clear.clear({ kind: 'allContent' });
     expect(ids(d.database)).toEqual(['fx-auto-1', 'fx-byok-1']);
-    expect(
-      (d.database.db.prepare('SELECT count(user_text) AS n FROM turns').get() as { n: number }).n,
-    ).toBe(0);
+    expect((d.database.db.prepare('SELECT count(user_text) AS n FROM turns').get() as { n: number }).n).toBe(
+      0,
+    );
     expect(AUTO_START).toBeLessThan(BYOK_START);
   });
 
@@ -4093,7 +4263,9 @@ describe('describeScope', () => {
     expect(describeScope({ kind: 'workspace', workspace: 'alpha' }, 1).title).toBe(
       'Delete 1 session from workspace "alpha"?',
     );
-    expect(describeScope({ kind: 'everything' }, 5).title).toBe('Delete all 5 sessions from Copilot Insights?');
+    expect(describeScope({ kind: 'everything' }, 5).title).toBe(
+      'Delete all 5 sessions from Copilot Insights?',
+    );
   });
 });
 ```
@@ -4171,7 +4343,9 @@ export class ClearService {
         case 'beforeDay':
           return db.prepare('SELECT id FROM sessions WHERE day < :day').all({ day: scope.day });
         case 'workspace':
-          return db.prepare('SELECT id FROM sessions WHERE workspace = :workspace').all({ workspace: scope.workspace });
+          return db
+            .prepare('SELECT id FROM sessions WHERE workspace = :workspace')
+            .all({ workspace: scope.workspace });
         case 'everything':
         case 'allContent':
           return db.prepare('SELECT id FROM sessions').all();
@@ -4275,11 +4449,11 @@ describe('legacy v0.2 data', () => {
     for (const name of ['usage.sqlite3', 'usage.sqlite3-wal', 'usage.json', 'insights.db', 'scanner.lock']) {
       writeFileSync(join(dir, name), 'x');
     }
-    expect(findLegacyFiles(dir).map((file) => file.split(/[\\/]/).pop()).sort()).toEqual([
-      'usage.json',
-      'usage.sqlite3',
-      'usage.sqlite3-wal',
-    ]);
+    expect(
+      findLegacyFiles(dir)
+        .map((file) => file.split(/[\\/]/).pop())
+        .sort(),
+    ).toEqual(['usage.json', 'usage.sqlite3', 'usage.sqlite3-wal']);
     expect(deleteLegacyFiles(dir)).toBe(3);
     expect(findLegacyFiles(dir)).toEqual([]);
     expect(existsSync(join(dir, 'insights.db'))).toBe(true);
@@ -4311,7 +4485,9 @@ export interface ExportDocument {
 /** The whole index as JSON: exactly what the dashboard can show (so no tool arguments), at the stored capture level. */
 export function exportIndex(database: Pick<Database, 'db'>, now: number): ExportDocument {
   const ids = (
-    database.db.prepare('SELECT id FROM sessions ORDER BY started_at, id').all() as unknown as { id: string }[]
+    database.db.prepare('SELECT id FROM sessions ORDER BY started_at, id').all() as unknown as {
+      id: string;
+    }[]
   ).map((row) => row.id);
   return {
     format: 'copilot-insights-export',
@@ -4329,7 +4505,12 @@ import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** Files written by the v0.2 prototype into this extension's own global storage. Nothing else is ever listed. */
-export const LEGACY_FILES = ['usage.sqlite3', 'usage.sqlite3-wal', 'usage.sqlite3-shm', 'usage.json'] as const;
+export const LEGACY_FILES = [
+  'usage.sqlite3',
+  'usage.sqlite3-wal',
+  'usage.sqlite3-shm',
+  'usage.json',
+] as const;
 
 export function findLegacyFiles(dir: string): string[] {
   return LEGACY_FILES.map((name) => join(dir, name)).filter((file) => existsSync(file));
@@ -4349,13 +4530,13 @@ Run: `pnpm vitest run src/core` — Expected: PASS.
 Protocol test (append to `src/shared/protocol.test.ts`):
 
 ```ts
-  it('validates clearData scopes and rejects unknown kinds or malformed days', () => {
-    const params = rpcSchemas.clearData.params;
-    expect(params.safeParse({ scope: { kind: 'everything' } }).success).toBe(true);
-    expect(params.safeParse({ scope: { kind: 'session', id: 'abc' } }).success).toBe(true);
-    expect(params.safeParse({ scope: { kind: 'beforeDay', day: '2026-9-1' } }).success).toBe(false);
-    expect(params.safeParse({ scope: { kind: 'dropTables' } }).success).toBe(false);
-  });
+it('validates clearData scopes and rejects unknown kinds or malformed days', () => {
+  const params = rpcSchemas.clearData.params;
+  expect(params.safeParse({ scope: { kind: 'everything' } }).success).toBe(true);
+  expect(params.safeParse({ scope: { kind: 'session', id: 'abc' } }).success).toBe(true);
+  expect(params.safeParse({ scope: { kind: 'beforeDay', day: '2026-9-1' } }).success).toBe(false);
+  expect(params.safeParse({ scope: { kind: 'dropTables' } }).success).toBe(false);
+});
 ```
 
 Run: `pnpm vitest run src/shared/protocol.test.ts` — Expected: FAIL. In `protocol.ts` add
@@ -4451,7 +4632,9 @@ export async function clearFromPalette(deps: DataCommandDeps): Promise<void> {
     if (day !== undefined) await confirmAndClear(deps, { kind: 'beforeDay', day });
   } else {
     const workspaces = (
-      deps.database.db.prepare('SELECT DISTINCT workspace FROM sessions ORDER BY workspace').all() as unknown as {
+      deps.database.db
+        .prepare('SELECT DISTINCT workspace FROM sessions ORDER BY workspace')
+        .all() as unknown as {
         workspace: string;
       }[]
     ).map((row) => row.workspace);
@@ -4538,42 +4721,54 @@ Run: `pnpm typecheck && pnpm vitest run src/shared src/extension` — Expected: 
 In `SessionDetailView.test.tsx` add:
 
 ```tsx
-  it('clears text or deletes the session through the extension, which asks for confirmation', async () => {
-    const onBack = vi.fn();
-    const user = userEvent.setup();
-    const { calls } = view({ getSession: sessionDetail(), clearData: { confirmed: true, sessions: 1 } }, onBack);
-    await user.click(await screen.findByRole('button', { name: 'Clear conversation text' }));
-    expect(calls.at(-1)).toEqual({ method: 'clearData', params: { scope: { kind: 'sessionContent', id: 'fx-auto-1' } } });
-    expect(onBack).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Delete session' }));
-    expect(calls.at(-1)).toEqual({ method: 'clearData', params: { scope: { kind: 'session', id: 'fx-auto-1' } } });
-    await vi.waitFor(() => {
-      expect(onBack).toHaveBeenCalledOnce();
-    });
+it('clears text or deletes the session through the extension, which asks for confirmation', async () => {
+  const onBack = vi.fn();
+  const user = userEvent.setup();
+  const { calls } = view(
+    { getSession: sessionDetail(), clearData: { confirmed: true, sessions: 1 } },
+    onBack,
+  );
+  await user.click(await screen.findByRole('button', { name: 'Clear conversation text' }));
+  expect(calls.at(-1)).toEqual({
+    method: 'clearData',
+    params: { scope: { kind: 'sessionContent', id: 'fx-auto-1' } },
   });
+  expect(onBack).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('button', { name: 'Delete session' }));
+  expect(calls.at(-1)).toEqual({
+    method: 'clearData',
+    params: { scope: { kind: 'session', id: 'fx-auto-1' } },
+  });
+  await vi.waitFor(() => {
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+});
 
-  it('stays on the session when the user cancels the confirmation', async () => {
-    const onBack = vi.fn();
-    const { calls } = view({ getSession: sessionDetail(), clearData: { confirmed: false, sessions: 0 } }, onBack);
-    await userEvent.click(await screen.findByRole('button', { name: 'Delete session' }));
-    await vi.waitFor(() => {
-      expect(calls.some((call) => call.method === 'clearData')).toBe(true);
-    });
-    expect(onBack).not.toHaveBeenCalled();
+it('stays on the session when the user cancels the confirmation', async () => {
+  const onBack = vi.fn();
+  const { calls } = view(
+    { getSession: sessionDetail(), clearData: { confirmed: false, sessions: 0 } },
+    onBack,
+  );
+  await userEvent.click(await screen.findByRole('button', { name: 'Delete session' }));
+  await vi.waitFor(() => {
+    expect(calls.some((call) => call.method === 'clearData')).toBe(true);
   });
+  expect(onBack).not.toHaveBeenCalled();
+});
 ```
 
 In `SessionsView.test.tsx` add:
 
 ```tsx
-  it('exports through the extension', async () => {
-    const { calls } = renderWithHost(<SessionsView onOpen={vi.fn()} debounceMs={0} />, {
-      listSessions: { rows: [], total: 0 },
-      exportData: { saved: true },
-    });
-    await userEvent.click(await screen.findByRole('button', { name: 'Export…' }));
-    expect(calls.map((call) => call.method)).toContain('exportData');
+it('exports through the extension', async () => {
+  const { calls } = renderWithHost(<SessionsView onOpen={vi.fn()} debounceMs={0} />, {
+    listSessions: { rows: [], total: 0 },
+    exportData: { saved: true },
   });
+  await userEvent.click(await screen.findByRole('button', { name: 'Export…' }));
+  expect(calls.map((call) => call.method)).toContain('exportData');
+});
 ```
 
 Run: `pnpm vitest run src/webview/views` — Expected: FAIL.
@@ -4581,11 +4776,11 @@ Run: `pnpm vitest run src/webview/views` — Expected: FAIL.
 In `SessionDetailView.tsx`: `const queryClient = useQueryClient();` in `SessionDetailView`; add a helper
 
 ```tsx
-  const run = async (scope: ClearScope): Promise<boolean> => {
-    const result = await rpc.call('clearData', { scope });
-    if (result.confirmed) await queryClient.invalidateQueries();
-    return result.confirmed;
-  };
+const run = async (scope: ClearScope): Promise<boolean> => {
+  const result = await rpc.call('clearData', { scope });
+  if (result.confirmed) await queryClient.invalidateQueries();
+  return result.confirmed;
+};
 ```
 
 and next to the back button render two buttons (only when `query.data` exists):
@@ -4623,7 +4818,7 @@ git commit -m "feat: add clear, export and legacy-data cleanup with tombstones a
 - Verified against GitHub docs on 2026-09-30 (https://docs.github.com/en/rest/billing/usage):
   `GET /users/{username}/settings/billing/ai_credit/usage?year=&month=&day=` with header
   `X-GitHub-Api-Version: 2026-03-10`; response `{ timePeriod, user, usageItems: [{ product, sku, model, unitType,
-  pricePerUnit, grossQuantity, grossAmount, discountQuantity, discountAmount, netQuantity, netAmount }] }`.
+pricePerUnit, grossQuantity, grossAmount, discountQuantity, discountAmount, netQuantity, netAmount }] }`.
   It covers usage billed to the user's **own** account only; users whose Copilot is licensed through an
   organization or enterprise get 404/403 here. The organization endpoint returns org aggregates, not the user's
   own usage, so it is **out of scope** (roadmap task 2.8 said "org reports … keep only the user's own row"; the
@@ -4662,7 +4857,9 @@ function recorder(status = 200, body: unknown = { ok: true }) {
 describe('GithubClient', () => {
   it('sends the token and API version only to api.github.com', async () => {
     const { requests, fetchImpl } = recorder();
-    await new GithubClient(fetchImpl, 'tok').getJson('/users/octo/settings/billing/ai_credit/usage?year=2026');
+    await new GithubClient(fetchImpl, 'tok').getJson(
+      '/users/octo/settings/billing/ai_credit/usage?year=2026',
+    );
     expect(requests).toHaveLength(1);
     expect(requests[0]?.url).toBe(
       'https://api.github.com/users/octo/settings/billing/ai_credit/usage?year=2026',
@@ -4674,18 +4871,23 @@ describe('GithubClient', () => {
     });
   });
 
-  it.each(['https://evil.example/x', '//evil.example/x', 'http://api.github.com/x', 'users/octo', '/\\evil.example'])(
-    'refuses to send the token to %s',
-    async (target) => {
-      const { requests, fetchImpl } = recorder();
-      await expect(new GithubClient(fetchImpl, 'tok').getJson(target)).rejects.toThrow();
-      expect(requests).toEqual([]);
-    },
-  );
+  it.each([
+    'https://evil.example/x',
+    '//evil.example/x',
+    'http://api.github.com/x',
+    'users/octo',
+    '/\\evil.example',
+  ])('refuses to send the token to %s', async (target) => {
+    const { requests, fetchImpl } = recorder();
+    await expect(new GithubClient(fetchImpl, 'tok').getJson(target)).rejects.toThrow();
+    expect(requests).toEqual([]);
+  });
 
   it('reports failures by status only, without echoing the response body', async () => {
     const { fetchImpl } = recorder(403, { message: 'secret-detail' });
-    const error = await new GithubClient(fetchImpl, 'tok').getJson('/user').catch((caught: unknown) => caught);
+    const error = await new GithubClient(fetchImpl, 'tok')
+      .getJson('/user')
+      .catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(GithubApiError);
     expect((error as GithubApiError).status).toBe(403);
     expect((error as GithubApiError).message).not.toContain('secret-detail');
@@ -4740,7 +4942,10 @@ export class GithubClient {
       },
     });
     if (!response.ok) {
-      throw new GithubApiError(`GitHub API ${String(response.status)} ${response.statusText}`.trim(), response.status);
+      throw new GithubApiError(
+        `GitHub API ${String(response.status)} ${response.statusText}`.trim(),
+        response.status,
+      );
     }
     return response.json();
   }
@@ -4809,12 +5014,16 @@ export class GithubUsageStore {
 
   list(fromDay: string, toDay: string): { day: string; credits: number }[] {
     return this.database.db
-      .prepare('SELECT day, credits FROM github_daily_usage WHERE day >= :fromDay AND day <= :toDay ORDER BY day')
+      .prepare(
+        'SELECT day, credits FROM github_daily_usage WHERE day >= :fromDay AND day <= :toDay ORDER BY day',
+      )
       .all({ fromDay, toDay }) as unknown as { day: string; credits: number }[];
   }
 
   lastSyncedAt(): number | null {
-    const row = this.database.db.prepare('SELECT max(synced_at) AS at FROM github_daily_usage').get() as unknown as {
+    const row = this.database.db
+      .prepare('SELECT max(synced_at) AS at FROM github_daily_usage')
+      .get() as unknown as {
       at: number | null;
     };
     return row.at;
@@ -4893,8 +5102,14 @@ describe('syncGithubUsage', () => {
       { day: '2026-09-02', credits: 1 },
       { day: '2026-09-03', credits: 5 },
     ]);
-    expect(urls.every((url) => url.startsWith('https://api.github.com/users/octo/settings/billing/ai_credit/usage?'))).toBe(true);
-    expect(urls).toContain('https://api.github.com/users/octo/settings/billing/ai_credit/usage?year=2026&month=9&day=3');
+    expect(
+      urls.every((url) =>
+        url.startsWith('https://api.github.com/users/octo/settings/billing/ai_credit/usage?'),
+      ),
+    ).toBe(true);
+    expect(urls).toContain(
+      'https://api.github.com/users/octo/settings/billing/ai_credit/usage?year=2026&month=9&day=3',
+    );
   });
 
   it('encodes the username so it cannot change the request path or host', async () => {
@@ -4915,13 +5130,18 @@ describe('syncGithubUsage', () => {
 
   it('keeps going after a transient failure and lists the failed day', async () => {
     const { client } = fakeGithub((url) =>
-      url.includes('day=2') ? { status: 500 } : { status: 200, body: { usageItems: [{ unitType: 'credits', grossQuantity: 2 }] } },
+      url.includes('day=2')
+        ? { status: 500 }
+        : { status: 200, body: { usageItems: [{ unitType: 'credits', grossQuantity: 2 }] } },
     );
     const { store, args } = deps(client);
     const outcome = await syncGithubUsage(args);
     expect(outcome.synced).toBe(2);
     expect(outcome.errors).toEqual(['2026-09-02: GitHub API 500 S']);
-    expect(store.list('2026-09-01', '2026-09-03').map((row) => row.day)).toEqual(['2026-09-01', '2026-09-03']);
+    expect(store.list('2026-09-01', '2026-09-03').map((row) => row.day)).toEqual([
+      '2026-09-01',
+      '2026-09-03',
+    ]);
   });
 
   it('tolerates a malformed response body', async () => {
@@ -5021,14 +5241,18 @@ Run: `pnpm vitest run src/core/github src/core/storage` — Expected: PASS.
 Append to `clearService.test.ts` inside the describe:
 
 ```ts
-  it('also drops cached GitHub usage when everything is deleted', () => {
-    const { clear, database } = setup();
-    database.db.prepare("INSERT INTO github_daily_usage VALUES ('2026-09-01', 'octo', 1, 1)").run();
-    clear.clear({ kind: 'sessionContent', id: 'fx-auto-1' });
-    expect((database.db.prepare('SELECT count(*) AS n FROM github_daily_usage').get() as { n: number }).n).toBe(1);
-    clear.clear({ kind: 'everything' });
-    expect((database.db.prepare('SELECT count(*) AS n FROM github_daily_usage').get() as { n: number }).n).toBe(0);
-  });
+it('also drops cached GitHub usage when everything is deleted', () => {
+  const { clear, database } = setup();
+  database.db.prepare("INSERT INTO github_daily_usage VALUES ('2026-09-01', 'octo', 1, 1)").run();
+  clear.clear({ kind: 'sessionContent', id: 'fx-auto-1' });
+  expect((database.db.prepare('SELECT count(*) AS n FROM github_daily_usage').get() as { n: number }).n).toBe(
+    1,
+  );
+  clear.clear({ kind: 'everything' });
+  expect((database.db.prepare('SELECT count(*) AS n FROM github_daily_usage').get() as { n: number }).n).toBe(
+    0,
+  );
+});
 ```
 
 Run — Expected: FAIL. In `ClearService.clear`, inside the transaction's delete branch, add
@@ -5180,7 +5404,10 @@ import { Measure } from '../ui/Measure';
 export function GithubUsageCard() {
   const rpc = useRpc();
   const queryClient = useQueryClient();
-  const usage = useQuery({ queryKey: ['githubUsage'], queryFn: () => rpc.call('getGithubUsage', { days: 14 }) });
+  const usage = useQuery({
+    queryKey: ['githubUsage'],
+    queryFn: () => rpc.call('getGithubUsage', { days: 14 }),
+  });
   const sync = useMutation({
     mutationFn: () => rpc.call('syncGithubUsage', {}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['githubUsage'] }),
@@ -5192,15 +5419,16 @@ export function GithubUsageCard() {
     if (sync.data.unavailable) {
       return 'GitHub does not expose usage for this account here. Usage billed to an organization or enterprise is not available.';
     }
-    if (sync.data.errors.length > 0) return `Synced ${String(sync.data.synced)} days; ${String(sync.data.errors.length)} failed.`;
+    if (sync.data.errors.length > 0)
+      return `Synced ${String(sync.data.synced)} days; ${String(sync.data.errors.length)} failed.`;
     return `Synced ${String(sync.data.synced)} days.`;
   })();
   return (
     <section className="card" aria-label="GitHub billed credits">
       <h3>GitHub billed credits</h3>
       <p className="muted">
-        Account-wide usage from GitHub billing, covering all devices and clients. It is not attributed to individual
-        sessions.
+        Account-wide usage from GitHub billing, covering all devices and clients. It is not attributed to
+        individual sessions.
       </p>
       {usage.data && usage.data.days.length > 0 ? (
         <DataTable
@@ -5211,7 +5439,9 @@ export function GithubUsageCard() {
               id: 'credits',
               header: 'Credits',
               align: 'end',
-              cell: (row) => <Measure measure={row.credits} format={(value) => formatCredits(Number(value))} />,
+              cell: (row) => (
+                <Measure measure={row.credits} format={(value) => formatCredits(Number(value))} />
+              ),
             },
           ]}
           rows={usage.data.days}

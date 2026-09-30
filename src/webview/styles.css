@@ -31,3 +31,74 @@ h1 {
 [role='alert'] {
   color: var(--vscode-errorForeground);
 }
+
+.btn {
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.btn--primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+.btn--secondary {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+.btn:focus-visible,
+.row--interactive:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th,
+.table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--vscode-editorGroup-border, var(--vscode-widget-border, transparent));
+  vertical-align: top;
+}
+.table th {
+  color: var(--vscode-descriptionForeground);
+  font-weight: 600;
+}
+.table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.row--interactive {
+  cursor: pointer;
+}
+.row--interactive:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.measure {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.badge {
+  font-size: 0.75em;
+  padding: 0 4px;
+  border-radius: 3px;
+  text-decoration: none;
+  border: 1px solid currentColor;
+  opacity: 0.8;
+}
+.badge--exact {
+  color: var(--vscode-charts-green);
+}
+.badge--derived {
+  color: var(--vscode-charts-blue);
+}
+.badge--inferred {
+  color: var(--vscode-charts-orange);
+}
+.badge--unavailable {
+  color: var(--vscode-descriptionForeground);
+}
