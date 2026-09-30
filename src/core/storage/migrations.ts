@@ -109,4 +109,13 @@ export const MIGRATIONS: readonly string[] = [
     json TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE github_daily_usage (
+    day TEXT NOT NULL,
+    account TEXT NOT NULL,
+    credits REAL NOT NULL,
+    synced_at INTEGER NOT NULL,
+    PRIMARY KEY (day, account)
+  );
+  `,
 ];

@@ -81,4 +81,17 @@ describe('ClearService', () => {
     const byok = results.find((result) => result.session?.id === 'fx-byok-1');
     expect(byok?.session?.turns.every((turn) => turn.userText === null)).toBe(true);
   });
+
+  it('also drops cached GitHub usage when everything is deleted', () => {
+    const { clear, database } = setup();
+    database.db.prepare("INSERT INTO github_daily_usage VALUES ('2026-09-01', 'octo', 1, 1)").run();
+    clear.clear({ kind: 'sessionContent', id: 'fx-auto-1' });
+    expect(
+      (database.db.prepare('SELECT count(*) AS n FROM github_daily_usage').get() as { n: number }).n,
+    ).toBe(1);
+    clear.clear({ kind: 'everything' });
+    expect(
+      (database.db.prepare('SELECT count(*) AS n FROM github_daily_usage').get() as { n: number }).n,
+    ).toBe(0);
+  });
 });

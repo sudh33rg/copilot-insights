@@ -56,6 +56,8 @@ const handlers: RpcHandlers = {
   },
   clearData: () => ({ confirmed: false, sessions: 0 }),
   exportData: () => ({ saved: false }),
+  getGithubUsage: () => ({ days: [], lastSyncedAt: null, account: null }),
+  syncGithubUsage: () => ({ signedIn: false, synced: 0, unavailable: false, errors: [] }),
   openDashboard: () => ({ opened: true }),
 };
 

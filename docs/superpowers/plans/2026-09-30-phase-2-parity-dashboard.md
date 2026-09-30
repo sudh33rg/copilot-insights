@@ -5178,11 +5178,11 @@ const usageItem = z.looseObject({
 });
 const usageResponse = z.looseObject({ usageItems: z.array(usageItem).catch([]) });
 
-export type UsageItem = z.input<typeof usageItem>;
-
 /** Credits consumed by one billing line: credit-denominated quantity, else dollars at the 1-cent credit price. */
-export function creditsOf(item: UsageItem): number {
-  const parsed = usageItem.parse(item);
+export function creditsOf(item: unknown): number {
+  const result = usageItem.safeParse(item);
+  if (!result.success) return 0;
+  const parsed = result.data;
   if (parsed.unitType !== undefined && /credit/i.test(parsed.unitType)) {
     return parsed.grossQuantity ?? parsed.netQuantity ?? parsed.quantity ?? 0;
   }
@@ -5353,7 +5353,7 @@ describe('GithubUsageCard', () => {
   it('lists billed credits per day, labelled account-wide and never per session', async () => {
     renderWithHost(<GithubUsageCard />, { getGithubUsage: usage });
     const card = await screen.findByRole('region', { name: 'GitHub billed credits' });
-    expect(within(card).getByText('3.5')).toBeInTheDocument();
+    expect(await within(card).findByText('3.5')).toBeInTheDocument();
     expect(within(card).getAllByText('Exact').length).toBe(2);
     expect(within(card).getByText(/all devices and clients/)).toBeInTheDocument();
     expect(within(card).getByText(/octo/)).toBeInTheDocument();
@@ -5366,14 +5366,13 @@ describe('GithubUsageCard', () => {
 
   it('syncs on demand and explains each outcome', async () => {
     const user = userEvent.setup();
-    const { rerender, calls } = renderWithHost(<GithubUsageCard />, {
+    const { calls } = renderWithHost(<GithubUsageCard />, {
       getGithubUsage: usage,
       syncGithubUsage: { signedIn: true, synced: 0, unavailable: true, errors: [] },
     });
     await user.click(await screen.findByRole('button', { name: 'Sync now' }));
     expect(await screen.findByText(/billed to an organization or enterprise/)).toBeInTheDocument();
     expect(calls.map((call) => call.method)).toContain('syncGithubUsage');
-    rerender(<GithubUsageCard />);
   });
 
   it('says so when the user is not signed in', async () => {

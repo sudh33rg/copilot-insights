@@ -117,7 +117,9 @@ Goal: everything the prototype promised, working on real data, in a maintainable
 | 2.6 Overview & sidebar             | today/month exact local credits and tokens (by turn day), sessions, failure rate, per-model and per-workspace tables, host split (Copilot vs BYOK/local)                                                          | numbers match query-layer tests                                            |
 | 2.7 Clear, retention, export       | clear session / content / by date / by workspace / everything (tombstones), export JSON, retention setting; legacy `usage.sqlite3`/`usage.json` detection with an offer to delete                                 | store tests; confirmation dialogs in extension glue                        |
 | 2.8 GitHub usage sync (port + fix) | `core/github/*` with injected `fetch`; verify endpoints and API version against current GitHub docs; token only to `api.github.com`; org reports parsed streaming and only the user's own row kept                | unit tests with fake fetch; no token on foreign hosts                      |
-| 2.9 README & release notes         | README describes the parity dashboard; CHANGELOG updated                                                                                                                                                          | `pnpm verify` green                                                        |
+
+> 2.8 ruling (2026-09-30): individual billing only (`/users/{user}/settings/billing/ai_credit/usage`, API version 2026-03-10, verified against GitHub docs). Organization endpoints return org aggregates, not the user's own row, so the "parse org reports streaming" part is dropped; users whose Copilot is org-billed see an explanatory message.
+> | 2.9 README & release notes | README describes the parity dashboard; CHANGELOG updated | `pnpm verify` green |
 
 ## Phase 3 — Exact telemetry & trust
 

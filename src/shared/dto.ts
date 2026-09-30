@@ -157,3 +157,19 @@ export const clearScopeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('allContent') }),
 ]);
 export type ClearScope = z.infer<typeof clearScopeSchema>;
+
+// ---- GitHub billed usage ----
+export const githubUsageParams = z.object({ days: z.number().int().min(1).max(62) });
+export const githubUsageSchema = z.object({
+  days: z.array(z.object({ day: z.string(), credits: measuredNumber })),
+  lastSyncedAt: z.number().nullable(),
+  account: z.string().nullable(),
+});
+export type GithubUsage = z.infer<typeof githubUsageSchema>;
+export const githubSyncSchema = z.object({
+  signedIn: z.boolean(),
+  synced: z.number(),
+  unavailable: z.boolean(),
+  errors: z.array(z.string()),
+});
+export type GithubSync = z.infer<typeof githubSyncSchema>;

@@ -2,6 +2,9 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
 import { ClearService } from '../core/clear/clearService';
+import { GithubClient } from '../core/github/client';
+import { syncGithubUsage } from '../core/github/usage';
+import { GithubUsageStore } from '../core/github/usageStore';
 import { indexStatus } from '../core/ingest/indexStatus';
 import { IngestService } from '../core/ingest/ingestService';
 import { resolveStorageRoots, userDirsFromGlobalStorage } from '../core/ingest/roots';
@@ -11,8 +14,10 @@ import { InsightsQueries } from '../core/query/insightsQueries';
 import { Database } from '../core/storage/database';
 import { IngestStateStore } from '../core/storage/ingestStateStore';
 import { SessionStore } from '../core/storage/sessionStore';
-import { localDay } from '../core/time';
+import { daysAgo, localDay } from '../core/time';
+import { exact } from '../shared/provenance';
 import { readConfig } from './config';
+import { githubSession } from './githubAuth';
 import {
   clearFromPalette,
   confirmAndClear,
@@ -38,6 +43,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const state = new IngestStateStore(database);
   const queries = new InsightsQueries(database);
   const clear = new ClearService(database, sessions, state);
+  const github = new GithubUsageStore(database);
   const lock = new WriterLock(storageDir);
   const dataChanged = new vscode.EventEmitter<void>();
   const dataDeps: DataCommandDeps = {
@@ -79,6 +85,22 @@ export function activate(context: vscode.ExtensionContext): void {
   const controller = new IngestController(service, context.storageUri, log);
 
   // `dashboard` is created after the handlers; the closure reads it lazily.
+  const syncGithub = async () => {
+    const session = await githubSession(true);
+    if (session === undefined) return { signedIn: false, synced: 0, unavailable: false, errors: [] };
+    const client = new GithubClient(fetch, session.accessToken);
+    const outcome = await syncGithubUsage({
+      client,
+      user: session.account.label,
+      store: github,
+      today: localDay(),
+      days: 31,
+      now: Date.now,
+    });
+    dataChanged.fire();
+    return { signedIn: true, ...outcome };
+  };
+
   const handlers: RpcHandlers = {
     ping: () => ({ version, now: Date.now() }),
     getIndexStatus: () => indexStatus(service, sessions, state, readConfig().captureLevel),
@@ -87,6 +109,18 @@ export function activate(context: vscode.ExtensionContext): void {
     getOverview: () => queries.getOverview(localDay()),
     clearData: ({ scope }) => confirmAndClear(dataDeps, scope),
     exportData: () => exportToFile(dataDeps),
+    getGithubUsage: ({ days }) => {
+      const today = localDay();
+      return {
+        days: github.list(daysAgo(today, days - 1), today).map((row) => ({
+          day: row.day,
+          credits: exact(row.credits, 'GitHub billing API: ai_credit/usage (account-wide, all devices)'),
+        })),
+        lastSyncedAt: github.lastSyncedAt(),
+        account: github.account(),
+      };
+    },
+    syncGithubUsage: syncGithub,
     openDashboard: () => {
       dashboard.show();
       return { opened: true };
@@ -110,6 +144,16 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('copilotInsights.clearData', () => clearFromPalette(dataDeps)),
     vscode.commands.registerCommand('copilotInsights.exportData', () => exportToFile(dataDeps)),
     vscode.commands.registerCommand('copilotInsights.deleteLegacyData', () => deleteLegacyData(dataDeps)),
+    vscode.commands.registerCommand('copilotInsights.syncGithubUsage', async () => {
+      const outcome = await syncGithub();
+      void vscode.window.showInformationMessage(
+        !outcome.signedIn
+          ? 'Sign in to GitHub in VS Code to sync usage.'
+          : outcome.unavailable
+            ? 'GitHub does not expose usage for this account here (usage billed to an organization is not available).'
+            : `Synced GitHub usage for ${String(outcome.synced)} days.`,
+      );
+    }),
     vscode.commands.registerCommand('copilotInsights.refreshSessions', () => controller.sync(false)),
     vscode.commands.registerCommand('copilotInsights.rebuildIndex', () => controller.sync(true)),
     // Stop background work before the database closes.

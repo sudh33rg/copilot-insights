@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import {
   clearScopeSchema,
+  githubSyncSchema,
+  githubUsageParams,
+  githubUsageSchema,
   overviewSchema,
   sessionDetailSchema,
   sessionIdParams,
@@ -37,6 +40,8 @@ export const rpcSchemas = {
     result: z.object({ confirmed: z.boolean(), sessions: z.number() }),
   },
   exportData: { params: z.object({}), result: z.object({ saved: z.boolean() }) },
+  getGithubUsage: { params: githubUsageParams, result: githubUsageSchema },
+  syncGithubUsage: { params: z.object({}), result: githubSyncSchema },
 } as const;
 
 export type RpcMethod = keyof typeof rpcSchemas;

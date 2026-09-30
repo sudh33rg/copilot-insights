@@ -31,6 +31,7 @@ export class ClearService {
       if (deletesSessions(scope)) {
         this.state.addTombstones(ids, 'deleted', this.now());
         this.sessions.deleteSessions(ids);
+        if (scope.kind === 'everything') this.database.db.exec('DELETE FROM github_daily_usage');
       } else {
         this.state.addTombstones(ids, 'content-cleared', this.now());
         this.sessions.clearContent(ids);
