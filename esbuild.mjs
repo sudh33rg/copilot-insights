@@ -19,7 +19,13 @@ const node = {
 };
 
 /** @type {import('esbuild').BuildOptions[]} */
-const builds = [{ ...node, entryPoints: { extension: 'src/extension/extension.ts' }, outdir: 'dist' }];
+const builds = [
+  {
+    ...node,
+    entryPoints: { extension: 'src/extension/extension.ts', scanWorker: 'src/core/ingest/scanWorker.ts' },
+    outdir: 'dist',
+  },
+];
 
 if (integration) {
   builds.push({
