@@ -1,10 +1,11 @@
-import type { Efficiency, TurnDetail } from '../../shared/dto';
+import type { Efficiency, Outcomes, TurnDetail } from '../../shared/dto';
 import { derived, inferred } from '../../shared/provenance';
 import { contextBloat } from '../efficiency/contextBloat';
 import { costDrivers } from '../efficiency/costDrivers';
 import { freshSessionEstimate } from '../efficiency/freshSession';
 import { modelFindings } from '../efficiency/modelFindings';
 import { priceCounterfactual, type ModelPrice } from '../efficiency/priceCounterfactual';
+import { efficiencyScore } from '../efficiency/score';
 import type { Database } from '../storage/database';
 import { readModelPrices } from './modelPrices';
 
@@ -13,6 +14,7 @@ export function getSessionEfficiency(
   database: Pick<Database, 'db'>,
   turns: readonly TurnDetail[],
   sessionId: string,
+  outcomes: Outcomes,
 ): Efficiency {
   const prices = readModelPrices(database);
   return {
@@ -20,6 +22,21 @@ export function getSessionEfficiency(
     findings: [...contextFindings(database, turns, sessionId), ...modelFindings({ turns, prices })],
     freshSession: freshSession(turns),
     priceAlternatives: priceAlternatives(prices, turns),
+    score: score(turns, outcomes),
+  };
+}
+
+function score(turns: readonly TurnDetail[], outcomes: Outcomes): Efficiency['score'] {
+  const result = efficiencyScore({ turns, outcomes });
+  if (result === null) return null;
+  return {
+    band: { value: result.band, provenance: result.provenance },
+    components: result.components.map((component) => ({
+      id: component.id,
+      label: component.label,
+      value: { value: component.value, provenance: component.provenance },
+      evidence: component.evidence,
+    })),
   };
 }
 

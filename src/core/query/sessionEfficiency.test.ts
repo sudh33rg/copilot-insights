@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { seededStore } from '../../../test/fixtures/sessions';
-import { makeTurn } from '../../../test/fixtures/turns';
+import { makeOutcomes, makeTurn } from '../../../test/fixtures/turns';
 import { exact } from '../../shared/provenance';
 import { getSessionEfficiency } from './sessionEfficiency';
 import { getSessionDetail } from './sessionDetail';
@@ -48,7 +48,7 @@ describe('getSessionEfficiency via getSessionDetail', () => {
 
     it('is attached as an inferred estimate that states its assumption', () => {
       const { database } = seededStore();
-      const estimate = getSessionEfficiency(database, growing, 'fx-auto-1').freshSession;
+      const estimate = getSessionEfficiency(database, growing, 'fx-auto-1', makeOutcomes()).freshSession;
       expect(estimate?.restartAtTurn).toBe(4);
       expect(estimate?.tokensSaved).toEqual({
         value: 90_000,
@@ -64,7 +64,9 @@ describe('getSessionEfficiency via getSessionDetail', () => {
 
     it('is null for a short session', () => {
       const { database } = seededStore();
-      expect(getSessionEfficiency(database, growing.slice(0, 3), 'fx-auto-1').freshSession).toBeNull();
+      expect(
+        getSessionEfficiency(database, growing.slice(0, 3), 'fx-auto-1', makeOutcomes()).freshSession,
+      ).toBeNull();
     });
   });
 
@@ -137,6 +139,48 @@ describe('getSessionEfficiency via getSessionDetail', () => {
       );
       expect(ids).not.toContain('auto-over-routing');
       expect(ids).not.toContain('oversized-model');
+    });
+  });
+
+  describe('efficiency score', () => {
+    const steady = [1, 2, 3].map((index) =>
+      makeTurn({
+        index,
+        userText: 'Add retry handling in src/upload.ts so that uploads retry',
+        inputTokens: exact(10_000, 'test'),
+        toolRounds: exact(3, 'test'),
+      }),
+    );
+
+    it('is a band with its measured components, each carrying provenance and evidence', () => {
+      const { database } = seededStore();
+      const score = getSessionEfficiency(database, steady, 'fx-auto-1', makeOutcomes()).score;
+      expect(score?.band).toEqual({
+        value: 'good',
+        provenance: { kind: 'derived', source: 'unweighted average of the components shown' },
+      });
+      expect(score?.components.map((component) => component.id)).toEqual([
+        'first-pass',
+        'tool-reliability',
+        'context-discipline',
+      ]);
+      expect(score?.components[0]?.value).toEqual({
+        value: 1,
+        provenance: {
+          kind: 'derived',
+          source: 'corrections, undone edits and failed turns relative to user turns',
+        },
+      });
+      expect(score?.components[0]?.evidence).toBe(
+        '0 corrections, 0 edits undone, 0 failed turns over 3 user turns',
+      );
+    });
+
+    it('is null with too little evidence', () => {
+      const { database } = seededStore();
+      expect(
+        getSessionEfficiency(database, steady.slice(0, 1), 'fx-auto-1', makeOutcomes()).score,
+      ).toBeNull();
     });
   });
 });

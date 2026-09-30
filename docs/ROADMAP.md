@@ -160,6 +160,14 @@ Goal: everything the prototype promised, working on real data, in a maintainable
 
 ## Phase 5 — Efficiency & model intelligence
 
+> **Done — shipped in 0.7.0.** Design decisions (see `docs/superpowers/plans/2026-09-30-phase-5-efficiency-and-model-intelligence.md`):
+> D-P5-1 every assumption-based number is `inferred` and kept out of exact totals; D-P5-2 cache hits are reported as a
+> fact, never as waste; D-P5-3 price counterfactuals are list-price ratios, not credits (the credit mapping is not
+> documented); D-P5-4 only tool names and character counts are stored from tool/system-prompt files, and free-text
+> instruction discovery events are not parsed (the system-prompt size covers their cost); D-P5-5 the score is its
+> components. Limits: tool and system-prompt cost need Copilot's agent debug log (opt-in); abandoned approaches are only
+> visible through undone edits.
+
 | Task                             | Deliverable                                                                                                                                                                                                 | Acceptance                                    |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | 5.1 Cost drivers v2              | evidence list per session using exact data: context composition (tool definitions %, files %, messages %), compactions, rounds, retries, failures, cache hits vs misses (cache hits are cheaper, not waste) | every driver cites its numbers and provenance |

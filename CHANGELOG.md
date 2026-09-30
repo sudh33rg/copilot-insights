@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.0 — efficiency & model intelligence
+
+- Session detail explains _why_ a session cost what it did: context growth, what filled the prompt, tool rounds and
+  retries, compactions, failed work, and prompt-cache hits (described as cheaper, never as waste). Every line
+  cites its numbers and provenance.
+- Context-bloat advice from Copilot's debug log: tool definitions that were never called and the size of the system
+  prompt, paid for on every request. Only tool names and character counts are stored; token figures are estimates
+  (characters ÷ 4) and labelled inferred.
+- Counterfactuals, always labelled as estimates and kept out of exact totals: what restarting in a fresh session
+  might have saved, and the list-price cost of the same tokens on cheaper catalog models (a relative index, not a
+  credit figure).
+- Model-selection findings with evidence and hedged wording: small task on an expensive model you picked, Auto
+  routing a small task to an expensive model, a complex task on a lightweight model that needed repeated fixes,
+  and long reasoning on a small task. Nothing ever says "wrong model".
+- Prompt findings v2: opening prompts with no file or success condition, constraints that arrived late, and
+  sessions that drifted into unrelated areas.
+- Failure analytics on the Overview by model, provider and mode, with tool-input retries and tool-call-limit hits.
+- A transparent efficiency score: a band (good / fair / needs work) shown together with the measured components it
+  is averaged from, or no score when there is too little evidence.
+- Existing indexes are re-read once to pick up tool-definition and system-prompt sizes.
+
 ## 0.6.0 — outcome intelligence
 
 - "Did the session work?" — a new Outcome card per session: lines changed, whether Copilot's edits were kept,

@@ -176,6 +176,15 @@ export const efficiencySchema = z.object({
       shareOfInput: measuredNumber,
     })
     .nullable(),
+  /** A band made of the measured components shown with it; null when fewer than three have evidence. */
+  score: z
+    .object({
+      band: measured(z.enum(['good', 'fair', 'needs-work'])),
+      components: z.array(
+        z.object({ id: z.string(), label: z.string(), value: measuredNumber, evidence: z.string() }),
+      ),
+    })
+    .nullable(),
   /** The same exact tokens priced on cheaper catalog models; a list-price ratio, not a credit figure. */
   priceAlternatives: z.array(
     z.object({ model: z.string(), name: z.string().nullable(), relativeCost: measuredNumber }),

@@ -26,6 +26,11 @@ participant, proxy, server, or AI provider is involved.
   and warning counts, and the commits the session led to with the credits that cost. The Overview adds edit
   survival per model and credits per commit. Git, terminal and diagnostics evidence exists only while VS Code is
   open with this extension; otherwise it shows as unavailable, never as zero.
+- **Efficiency** — why a session cost what it did (context growth, prompt makeup, tool rounds, compactions, cache
+  hits, failed work), context-bloat advice (unused tool definitions, system-prompt size), hedged model-selection
+  and prompt findings with their evidence, failure analytics, and a score shown as its measured components.
+  Estimates (a fresh-session restart, the same tokens on other models at list prices) are labelled _Inferred_ /
+  _Derived_ and never added to exact totals.
 - **Credit reconciliation** — after a GitHub sync, per day: GitHub-billed credits vs credits recorded locally,
   coverage %, and the unexplained remainder (other machines, Copilot CLI, github.com, other clients).
 - **Model tiers** — each model's tier comes from Copilot's own model catalog, not from name matching.
@@ -70,6 +75,9 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
   never leaves your machine, and no code or command text is stored. They are not kept at capture level `metrics`,
   and _Clear conversation text_, lowering the level to `metrics`, and _Clear everything_ remove them (clearing
   everything also forgets the salt).
+- For context-bloat advice, only the **names** of the tools Copilot sent and the **character counts** of tool
+  definitions and the system prompt are kept (from Copilot's debug log); descriptions, schemas and prompt text are
+  never stored.
 - Git, terminal exit-code and diagnostics evidence comes from VS Code's built-in git extension, terminal shell
   integration and diagnostics, and is only recorded while VS Code is open with this extension. Only counts, file
   paths, commit hashes, exit codes, timestamps and salted hashes are stored — never diffs, messages or command

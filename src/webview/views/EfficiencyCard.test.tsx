@@ -8,6 +8,7 @@ const efficiency = (overrides: Partial<Efficiency> = {}): Efficiency => ({
   findings: [],
   freshSession: null,
   priceAlternatives: [],
+  score: null,
   ...overrides,
 });
 
@@ -150,5 +151,68 @@ describe('EfficiencyCard', () => {
   it('shows no price table when there is nothing cheaper to compare', () => {
     render(<EfficiencyCard efficiency={efficiency()} />);
     expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  describe('score', () => {
+    const derivedNumber = (value: number) => ({
+      value,
+      provenance: { kind: 'derived' as const, source: 'test' },
+    });
+    const score = {
+      band: {
+        value: 'fair' as const,
+        provenance: { kind: 'derived' as const, source: 'unweighted average' },
+      },
+      components: [
+        {
+          id: 'first-pass',
+          label: 'Right the first time',
+          value: derivedNumber(0.4),
+          evidence: '2 corrections over 5 user turns',
+        },
+        { id: 'tests', label: 'Tests', value: derivedNumber(1), evidence: 'the last test run passed' },
+        {
+          id: 'context-discipline',
+          label: 'Context size',
+          value: derivedNumber(0.55),
+          evidence: 'context grew 2.8×',
+        },
+      ],
+    };
+
+    it('shows the band with every component, its percentage and its evidence, and no headline number', () => {
+      render(<EfficiencyCard efficiency={efficiency({ score })} />);
+      const card = screen.getByRole('region', { name: 'Efficiency' });
+      expect(within(card).getByText('Efficiency: Fair')).toBeInTheDocument();
+      const list = within(card).getByRole('list', { name: 'Score components' });
+      expect(within(list).getByText('Right the first time')).toBeInTheDocument();
+      expect(within(list).getByText('40%')).toBeInTheDocument();
+      expect(within(list).getByText('100%')).toBeInTheDocument();
+      expect(within(list).getByText('55%')).toBeInTheDocument();
+      expect(within(list).getByText('context grew 2.8×')).toBeInTheDocument();
+      expect(within(card).queryByText(/\/\s*100/)).toBeNull();
+    });
+
+    it('labels every band', () => {
+      for (const [value, label] of [
+        ['good', 'Good'],
+        ['needs-work', 'Needs work'],
+      ] as const) {
+        const { unmount } = render(
+          <EfficiencyCard efficiency={efficiency({ score: { ...score, band: { ...score.band, value } } })} />,
+        );
+        expect(screen.getByText(`Efficiency: ${label}`)).toBeInTheDocument();
+        unmount();
+      }
+    });
+
+    it('explains when there is not enough evidence for a score', () => {
+      render(<EfficiencyCard efficiency={efficiency()} />);
+      expect(
+        screen.getByText(
+          'Not enough evidence for an efficiency score (needs at least three measured components).',
+        ),
+      ).toBeInTheDocument();
+    });
   });
 });

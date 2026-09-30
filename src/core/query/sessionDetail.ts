@@ -139,6 +139,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       source,
     );
   };
+  const outcomes = getSessionOutcomes(database, id);
   return {
     id: header.id,
     workspace: header.workspace,
@@ -156,8 +157,8 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       turnRows.filter((row) => row.model_host !== 'byok').length,
     ),
     analysis: null,
-    outcomes: getSessionOutcomes(database, id),
-    efficiency: getSessionEfficiency(database, turns, id),
+    outcomes,
+    efficiency: getSessionEfficiency(database, turns, id, outcomes),
     debug:
       callRows.length === 0
         ? null

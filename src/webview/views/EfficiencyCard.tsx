@@ -4,12 +4,35 @@ import { DataTable, type Column } from '../ui/DataTable';
 import { formatInt, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
 
+const BAND_LABEL = { good: 'Good', fair: 'Fair', 'needs-work': 'Needs work' } as const;
+
 /** Why a session cost what it did, from evidence; estimates are labelled and kept apart from exact numbers. */
 export function EfficiencyCard({ efficiency }: { efficiency: Efficiency }) {
   const fresh = freshSessionSentence(efficiency.freshSession);
   return (
     <section className="card" aria-label="Efficiency">
       <h3>Why it cost what it did</h3>
+      {efficiency.score === null ? (
+        <p className="muted">
+          Not enough evidence for an efficiency score (needs at least three measured components).
+        </p>
+      ) : (
+        <>
+          <p>
+            <strong>{`Efficiency: ${BAND_LABEL[efficiency.score.band.value ?? 'fair']}`}</strong>{' '}
+            <ProvenanceBadge provenance={efficiency.score.band.provenance} />
+          </p>
+          <ul className="findings" aria-label="Score components">
+            {efficiency.score.components.map((component) => (
+              <li key={component.id}>
+                <strong>{component.label}</strong>{' '}
+                <Measure measure={component.value} format={(value) => formatPercent(Number(value))} />
+                <div className="muted">{component.evidence}</div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {efficiency.drivers.length === 0 ? (
         <p className="muted">No cost drivers stood out for this session.</p>
       ) : (
