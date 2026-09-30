@@ -1,6 +1,0 @@
-.git/**
-.github/**
-test/**
-scripts/**
-*.zip
-*.vsix
