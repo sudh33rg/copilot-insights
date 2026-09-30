@@ -24,6 +24,10 @@ Prettier, `@vscode/test-cli` + `@vscode/test-electron`.
 **Spec:** `docs/PRODUCT_VISION.md` (product), `docs/ROADMAP.md` (phases, decisions D1–D13),
 `docs/copilot-data-formats.md` (the real Copilot formats this plan parses). Read all three before starting.
 
+**Executed 2026-09-30:** implemented on `main` from this plan; deviations (bdd mocha UI, polling dashboard test,
+`.vscodeignore` includes, `vsce-sign` build denial, `.superpowers/` git-ignored) are folded into the snippets below.
+Integration tests pass 5/5 on VS Code 1.139.1 and 1.105.0.
+
 **Dry-run status (2026-09-30):** every code block in this plan was extracted into a scratch project with the
 exact dependency versions above. Result: 101/101 unit tests pass, all three `tsc` projects and ESLint are
 clean, esbuild and Vite produce `dist/extension.js`, `dist/scanWorker.js`, `dist/webview/main.{js,css}`, and
@@ -187,6 +191,7 @@ pnpm 11 fails the install (`ERR_PNPM_IGNORED_BUILDS`) when a dependency's build 
 ```yaml
 allowBuilds:
   esbuild: true
+  '@vscode/vsce-sign': false
 ```
 
 ```bash
@@ -214,8 +219,10 @@ coverage/
 
 ```gitignore
 **
-!dist/**
-dist/**/*.map
+!dist/extension.js
+!dist/scanWorker.js
+!dist/webview/main.js
+!dist/webview/main.css
 !media/**
 !package.json
 !README.md
@@ -604,7 +611,8 @@ import { defineConfig } from '@vscode/test-cli';
 const base = {
   files: 'out/integration/**/*.test.js',
   launchArgs: ['--disable-extensions'],
-  mocha: { timeout: 30_000 },
+  // test-cli defaults to mocha's tdd UI; our tests use describe/it.
+  mocha: { ui: 'bdd', timeout: 30_000 },
 };
 
 // Run against the newest VS Code and the oldest version we support (engines.vscode).
@@ -1730,10 +1738,24 @@ function extensionVersion(context: vscode.ExtensionContext): string {
 import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 
+const tabLabels = (): string[] =>
+  vscode.window.tabGroups.all.flatMap((group) => group.tabs.map((tab) => tab.label));
+
+/** The tab model updates asynchronously after a webview panel is created, so poll instead of reading once. */
+async function waitForTab(label: string, timeoutMs: number): Promise<string[]> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const labels = tabLabels();
+    if (labels.includes(label)) return labels;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return tabLabels();
+}
+
 describe('dashboard', () => {
   it('opens a Copilot Insights editor tab', async () => {
     await vscode.commands.executeCommand('copilotInsights.openDashboard');
-    const labels = vscode.window.tabGroups.all.flatMap((group) => group.tabs.map((tab) => tab.label));
+    const labels = await waitForTab('Copilot Insights', 5000);
     assert.ok(labels.includes('Copilot Insights'), `open tabs: ${labels.join(', ')}`);
   });
 });

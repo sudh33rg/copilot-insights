@@ -40,21 +40,22 @@ GitHub REST API (opt-in sync) ◄──────────── │       
 
 Key decisions (record changes to these in this file):
 
-| #   | Decision                                                                                       | Reason                                                                                             |
-| --- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| D1  | TypeScript `~6.0` strict, not TS 7                                                             | typescript-eslint 8.71 supports `<6.1`; type-aware lint is required                                |
-| D2  | esbuild for the extension/worker, Vite 8 for the webview                                       | fastest standard bundlers; single-file outputs; vsce `--no-dependencies`                           |
-| D3  | `node:sqlite` only, no JSON fallback                                                           | available in the extension host (verified by integration test at the 1.105.0 floor); one code path |
-| D4  | Normalized schema: `sessions`, `turns`, `tool_calls`, `file_events` (+ analysis tables later)  | per-turn day bucketing, drill-downs, queries without parsing blobs                                 |
-| D5  | Ingestion stores facts; analysis is computed separately and versioned                          | re-analyse without re-ingesting; analysis can evolve freely                                        |
-| D6  | Scan in a worker thread; one leader window writes (lock file)                                  | zero disruption; no multi-window write races                                                       |
-| D7  | Observe only the VS Code instance you are running (+ configured extra roots)                   | correct profile/portable handling; test isolation                                                  |
-| D8  | `extensionKind: ["ui"]`                                                                        | Copilot data is on the local machine even in Remote/WSL/containers                                 |
-| D9  | Provenance is a data type (`Measured<T>`), not a label                                         | the vision's trust requirement must be enforceable                                                 |
-| D10 | Default capture level `summaries`; secrets redacted before storage                             | privacy by default                                                                                 |
-| D11 | Tombstones for deleted/cleared sessions                                                        | clearing must stay cleared when Copilot rewrites the source file                                   |
-| D12 | UI kit chosen in Phase 2 by spike (`@vscode-elements/react-elements` preferred)                | must work under strict CSP and in jsdom tests                                                      |
-| D13 | No network except GitHub REST on user sync; never forward tokens to non-`api.github.com` hosts | privacy and security                                                                               |
+| #   | Decision                                                                                                                      | Reason                                                                                             |
+| --- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| D1  | TypeScript `~6.0` strict, not TS 7                                                                                            | typescript-eslint 8.71 supports `<6.1`; type-aware lint is required                                |
+| D2  | esbuild for the extension/worker, Vite 8 for the webview                                                                      | fastest standard bundlers; single-file outputs; vsce `--no-dependencies`                           |
+| D3  | `node:sqlite` only, no JSON fallback                                                                                          | available in the extension host (verified by integration test at the 1.105.0 floor); one code path |
+| D4  | Normalized schema: `sessions`, `turns`, `tool_calls`, `file_events` (+ analysis tables later)                                 | per-turn day bucketing, drill-downs, queries without parsing blobs                                 |
+| D5  | Ingestion stores facts; analysis is computed separately and versioned                                                         | re-analyse without re-ingesting; analysis can evolve freely                                        |
+| D6  | Scan in a worker thread; one leader window writes (lock file)                                                                 | zero disruption; no multi-window write races                                                       |
+| D7  | Observe only the VS Code instance you are running (+ configured extra roots)                                                  | correct profile/portable handling; test isolation                                                  |
+| D8  | `extensionKind: ["ui"]`                                                                                                       | Copilot data is on the local machine even in Remote/WSL/containers                                 |
+| D9  | Provenance is a data type (`Measured<T>`), not a label                                                                        | the vision's trust requirement must be enforceable                                                 |
+| D10 | Default capture level `summaries`; secrets redacted before storage                                                            | privacy by default                                                                                 |
+| D11 | Tombstones for deleted/cleared sessions                                                                                       | clearing must stay cleared when Copilot rewrites the source file                                   |
+| D12 | UI kit chosen in Phase 2 by spike (`@vscode-elements/react-elements` preferred)                                               | must work under strict CSP and in jsdom tests                                                      |
+| D13 | No network except GitHub REST on user sync; never forward tokens to non-`api.github.com` hosts                                | privacy and security                                                                               |
+| D3a | FTS5 is compiled into `node:sqlite` on VS Code 1.139.1 (stable) and 1.105.0 (floor) — verified 2026-09-30 by integration test | Phase 2 search can use FTS5                                                                        |
 
 ## Phase overview
 
