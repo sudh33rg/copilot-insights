@@ -11,7 +11,7 @@ describe('OverviewView', () => {
     expect(within(today).getByText('54,000')).toBeInTheDocument();
     expect(within(today).getByText('1.626')).toBeInTheDocument();
     const month = screen.getByRole('region', { name: 'This month' });
-    expect(within(month).getByText('59,000')).toBeInTheDocument();
+    expect(within(month).getByText('≥ 59,000')).toBeInTheDocument();
     expect(within(month).getByText('Derived')).toBeInTheDocument();
     expect(within(month).getByText('2,650')).toBeInTheDocument();
   });

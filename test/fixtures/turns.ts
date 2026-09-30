@@ -1,5 +1,5 @@
 import type { TurnDetail } from '../../src/shared/dto';
-import { unavailable } from '../../src/shared/provenance';
+import { exact, unavailable } from '../../src/shared/provenance';
 
 /** A minimal `TurnDetail` for analysis tests; override only what a test cares about. */
 export function makeTurn(overrides: Partial<TurnDetail> & { index: number }): TurnDetail {
@@ -19,9 +19,9 @@ export function makeTurn(overrides: Partial<TurnDetail> & { index: number }): Tu
     cachedTokens: unavailable('test'),
     ttftMs: unavailable('test'),
     nanoAiu: unavailable('test'),
-    reasoningMs: 0,
-    toolRounds: 0,
-    compactions: 0,
+    reasoningMs: unavailable('test'),
+    toolRounds: exact(0, 'test'),
+    compactions: exact(0, 'test'),
     toolCalls: [],
     fileEvents: [],
     errorCode: null,

@@ -150,12 +150,12 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
 }
 
 function TurnCard({ turn }: { turn: TurnDetail }) {
+  const rounds = turn.toolRounds.value ?? 0;
+  const compactions = turn.compactions.value ?? 0;
   const extras = [
-    turn.reasoningMs > 0 ? `reasoning ${formatDuration(turn.reasoningMs)}` : null,
-    turn.toolRounds > 0 ? `${String(turn.toolRounds)} tool round${turn.toolRounds === 1 ? '' : 's'}` : null,
-    turn.compactions > 0
-      ? `${String(turn.compactions)} compaction${turn.compactions === 1 ? '' : 's'}`
-      : null,
+    turn.reasoningMs.value !== null ? `reasoning ${formatDuration(turn.reasoningMs.value)}` : null,
+    rounds > 0 ? `${String(rounds)} tool round${rounds === 1 ? '' : 's'}` : null,
+    compactions > 0 ? `${String(compactions)} compaction${compactions === 1 ? '' : 's'}` : null,
   ].filter((item): item is string => item !== null);
   return (
     <article className="turn" aria-label={`Turn ${String(turn.index)}`}>

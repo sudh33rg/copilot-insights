@@ -2,7 +2,7 @@ import type { SessionDetail, TurnDetail } from '../../shared/dto';
 import { modelNameFromId } from '../ingest/chatSession';
 import { isCaptureLevel } from '../privacy/captureLevel';
 import type { Database } from '../storage/database';
-import { unavailable } from '../../shared/provenance';
+import { exact, unavailable } from '../../shared/provenance';
 import { known, SOURCES, summed, toTurnState } from './measure';
 import { routingFor } from './routing';
 
@@ -34,6 +34,7 @@ interface TurnRow {
   completion_tokens: number | null;
   credits: number | null;
   reasoning_ms: number;
+  reasoning_blocks: number;
   tool_rounds: number;
   compactions: string;
   error_code: string | null;
@@ -52,7 +53,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     .prepare(
       `SELECT idx, response_id, started_at, state, system_initiated, mode, user_text, assistant_text, requested_model,
               resolved_model, selection_mode, model_host, prompt_tokens, completion_tokens, credits,
-              reasoning_ms, tool_rounds, compactions, error_code, error_message
+              reasoning_ms, reasoning_blocks, tool_rounds, compactions, error_code, error_message
          FROM turns WHERE session_id = :id ORDER BY idx`,
     )
     .all({ id }) as unknown as TurnRow[];
@@ -106,9 +107,12 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       cachedTokens: call ? known(call.cached_tokens, SOURCES.cachedTokens) : unavailable(SOURCES.noDebugLog),
       ttftMs: call ? known(call.ttft_ms, SOURCES.ttftMs) : unavailable(SOURCES.noDebugLog),
       nanoAiu: call ? known(call.nano_aiu, SOURCES.nanoAiu) : unavailable(SOURCES.noDebugLog),
-      reasoningMs: row.reasoning_ms,
-      toolRounds: row.tool_rounds,
-      compactions: countJsonArray(row.compactions),
+      reasoningMs:
+        row.reasoning_blocks > 0
+          ? exact(row.reasoning_ms, SOURCES.reasoning)
+          : unavailable(`${SOURCES.reasoning}: no reasoning recorded for this turn`),
+      toolRounds: exact(row.tool_rounds, SOURCES.toolRounds),
+      compactions: exact(countJsonArray(row.compactions), SOURCES.compactions),
       toolCalls: (tools.get(row.idx) ?? []).map((call) => ({ name: call.name, status: call.status })),
       fileEvents: (files.get(row.idx) ?? []).map((file) => ({ path: file.path, action: file.action })),
       errorCode: row.error_code,

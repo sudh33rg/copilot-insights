@@ -37,6 +37,35 @@ describe('Measure', () => {
     expect(screen.getByText('2 cr')).toBeInTheDocument();
     expect(screen.getByText('Derived')).toBeInTheDocument();
   });
+
+  it('marks a derived lower bound with ≥ so a partial sum cannot be mistaken for a total', () => {
+    render(
+      <Measure
+        measure={{
+          value: 59000,
+          provenance: {
+            kind: 'derived',
+            source: 'chatSessions.promptTokens (lower bound: 3 of 4 turns reported it)',
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText('≥ 59,000')).toBeInTheDocument();
+  });
+
+  it('does not add ≥ to other derived values or to exact values', () => {
+    render(
+      <>
+        <Measure
+          measure={{ value: 0.33, provenance: { kind: 'derived', source: 'turns.state' } }}
+          format={(v) => `${String(v)}!`}
+        />
+        <Measure measure={{ value: 5, provenance: { kind: 'exact', source: 'x lower bound' } }} />
+      </>,
+    );
+    expect(screen.getByText('0.33!')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
 });
 
 interface Person {

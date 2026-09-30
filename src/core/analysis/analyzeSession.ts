@@ -27,7 +27,7 @@ export function analyzeSession(input: Pick<SessionDetail, 'turns'>): Analysis {
         userTurns: userTurns.length,
         toolCalls: turns.reduce((sum, turn) => sum + turn.toolCalls.length, 0),
         changedFiles: changes.changed.length,
-        compactions: turns.reduce((sum, turn) => sum + turn.compactions, 0),
+        compactions: turns.reduce((sum, turn) => sum + (turn.compactions.value ?? 0), 0),
       }),
       'turns + tool calls/5 + changed files + 3 × compactions',
     ),

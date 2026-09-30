@@ -37,7 +37,7 @@ export function promptFindings(turns: readonly TurnDetail[]): Finding[] {
     });
   }
 
-  const compactions = turns.reduce((sum, turn) => sum + turn.compactions, 0);
+  const compactions = turns.reduce((sum, turn) => sum + (turn.compactions.value ?? 0), 0);
   if (userTurns.length >= 12 || compactions >= 2) {
     findings.push({
       id: 'long-session',

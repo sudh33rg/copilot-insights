@@ -9,6 +9,9 @@ export const SOURCES = {
   cachedTokens: 'agent debug log: llm_request.cachedTokens',
   ttftMs: 'agent debug log: llm_request.ttft',
   nanoAiu: 'agent debug log: llm_request.copilotUsageNanoAiu',
+  reasoning: 'chatSessions reasoning blocks (summed duration)',
+  toolRounds: 'chatSessions toolCallRounds',
+  compactions: 'chatSessions compaction events',
   noDebugLog: 'agent debug log has no request for this turn',
 } as const;
 

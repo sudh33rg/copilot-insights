@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exact } from '../../shared/provenance';
 import { makeTurn } from '../../../test/fixtures/turns';
 import { promptFindings } from './findings';
 
@@ -29,7 +30,9 @@ describe('promptFindings', () => {
       makeTurn({ index: index + 1, userText: 'a'.repeat(40) }),
     );
     expect(ids(many)).toContain('long-session');
-    expect(ids([makeTurn({ index: 1, userText: 'a'.repeat(40), compactions: 2 })])).toContain('long-session');
+    expect(ids([makeTurn({ index: 1, userText: 'a'.repeat(40), compactions: exact(2, 'test') })])).toContain(
+      'long-session',
+    );
   });
 
   it('flags repeated failures from state, even without any stored text', () => {

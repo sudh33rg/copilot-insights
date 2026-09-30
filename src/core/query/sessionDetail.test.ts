@@ -25,7 +25,6 @@ describe('getSessionDetail', () => {
       systemInitiated: false,
       host: 'copilot',
       model: 'gpt-5.6-luna',
-      compactions: 1,
     });
     expect(first?.userText).toContain('Fix the timeout race');
     expect(first?.inputTokens).toEqual({
@@ -34,6 +33,10 @@ describe('getSessionDetail', () => {
     });
     expect(first?.credits.value).toBeCloseTo(1.126141);
     expect(first?.routing).toEqual({ kind: 'auto', label: 'Auto → gpt-5.6-luna' });
+    expect(first?.compactions).toEqual({
+      value: 1,
+      provenance: { kind: 'exact', source: 'chatSessions compaction events' },
+    });
   });
 
   it('lists tool names and file events but never tool arguments', () => {
