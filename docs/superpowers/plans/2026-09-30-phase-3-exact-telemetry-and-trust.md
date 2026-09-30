@@ -1991,11 +1991,9 @@ import * as vscode from 'vscode';
 import { DEBUG_LOGGING_SETTING, enableDebugLogging, type EnableOutcome } from '../core/telemetry/consent';
 
 export function readDebugLoggingEnabled(): boolean {
-  return (
-    vscode.workspace
-      .getConfiguration(DEBUG_LOGGING_SETTING.section)
-      .get<boolean>(DEBUG_LOGGING_SETTING.key, false) === true
-  );
+  return vscode.workspace
+    .getConfiguration(DEBUG_LOGGING_SETTING.section)
+    .get<boolean>(DEBUG_LOGGING_SETTING.key, false);
 }
 
 /** Command and webview button both end here; the modal is the only way to a "yes". */

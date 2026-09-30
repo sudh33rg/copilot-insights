@@ -42,6 +42,10 @@ export const rpcSchemas = {
   exportData: { params: z.object({}), result: z.object({ saved: z.boolean() }) },
   getGithubUsage: { params: githubUsageParams, result: githubUsageSchema },
   syncGithubUsage: { params: z.object({}), result: githubSyncSchema },
+  enableDebugLogging: {
+    params: z.object({}),
+    result: z.object({ outcome: z.enum(['already-enabled', 'declined', 'enabled']) }),
+  },
 } as const;
 
 export type RpcMethod = keyof typeof rpcSchemas;

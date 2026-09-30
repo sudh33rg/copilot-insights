@@ -12,6 +12,7 @@ describe('commands', () => {
       'copilotInsights.clearData',
       'copilotInsights.exportData',
       'copilotInsights.deleteLegacyData',
+      'copilotInsights.enableDebugLogging',
     ]) {
       assert.ok(commands.includes(id), `${id} is not registered`);
     }

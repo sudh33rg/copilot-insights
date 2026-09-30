@@ -63,6 +63,11 @@
         "command": "copilotInsights.syncGithubUsage",
         "title": "Sync GitHub Usage",
         "category": "Copilot Insights"
+      },
+      {
+        "command": "copilotInsights.enableDebugLogging",
+        "title": "Enable Exact Telemetry\u2026",
+        "category": "Copilot Insights"
       }
     ],
     "viewsContainers": {

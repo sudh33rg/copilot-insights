@@ -35,4 +35,10 @@ describe('protocol', () => {
     expect(params.safeParse({ scope: { kind: 'beforeDay', day: '2026-9-1' } }).success).toBe(false);
     expect(params.safeParse({ scope: { kind: 'dropTables' } }).success).toBe(false);
   });
+
+  it('declares enableDebugLogging with no params', () => {
+    expect(isRpcMethod('enableDebugLogging')).toBe(true);
+    expect(rpcSchemas.enableDebugLogging.params.safeParse({}).success).toBe(true);
+    expect(rpcSchemas.enableDebugLogging.result.safeParse({ outcome: 'sure' }).success).toBe(false);
+  });
 });

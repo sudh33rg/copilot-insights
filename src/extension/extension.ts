@@ -17,6 +17,7 @@ import { SessionStore } from '../core/storage/sessionStore';
 import { daysAgo, localDay } from '../core/time';
 import { exact } from '../shared/provenance';
 import { readConfig } from './config';
+import { runEnableDebugLogging } from './telemetry';
 import { githubSession } from './githubAuth';
 import {
   clearFromPalette,
@@ -121,6 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
       };
     },
     syncGithubUsage: syncGithub,
+    enableDebugLogging: async () => ({ outcome: await runEnableDebugLogging() }),
     openDashboard: () => {
       dashboard.show();
       return { opened: true };
@@ -154,6 +156,7 @@ export function activate(context: vscode.ExtensionContext): void {
             : `Synced GitHub usage for ${String(outcome.synced)} days.`,
       );
     }),
+    vscode.commands.registerCommand('copilotInsights.enableDebugLogging', () => runEnableDebugLogging()),
     vscode.commands.registerCommand('copilotInsights.refreshSessions', () => controller.sync(false)),
     vscode.commands.registerCommand('copilotInsights.rebuildIndex', () => controller.sync(true)),
     // Stop background work before the database closes.
