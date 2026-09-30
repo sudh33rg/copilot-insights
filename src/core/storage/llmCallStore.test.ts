@@ -46,4 +46,45 @@ describe('LlmCallStore', () => {
     expect(count(database, 'llm_calls')).toBe(0);
     expect(count(database, 'debug_sessions')).toBe(0);
   });
+
+  describe('prompt file sizes', () => {
+    const withSizes = () => ({
+      ...log(),
+      toolDefs: [
+        { name: 'read_file', chars: 400 },
+        { name: 'grep_search', chars: 900 },
+      ],
+      systemPromptChars: 46_352,
+    });
+
+    it('stores tool names with sizes and the system prompt size, and replaces them on re-parse', () => {
+      const database = new Database(':memory:');
+      const store = new LlmCallStore(database);
+      store.replaceSession(withSizes(), '/x/main.jsonl', 5);
+      store.replaceSession(
+        { ...withSizes(), toolDefs: [{ name: 'only_one', chars: 10 }] },
+        '/x/main.jsonl',
+        6,
+      );
+      expect(store.getToolDefs('fx-auto-1')).toEqual([{ name: 'only_one', chars: 10 }]);
+      expect(store.getPromptFiles('fx-auto-1')).toEqual({ systemPromptChars: 46_352, toolDefsChars: 10 });
+    });
+
+    it('returns null sizes when none were read', () => {
+      const database = new Database(':memory:');
+      const store = new LlmCallStore(database);
+      store.replaceSession(log(), '/x/main.jsonl', 5);
+      expect(store.getToolDefs('fx-auto-1')).toBeNull();
+      expect(store.getPromptFiles('fx-auto-1')).toEqual({ systemPromptChars: null, toolDefsChars: null });
+    });
+
+    it('is removed with the session', () => {
+      const database = new Database(':memory:');
+      const store = new LlmCallStore(database);
+      store.replaceSession(withSizes(), '/x/main.jsonl', 5);
+      store.deleteSessions(['fx-auto-1']);
+      expect(count(database, 'llm_tool_defs')).toBe(0);
+      expect(count(database, 'llm_prompt_files')).toBe(0);
+    });
+  });
 });

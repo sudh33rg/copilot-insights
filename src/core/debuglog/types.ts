@@ -24,4 +24,11 @@ export interface DebugSessionLog {
   vscodeVersion: string | null;
   calls: LlmCall[];
   badLines: number;
+  /** File names (never paths) Copilot reported for the latest tool definitions and system prompt. */
+  toolsFile: string | null;
+  systemPromptFile: string | null;
+  /** Filled in by the scanner from `toolsFile`: names and definition sizes, never descriptions. */
+  toolDefs: { name: string; chars: number }[] | null;
+  /** Filled in by the scanner from `systemPromptFile`: its character count, never its text. */
+  systemPromptChars: number | null;
 }

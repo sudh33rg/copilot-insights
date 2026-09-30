@@ -132,6 +132,15 @@ Span events: `{v?, ts, dur, sid, type, name, spanId, parentSpanId?, status, attr
 | `agent_response`          | `response`, `reasoning` (`"[encrypted]"`)                                                                                                                                                                                         |
 | `discovery`, `generic`    | `details`, `category` (e.g. custom-instructions files included)                                                                                                                                                                   |
 
+### Prompt files next to `main.jsonl`
+
+`llm_request.attrs.toolsFile` and `systemPromptFile` name files in the same folder (`tools_0.json`,
+`system_prompt_0.json`; only plain file names are honoured). Both are `{content: …}`: for tools, `content` is a JSON
+**string** holding `[{type, name, description, parameters}, …]`; for the system prompt it is the text. Copilot
+Insights keeps only each tool's **name and the size of its definition** (`llm_tool_defs`) and the **character count**
+of the system prompt (`llm_prompt_files`) — never descriptions, schemas or prompt text. Files over 5 MB are
+ignored. Tokens are estimated as characters ÷ 4 and always labelled `inferred`.
+
 `models.json` entries: `id`, `name`, `vendor`, `version`, `capabilities.family`, `capabilities.limits.*`,
 `billing.token_prices.{default,long_context}.{input_price,output_price,cache_read_price,cache_write_price,…}`,
 `billing.restricted_to`, `model_picker_category` (e.g. `powerful`), `model_picker_price_category`,

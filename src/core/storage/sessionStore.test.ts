@@ -254,6 +254,18 @@ describe('SessionStore', () => {
       expect(dump).not.toContain(SECRET);
     });
 
+    it('removes tool-definition and system-prompt sizes of purged sessions', () => {
+      const { database, sessions } = newStore();
+      const session = fixture();
+      sessions.replaceSession(session, 'full', 1);
+      database.db.exec(
+        "INSERT OR REPLACE INTO llm_tool_defs VALUES ('fx-auto-1', 'read_file', 10); INSERT OR REPLACE INTO llm_prompt_files VALUES ('fx-auto-1', 100, 10)",
+      );
+      sessions.purgeBefore(daysAgo(localDay(session.startedAt), -1));
+      expect(rows(database, 'SELECT * FROM llm_tool_defs')).toEqual([]);
+      expect(rows(database, 'SELECT * FROM llm_prompt_files')).toEqual([]);
+    });
+
     it('removes live observations of purged sessions', () => {
       const { database, sessions } = newStore();
       const session = fixture();

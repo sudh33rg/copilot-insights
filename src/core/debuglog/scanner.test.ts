@@ -67,4 +67,61 @@ describe('scanDebugLogs', () => {
     expect(stats.errors).toEqual([]);
     rmSync(join(base, 'bad'), { recursive: true });
   });
+
+  describe('prompt file sizes', () => {
+    const logDir = (userDir: string) =>
+      join(userDir, 'workspaceStorage', 'ws1', 'GitHub.copilot-chat', 'debug-logs', 'fx-auto-1');
+    const tool = (name: string) => ({
+      type: 'function',
+      name,
+      description: 'SECRET-description',
+      parameters: {},
+    });
+
+    function withFiles(
+      files: Record<string, string>,
+      names: { toolsFile?: string; systemPromptFile?: string },
+    ) {
+      const { input, userDir } = setup();
+      const dir = logDir(userDir);
+      appendFileSync(
+        join(dir, 'main.jsonl'),
+        `\n${JSON.stringify({ ts: 1790000099000, dur: 1, type: 'llm_request', spanId: 'l9', attrs: { model: 'm', ...names } })}\n`,
+      );
+      for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);
+      return scanDebugLogs(input).results[0]?.log;
+    }
+
+    it('reads tool definition and system prompt sizes next to main.jsonl, and never their text', () => {
+      const log = withFiles(
+        {
+          'tools_0.json': JSON.stringify({
+            content: JSON.stringify([tool('read_file'), tool('grep_search')]),
+          }),
+          'system_prompt_0.json': JSON.stringify({ content: 'SECRET-system-prompt' }),
+        },
+        { toolsFile: 'tools_0.json', systemPromptFile: 'system_prompt_0.json' },
+      );
+      expect(log?.toolDefs?.map((def) => def.name)).toEqual(['read_file', 'grep_search']);
+      expect(log?.systemPromptChars).toBe('SECRET-system-prompt'.length);
+      expect(JSON.stringify(log)).not.toContain('SECRET');
+    });
+
+    it('leaves sizes null when the named files are missing or unreadable', () => {
+      const log = withFiles(
+        { 'tools_0.json': 'not json' },
+        { toolsFile: 'tools_0.json', systemPromptFile: 'system_prompt_9.json' },
+      );
+      expect(log?.toolDefs).toBeNull();
+      expect(log?.systemPromptChars).toBeNull();
+    });
+
+    it('ignores files larger than 5 MB', () => {
+      const log = withFiles(
+        { 'system_prompt_0.json': JSON.stringify({ content: 'x'.repeat(5 * 1024 * 1024 + 1) }) },
+        { systemPromptFile: 'system_prompt_0.json' },
+      );
+      expect(log?.systemPromptChars).toBeNull();
+    });
+  });
 });

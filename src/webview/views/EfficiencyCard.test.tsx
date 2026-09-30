@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import type { Efficiency } from '../../shared/dto';
 import { EfficiencyCard } from './EfficiencyCard';
 
-const efficiency = (overrides: Partial<Efficiency> = {}): Efficiency => ({ drivers: [], ...overrides });
+const efficiency = (overrides: Partial<Efficiency> = {}): Efficiency => ({
+  drivers: [],
+  findings: [],
+  ...overrides,
+});
 
 describe('EfficiencyCard', () => {
   it('lists each cost driver with its evidence and provenance', () => {
@@ -57,5 +61,34 @@ describe('EfficiencyCard', () => {
     );
     expect(screen.getByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
     expect(document.querySelector('img')).toBeNull();
+  });
+
+  it('lists context and model advice with its evidence and an inferred badge', () => {
+    render(
+      <EfficiencyCard
+        efficiency={efficiency({
+          findings: [
+            {
+              id: 'unused-tools',
+              message: 'Tools you do not use still cost tokens on every request.',
+              evidence: '31 of 47 tool definitions were never called',
+              provenance: { kind: 'inferred', source: 'characters ÷ 4' },
+            },
+          ],
+        })}
+      />,
+    );
+    const card = screen.getByRole('region', { name: 'Efficiency' });
+    expect(within(card).getByRole('heading', { name: 'Context and model advice' })).toBeInTheDocument();
+    expect(
+      within(card).getByText('Tools you do not use still cost tokens on every request.'),
+    ).toBeInTheDocument();
+    expect(within(card).getByText(/Evidence: 31 of 47 tool definitions/)).toBeInTheDocument();
+    expect(within(card).getByText('Inferred')).toBeInTheDocument();
+  });
+
+  it('omits the advice section when there is none', () => {
+    render(<EfficiencyCard efficiency={efficiency()} />);
+    expect(screen.queryByRole('heading', { name: 'Context and model advice' })).toBeNull();
   });
 });

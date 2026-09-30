@@ -1,9 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileFingerprint, safeReaddir } from '../ingest/scanner';
 import type { StorageRoot } from '../ingest/roots';
 import type { TombstoneKind } from '../ingest/types';
 import { parseDebugLog } from './parseDebugLog';
+import { parsePromptFileChars, parseToolDefs } from './promptFiles';
 import type { DebugSessionLog } from './types';
 
 export interface DebugFile {
@@ -72,11 +73,32 @@ export function scanDebugLogs(input: DebugScanInput): DebugScanOutput {
       continue;
     }
     try {
-      results.push({ file, fingerprint, log: parseDebugLog(sessionId, readFileSync(file, 'utf8')) });
+      const log = parseDebugLog(sessionId, readFileSync(file, 'utf8'));
+      attachPromptFileSizes(log, dirname(file));
+      results.push({ file, fingerprint, log });
       stats.parsed++;
     } catch (error) {
       stats.errors.push({ file, message: error instanceof Error ? error.message : String(error) });
     }
   }
   return { results, stats };
+}
+
+const MAX_PROMPT_FILE_BYTES = 5 * 1024 * 1024;
+
+/** Measures the tool and system-prompt files next to `main.jsonl`; only sizes and tool names are kept. */
+function attachPromptFileSizes(log: DebugSessionLog, dir: string): void {
+  const read = (name: string | null): string | null => {
+    if (name === null) return null;
+    try {
+      const path = join(dir, name);
+      return statSync(path).size > MAX_PROMPT_FILE_BYTES ? null : readFileSync(path, 'utf8');
+    } catch {
+      return null;
+    }
+  };
+  const tools = read(log.toolsFile);
+  log.toolDefs = tools === null ? null : parseToolDefs(tools);
+  const system = read(log.systemPromptFile);
+  log.systemPromptChars = system === null ? null : parsePromptFileChars(system);
 }

@@ -331,6 +331,11 @@ export class SessionStore {
     db.prepare(
       'DELETE FROM debug_sessions WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)',
     ).run(params);
+    for (const table of ['llm_tool_defs', 'llm_prompt_files']) {
+      db.prepare(`DELETE FROM ${table} WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)`).run(
+        params,
+      );
+    }
     for (const table of OBSERVATION_SESSION_TABLES) {
       db.prepare(`DELETE FROM ${table} WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)`).run(
         params,

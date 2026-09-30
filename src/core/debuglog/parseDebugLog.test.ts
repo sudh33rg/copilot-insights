@@ -73,4 +73,37 @@ describe('parseDebugLog', () => {
     expect(log.calls[0]?.model).toBe('m');
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
+
+  describe('prompt file names', () => {
+    const request = (span: string, attrs: Record<string, unknown>) =>
+      JSON.stringify({ ts: 1, dur: 1, type: 'llm_request', spanId: span, attrs: { model: 'm', ...attrs } });
+
+    it('records the tools and system prompt file names from the latest request that names them', () => {
+      const log = parseDebugLog(
+        's',
+        [
+          request('a', { toolsFile: 'tools_0.json', systemPromptFile: 'system_prompt_0.json' }),
+          request('b', { toolsFile: 'tools_1.json' }),
+          request('c', {}),
+        ].join('\n'),
+      );
+      expect(log.toolsFile).toBe('tools_1.json');
+      expect(log.systemPromptFile).toBe('system_prompt_0.json');
+    });
+
+    it('accepts only plain file names, so a log cannot point the reader at another path', () => {
+      const log = parseDebugLog(
+        's',
+        request('a', { toolsFile: '../../secrets/tools_0.json', systemPromptFile: '/etc/passwd' }),
+      );
+      expect(log.toolsFile).toBeNull();
+      expect(log.systemPromptFile).toBeNull();
+    });
+
+    it('starts with no sizes; the scanner fills them in', () => {
+      const log = parseDebugLog('s', request('a', {}));
+      expect(log.toolDefs).toBeNull();
+      expect(log.systemPromptChars).toBeNull();
+    });
+  });
 });

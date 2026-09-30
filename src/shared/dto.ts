@@ -156,8 +156,18 @@ export const costDriverSchema = z.object({
 });
 
 /** Why the session cost what it did and how to do better; estimates are `inferred` and never summed into totals. */
+export const findingSchema = z.object({
+  id: z.string(),
+  message: z.string(),
+  evidence: z.string(),
+  provenance: provenanceSchema,
+});
+export type FindingDto = z.infer<typeof findingSchema>;
+
 export const efficiencySchema = z.object({
   drivers: z.array(costDriverSchema),
+  /** Hedged advice about context and model choice, each with its evidence. */
+  findings: z.array(findingSchema),
 });
 export type Efficiency = z.infer<typeof efficiencySchema>;
 

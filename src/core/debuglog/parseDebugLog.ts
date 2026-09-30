@@ -4,6 +4,9 @@ import type { DebugSessionLog, LlmCall } from './types';
 
 const number = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
+/** A bare file name like `tools_0.json`; anything with a path separator is ignored (no path traversal). */
+const plainFileName = (value: unknown): string | null =>
+  typeof value === 'string' && /^[\w.-]+$/.test(value) && !value.startsWith('.') ? value : null;
 const text = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 
 /**
@@ -17,6 +20,10 @@ export function parseDebugLog(sessionId: string, content: string): DebugSessionL
     vscodeVersion: null,
     calls: [],
     badLines: 0,
+    toolsFile: null,
+    systemPromptFile: null,
+    toolDefs: null,
+    systemPromptChars: null,
   };
   const seen = new Set<string>();
   for (const line of content.split(/\r?\n/)) {
@@ -40,6 +47,8 @@ export function parseDebugLog(sessionId: string, content: string): DebugSessionL
     const startedAt = number(event.ts);
     if (spanId === null || startedAt === null || seen.has(spanId)) continue;
     seen.add(spanId);
+    log.toolsFile = plainFileName(attrs.toolsFile) ?? log.toolsFile;
+    log.systemPromptFile = plainFileName(attrs.systemPromptFile) ?? log.systemPromptFile;
     const debugName = text(attrs.debugName);
     const call: LlmCall = {
       sessionId,

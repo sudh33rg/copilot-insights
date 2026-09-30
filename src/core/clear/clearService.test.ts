@@ -104,6 +104,20 @@ describe('ClearService', () => {
     expect(calls()).toBe(0);
   });
 
+  it('removes a deleted session’s tool-definition and system-prompt sizes with it', () => {
+    const { clear, database } = setup();
+    database.db.exec(
+      "INSERT OR REPLACE INTO llm_tool_defs VALUES ('fx-auto-1', 'read_file', 10); INSERT OR REPLACE INTO llm_prompt_files VALUES ('fx-auto-1', 100, 10); INSERT OR REPLACE INTO llm_tool_defs VALUES ('fx-byok-1', 'x', 1); INSERT OR REPLACE INTO llm_prompt_files VALUES ('fx-byok-1', 1, 1)",
+    );
+    clear.clear({ kind: 'session', id: 'fx-auto-1' });
+    expect(database.db.prepare('SELECT session_id FROM llm_tool_defs').all()).toEqual([
+      { session_id: 'fx-byok-1' },
+    ]);
+    expect(database.db.prepare('SELECT session_id FROM llm_prompt_files').all()).toEqual([
+      { session_id: 'fx-byok-1' },
+    ]);
+  });
+
   describe('live observations', () => {
     const count = (database: ReturnType<typeof setup>['database'], table: string) =>
       (database.db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;

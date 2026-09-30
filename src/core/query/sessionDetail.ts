@@ -157,7 +157,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     ),
     analysis: null,
     outcomes: getSessionOutcomes(database, id),
-    efficiency: getSessionEfficiency(turns),
+    efficiency: getSessionEfficiency(database, turns, id),
     debug:
       callRows.length === 0
         ? null

@@ -104,7 +104,7 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
       warningsDelta: missing(),
       commits: [],
     },
-    efficiency: { drivers: [] },
+    efficiency: { drivers: [], findings: [] },
     analysis: {
       intent: {
         value: 'bugfix',

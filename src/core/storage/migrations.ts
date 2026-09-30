@@ -254,4 +254,19 @@ export const MIGRATIONS: readonly string[] = [
   -- The folder the session's workspace points at, to tell which git repositories belong to it.
   ALTER TABLE sessions ADD COLUMN workspace_path TEXT;
   `,
+  `
+  -- Sizes of the fixed prompt parts Copilot reported in its debug log. Names and character counts only; no text.
+  -- No foreign key to sessions: a debug log can exist without (or before) its session row.
+  CREATE TABLE llm_tool_defs (
+    session_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    chars INTEGER NOT NULL,
+    PRIMARY KEY (session_id, name)
+  );
+  CREATE TABLE llm_prompt_files (
+    session_id TEXT PRIMARY KEY,
+    system_prompt_chars INTEGER,
+    tool_defs_chars INTEGER
+  );
+  `,
 ];

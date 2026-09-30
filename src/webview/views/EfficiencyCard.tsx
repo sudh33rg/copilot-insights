@@ -18,6 +18,19 @@ export function EfficiencyCard({ efficiency }: { efficiency: Efficiency }) {
           ))}
         </ul>
       )}
+      {efficiency.findings.length > 0 && (
+        <>
+          <h4>Context and model advice</h4>
+          <ul className="findings">
+            {efficiency.findings.map((finding) => (
+              <li key={finding.id}>
+                <strong>{finding.message}</strong> <ProvenanceBadge provenance={finding.provenance} />
+                <div className="muted">Evidence: {finding.evidence}</div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }
