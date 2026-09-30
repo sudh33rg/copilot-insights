@@ -7,9 +7,11 @@ describe('InsightsQueries', () => {
     const queries = new InsightsQueries(seededStore().database);
     const { rows } = queries.listSessions({ offset: 0, limit: 10 });
     expect(rows.find((row) => row.id === 'fx-auto-1')?.outcome).toBe(
-      'Changed 2 files (1 edited, 1 created) — in execution, test.',
+      'Bug fix: changed 2 files (1 edited, 1 created), added 1 test file — in execution, test.',
     );
-    expect(rows.find((row) => row.id === 'fx-byok-1')?.outcome).toBe('No files changed, 1 of 1 turn failed.');
+    expect(rows.find((row) => row.id === 'fx-byok-1')?.outcome).toBe(
+      'Explanation: no files changed, 1 of 1 turn failed.',
+    );
   });
 
   it('adds the analysis to session detail and passes overview through', () => {

@@ -17,7 +17,9 @@ describe('AnalysisStore', () => {
     const store = new AnalysisStore(database);
     const first = store.get('fx-auto-1');
     expect(first?.intent.value).toBe('bugfix');
-    expect(first?.outcome.value).toBe('Changed 2 files (1 edited, 1 created) — in execution, test.');
+    expect(first?.outcome.value).toBe(
+      'Bug fix: changed 2 files (1 edited, 1 created), added 1 test file — in execution, test.',
+    );
     expect(cachedRows(database)).toBe(1);
     database.db.prepare("UPDATE session_analysis SET json = replace(json, 'bugfix', 'cached-marker')").run();
     expect(store.get('fx-auto-1')?.intent.value).toBe('cached-marker');

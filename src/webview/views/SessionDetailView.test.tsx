@@ -15,7 +15,7 @@ describe('SessionDetailView', () => {
     expect(screen.getByText(/alpha/)).toBeInTheDocument();
     const analysis = screen.getByRole('region', { name: 'Analysis' });
     expect(within(analysis).getByText('bugfix')).toBeInTheDocument();
-    expect(within(analysis).getByText(/Changed 2 files/)).toBeInTheDocument();
+    expect(within(analysis).getByText(/Bug fix: changed 2 files/)).toBeInTheDocument();
     expect(within(analysis).getAllByText('Inferred').length).toBeGreaterThan(0);
     expect(within(analysis).getAllByText('Derived').length).toBeGreaterThan(0);
     expect(within(analysis).getByText('Long sessions carry a growing context.')).toBeInTheDocument();

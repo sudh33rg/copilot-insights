@@ -26,6 +26,7 @@ export type Routing = z.infer<typeof routingSchema>;
 // ---- analysis (filled in by Task 2.3) ----
 export const analysisSchema = z.object({
   intent: measured(z.string()),
+  taskType: measured(z.string()),
   outcome: measured(z.string()),
   areas: measured(z.array(z.string())),
   complexity: measured(z.enum(['simple', 'moderate', 'complex'])),

@@ -54,27 +54,3 @@ function topAreas(paths: readonly string[]): string[] {
     .map(([area]) => area)
     .sort((a, b) => a.localeCompare(b));
 }
-
-const plural = (count: number, noun: string): string => `${String(count)} ${noun}${count === 1 ? '' : 's'}`;
-
-export function buildOutcome(summary: ChangeSummary, turns: readonly TurnDetail[]): string {
-  const parts: string[] = [];
-  const total = summary.changed.length;
-  if (total > 0) {
-    const detail = [
-      summary.edited > 0 ? `${String(summary.edited)} edited` : null,
-      summary.created > 0 ? `${String(summary.created)} created` : null,
-      summary.deleted > 0 ? `${String(summary.deleted)} deleted` : null,
-    ].filter((item): item is string => item !== null);
-    parts.push(`Changed ${plural(total, 'file')} (${detail.join(', ')})`);
-  } else {
-    parts.push('No files changed');
-  }
-  if (summary.commandCount > 0) parts.push(`ran ${plural(summary.commandCount, 'terminal command')}`);
-  if (summary.undone > 0) parts.push(`${plural(summary.undone, 'edit')} undone`);
-  const userTurns = turns.filter((turn) => !turn.systemInitiated);
-  const failed = userTurns.filter((turn) => turn.state === 'failed').length;
-  if (failed > 0) parts.push(`${String(failed)} of ${plural(userTurns.length, 'turn')} failed`);
-  const areas = summary.areas.length > 0 ? ` — in ${summary.areas.join(', ')}` : '';
-  return `${parts.join(', ')}${areas}.`;
-}

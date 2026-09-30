@@ -104,9 +104,16 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
         value: 'bugfix',
         provenance: { kind: 'inferred', source: 'keyword rules on the first user prompt' },
       },
+      taskType: {
+        value: 'bugfix',
+        provenance: { kind: 'inferred', source: 'prompt keyword: bugfix' },
+      },
       outcome: {
-        value: 'Changed 2 files (1 edited, 1 created) — in execution, test.',
-        provenance: { kind: 'derived', source: 'file events, terminal tool calls and turn state' },
+        value: 'Bug fix: changed 2 files (1 edited, 1 created), added 1 test file — in execution, test.',
+        provenance: {
+          kind: 'inferred',
+          source: 'file events, git snapshots, terminal runs, diagnostics and turn state',
+        },
       },
       areas: {
         value: ['execution', 'test'],

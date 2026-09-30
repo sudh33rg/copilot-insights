@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeTurn } from '../../../test/fixtures/turns';
-import { buildOutcome, summarizeChanges } from './changes';
+import { summarizeChanges } from './changes';
 
 const turns = [
   makeTurn({
@@ -51,21 +51,5 @@ describe('summarizeChanges', () => {
       makeTurn({ index: 1, fileEvents: [{ path: 'C:\\repo\\src\\a.ts', action: 'edited' }] }),
     ]);
     expect(summary.areas).toEqual(['src']);
-  });
-});
-
-describe('buildOutcome', () => {
-  it('summarizes changes, commands, undone edits and areas in one sentence', () => {
-    expect(buildOutcome(summarizeChanges(turns), turns)).toBe(
-      'Changed 3 files (1 edited, 1 created, 1 deleted), ran 1 terminal command, 1 edit undone — in docs, execution, test.',
-    );
-  });
-
-  it('reports failures from turn state and excludes system-initiated turns', () => {
-    const failed = [
-      makeTurn({ index: 1, state: 'failed' }),
-      makeTurn({ index: 2, state: 'cancelled', systemInitiated: true }),
-    ];
-    expect(buildOutcome(summarizeChanges(failed), failed)).toBe('No files changed, 1 of 1 turn failed.');
   });
 });

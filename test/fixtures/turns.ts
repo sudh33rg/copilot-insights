@@ -1,4 +1,4 @@
-import type { TurnDetail } from '../../src/shared/dto';
+import type { Outcomes, TurnDetail } from '../../src/shared/dto';
 import { exact, unavailable } from '../../src/shared/provenance';
 
 /** A minimal `TurnDetail` for analysis tests; override only what a test cares about. */
@@ -26,6 +26,28 @@ export function makeTurn(overrides: Partial<TurnDetail> & { index: number }): Tu
     fileEvents: [],
     errorCode: null,
     errorMessage: null,
+    ...overrides,
+  };
+}
+
+/** `Outcomes` with nothing observed; override only what a test cares about. */
+export function makeOutcomes(overrides: Partial<Outcomes> = {}): Outcomes {
+  const none = unavailable<number>('test');
+  return {
+    linesAdded: none,
+    linesRemoved: none,
+    editsKept: none,
+    editsUndone: none,
+    editsUserModified: none,
+    editKeepRate: none,
+    laterSurvival: none,
+    terminalRuns: none,
+    terminalFailures: none,
+    testRuns: none,
+    testFailures: none,
+    lastTestPassed: unavailable<boolean>('test'),
+    errorsDelta: none,
+    warningsDelta: none,
     ...overrides,
   };
 }
