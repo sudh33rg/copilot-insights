@@ -76,7 +76,8 @@ describe('BudgetCard', () => {
     const list = await screen.findByRole('list', { name: 'Workspace budgets' });
     const alpha = within(list).getByText('alpha').closest('li') as HTMLElement;
     expect(within(alpha).getByText('9')).toBeInTheDocument();
-    expect(within(alpha).getByText('Projected to exceed the budget')).toBeInTheDocument();
+    expect(within(alpha).getByText(/Projected to exceed the budget/)).toBeInTheDocument();
+    expect(alpha.textContent).toContain('credits — Projected to exceed the budget');
     const beta = within(list).getByText('beta').closest('li') as HTMLElement;
     expect(within(beta).getAllByText('—').length).toBeGreaterThan(0);
   });

@@ -36,14 +36,17 @@ export function EfficiencyCard({ efficiency }: { efficiency: Efficiency }) {
       {efficiency.drivers.length === 0 ? (
         <p className="muted">No cost drivers stood out for this session.</p>
       ) : (
-        <ul className="findings">
-          {efficiency.drivers.map((driver) => (
-            <li key={driver.id}>
-              <strong>{driver.title}</strong> <ProvenanceBadge provenance={driver.provenance} />
-              <div className="muted">{driver.evidence}</div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <h4>Cost drivers</h4>
+          <ul className="findings">
+            {efficiency.drivers.map((driver) => (
+              <li key={driver.id}>
+                <strong>{driver.title}</strong> <ProvenanceBadge provenance={driver.provenance} />
+                <div className="muted">{driver.evidence}</div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       {fresh !== null && (
         <p>

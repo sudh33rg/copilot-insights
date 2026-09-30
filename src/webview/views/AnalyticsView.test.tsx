@@ -36,6 +36,10 @@ describe('AnalyticsView', () => {
       name: 'Credits per day over the last 30 days; highest 2.5 credits on 2026-09-21.',
     });
     expect(chart.querySelectorAll('rect')).toHaveLength(2);
+    // The same sentence is visible for people who do not hover over the bars.
+    expect(
+      screen.getByText('Credits per day over the last 30 days; highest 2.5 credits on 2026-09-21.'),
+    ).toBeVisible();
   });
 
   it('lists the same days in a table with exact totals and unavailable values for empty days', async () => {

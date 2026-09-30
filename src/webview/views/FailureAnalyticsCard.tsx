@@ -5,8 +5,8 @@ import { DataTable, type Column } from '../ui/DataTable';
 import { formatInt, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
 
-const columns: readonly Column<FailureRow>[] = [
-  { id: 'group', header: 'Group', cell: (row) => row.label },
+const columns = (group: string): readonly Column<FailureRow>[] => [
+  { id: 'group', header: group, cell: (row) => row.label },
   { id: 'turns', header: 'Turns', align: 'end', cell: (row) => formatInt(row.turns) },
   { id: 'failed', header: 'Failed', align: 'end', cell: (row) => formatInt(row.failed) },
   {
@@ -46,23 +46,26 @@ export function FailureAnalyticsCard() {
       {empty && <p className="muted">No finished turns yet.</p>}
       {data && !empty && (
         <>
+          <h4>By model</h4>
           <DataTable
             caption="Failures by model"
-            columns={columns}
+            columns={columns('Model')}
             rows={data.byModel}
             rowKey={(row) => row.key}
             empty=""
           />
+          <h4>By provider</h4>
           <DataTable
             caption="Failures by provider"
-            columns={columns}
+            columns={columns('Provider')}
             rows={data.byProvider}
             rowKey={(row) => row.key}
             empty=""
           />
+          <h4>By mode</h4>
           <DataTable
             caption="Failures by mode"
-            columns={columns}
+            columns={columns('Mode')}
             rows={data.byMode}
             rowKey={(row) => row.key}
             empty=""

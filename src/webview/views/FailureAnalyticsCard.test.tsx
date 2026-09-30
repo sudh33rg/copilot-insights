@@ -29,6 +29,15 @@ describe('FailureAnalyticsCard', () => {
     expect(within(models).getByText('25%')).toBeInTheDocument();
     expect(within(models).getAllByText('Derived').length).toBeGreaterThan(0);
     expect(within(models).getAllByText('Exact').length).toBeGreaterThan(0);
+    expect(within(card).getByRole('heading', { name: 'By model' })).toBeInTheDocument();
+    expect(within(card).getByRole('heading', { name: 'By provider' })).toBeInTheDocument();
+    expect(within(card).getByRole('heading', { name: 'By mode' })).toBeInTheDocument();
+    expect(within(models).getByRole('columnheader', { name: 'Model' })).toBeInTheDocument();
+    expect(
+      within(within(card).getByRole('table', { name: 'Failures by provider' })).getByRole('columnheader', {
+        name: 'Provider',
+      }),
+    ).toBeInTheDocument();
     expect(within(card).getByRole('table', { name: 'Failures by provider' })).toBeInTheDocument();
     expect(within(card).getByRole('table', { name: 'Failures by mode' })).toBeInTheDocument();
   });

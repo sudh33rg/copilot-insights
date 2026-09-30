@@ -20,8 +20,8 @@ export function BudgetCard() {
   return <Budget budget={query.data} />;
 }
 
-function StatusText({ status }: { status: BudgetSummary['status'] }) {
-  return status.value === null ? null : <span>{STATUS_TEXT[status.value]}</span>;
+function StatusText({ status, dash = false }: { status: BudgetSummary['status']; dash?: boolean }) {
+  return status.value === null ? null : <span>{`${dash ? ' — ' : ''}${STATUS_TEXT[status.value]}`}</span>;
 }
 
 function Budget({ budget }: { budget: BudgetSummary }) {
@@ -58,7 +58,8 @@ function Budget({ budget }: { budget: BudgetSummary }) {
           {budget.workspaces.map((row) => (
             <li key={row.workspace}>
               <strong>{row.workspace}</strong>: <Measure measure={row.spent} format={credits} /> of{' '}
-              <Measure measure={row.budget} format={credits} /> credits <StatusText status={row.status} />
+              <Measure measure={row.budget} format={credits} /> credits
+              <StatusText status={row.status} dash />
             </li>
           ))}
         </ul>

@@ -36,6 +36,7 @@ describe('EfficiencyCard', () => {
     );
     const card = screen.getByRole('region', { name: 'Efficiency' });
     expect(within(card).getByRole('heading', { name: 'Why it cost what it did' })).toBeInTheDocument();
+    expect(within(card).getByRole('heading', { name: 'Cost drivers' })).toBeInTheDocument();
     expect(within(card).getByText('Context growth')).toBeInTheDocument();
     expect(within(card).getByText(/context grew 2.8×/)).toBeInTheDocument();
     expect(within(card).getByText('Derived')).toBeInTheDocument();
@@ -45,6 +46,7 @@ describe('EfficiencyCard', () => {
   it('says so when nothing stood out', () => {
     render(<EfficiencyCard efficiency={efficiency()} />);
     expect(screen.getByText('No cost drivers stood out for this session.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Cost drivers' })).toBeNull();
   });
 
   it('renders evidence as plain text, never as HTML', () => {

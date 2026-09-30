@@ -157,21 +157,24 @@ function CreditsChart({ days, range }: { days: readonly TrendDay[]; range: numbe
   const slot = width / days.length;
   const label = `Credits per day over the last ${String(range)} days; highest ${formatCredits(peak.value)} credits on ${peak.day}.`;
   return (
-    <svg className="chart" viewBox={`0 0 ${String(width)} ${String(height)}`} role="img" aria-label={label}>
-      {days.map((entry, index) =>
-        entry.credits.value === null ? null : (
-          <rect
-            key={entry.day}
-            x={index * slot + slot * 0.1}
-            width={slot * 0.8}
-            y={height - (peak.value > 0 ? (entry.credits.value / peak.value) * (height - 4) : 0) - 2}
-            height={peak.value > 0 ? (entry.credits.value / peak.value) * (height - 4) : 0}
-          >
-            <title>{`${entry.day}: ${formatCredits(entry.credits.value)} credits`}</title>
-          </rect>
-        ),
-      )}
-    </svg>
+    <>
+      <svg className="chart" viewBox={`0 0 ${String(width)} ${String(height)}`} role="img" aria-label={label}>
+        {days.map((entry, index) =>
+          entry.credits.value === null ? null : (
+            <rect
+              key={entry.day}
+              x={index * slot + slot * 0.1}
+              width={slot * 0.8}
+              y={height - (peak.value > 0 ? (entry.credits.value / peak.value) * (height - 4) : 0) - 2}
+              height={peak.value > 0 ? (entry.credits.value / peak.value) * (height - 4) : 0}
+            >
+              <title>{`${entry.day}: ${formatCredits(entry.credits.value)} credits`}</title>
+            </rect>
+          ),
+        )}
+      </svg>
+      <p className="muted">{label}</p>
+    </>
   );
 }
 

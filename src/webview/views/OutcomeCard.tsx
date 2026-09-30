@@ -37,81 +37,84 @@ const observedAnything = (outcomes: Outcomes): boolean =>
 
 /** What the session achieved, from evidence VS Code observed and Copilot reported. Missing evidence shows as —. */
 export function OutcomeCard({ outcomes }: { outcomes: Outcomes }) {
+  const observed = observedAnything(outcomes);
   return (
     <section className="card" aria-label="Outcome">
       <h3>Outcome</h3>
-      {!observedAnything(outcomes) && (
+      {!observed && (
         <p className="muted">Outcome evidence is collected only while VS Code is open with this extension.</p>
       )}
-      <dl className="facts">
-        <dt>Lines changed</dt>
-        <dd>
-          <Measure measure={outcomes.linesAdded} format={plus} />{' '}
-          <Measure measure={outcomes.linesRemoved} format={minus} />
-        </dd>
-        <dt>Edits kept</dt>
-        <dd>
-          <Measure measure={outcomes.editsKept} format={int} />
-        </dd>
-        <dt>Edits undone</dt>
-        <dd>
-          <Measure measure={outcomes.editsUndone} format={int} />
-        </dd>
-        <dt>Edits modified by you</dt>
-        <dd>
-          <Measure measure={outcomes.editsUserModified} format={int} />
-        </dd>
-        <dt>Keep rate</dt>
-        <dd>
-          <Measure measure={outcomes.editKeepRate} format={(value) => formatPercent(Number(value))} />
-        </dd>
-        <dt>Later survival</dt>
-        <dd>
-          <Measure measure={outcomes.laterSurvival} format={(value) => formatPercent(Number(value))} />
-        </dd>
-        <dt>Terminal runs</dt>
-        <dd>
-          <Measure measure={outcomes.terminalRuns} format={int} />
-        </dd>
-        <dt>Failed runs</dt>
-        <dd>
-          <Measure measure={outcomes.terminalFailures} format={int} />
-        </dd>
-        <dt>Test runs</dt>
-        <dd>
-          <Measure measure={outcomes.testRuns} format={int} />
-        </dd>
-        <dt>Last test run</dt>
-        <dd>
-          <Measure measure={testResult(outcomes)} />
-        </dd>
-        <dt>Diagnostics errors</dt>
-        <dd>
-          <Measure measure={outcomes.errorsDelta} format={signed} />
-        </dd>
-        <dt>Diagnostics warnings</dt>
-        <dd>
-          <Measure measure={outcomes.warningsDelta} format={signed} />
-        </dd>
-        <dt>Commits</dt>
-        <dd>
-          {outcomes.commits.length === 0 ? (
-            '—'
-          ) : (
-            <ul className="commits">
-              {outcomes.commits.map((commit) => (
-                <li key={commit.hash}>
-                  <code>{commit.hash.slice(0, 7)}</code>{' '}
-                  <Measure measure={commit.credits} format={(value) => formatCredits(Number(value))} />{' '}
-                  <span className="muted">
-                    {commit.overlapFiles} of {commit.editedFiles} edited files
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </dd>
-      </dl>
+      {observed && (
+        <dl className="facts">
+          <dt>Lines changed</dt>
+          <dd>
+            <Measure measure={outcomes.linesAdded} format={plus} />{' '}
+            <Measure measure={outcomes.linesRemoved} format={minus} />
+          </dd>
+          <dt>Edits kept</dt>
+          <dd>
+            <Measure measure={outcomes.editsKept} format={int} />
+          </dd>
+          <dt>Edits undone</dt>
+          <dd>
+            <Measure measure={outcomes.editsUndone} format={int} />
+          </dd>
+          <dt>Edits modified by you</dt>
+          <dd>
+            <Measure measure={outcomes.editsUserModified} format={int} />
+          </dd>
+          <dt>Keep rate</dt>
+          <dd>
+            <Measure measure={outcomes.editKeepRate} format={(value) => formatPercent(Number(value))} />
+          </dd>
+          <dt>Later survival</dt>
+          <dd>
+            <Measure measure={outcomes.laterSurvival} format={(value) => formatPercent(Number(value))} />
+          </dd>
+          <dt>Terminal runs</dt>
+          <dd>
+            <Measure measure={outcomes.terminalRuns} format={int} />
+          </dd>
+          <dt>Failed runs</dt>
+          <dd>
+            <Measure measure={outcomes.terminalFailures} format={int} />
+          </dd>
+          <dt>Test runs</dt>
+          <dd>
+            <Measure measure={outcomes.testRuns} format={int} />
+          </dd>
+          <dt>Last test run</dt>
+          <dd>
+            <Measure measure={testResult(outcomes)} />
+          </dd>
+          <dt>Diagnostics errors</dt>
+          <dd>
+            <Measure measure={outcomes.errorsDelta} format={signed} />
+          </dd>
+          <dt>Diagnostics warnings</dt>
+          <dd>
+            <Measure measure={outcomes.warningsDelta} format={signed} />
+          </dd>
+          <dt>Commits</dt>
+          <dd>
+            {outcomes.commits.length === 0 ? (
+              '—'
+            ) : (
+              <ul className="commits">
+                {outcomes.commits.map((commit) => (
+                  <li key={commit.hash}>
+                    <code>{commit.hash.slice(0, 7)}</code>{' '}
+                    <Measure measure={commit.credits} format={(value) => formatCredits(Number(value))} />{' '}
+                    <span className="muted">
+                      {commit.overlapFiles} of {commit.editedFiles} edited files
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </dd>
+        </dl>
+      )}
     </section>
   );
 }

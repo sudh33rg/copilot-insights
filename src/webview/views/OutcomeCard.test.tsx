@@ -103,15 +103,16 @@ describe('OutcomeCard', () => {
     expect(within(row(card, 'Last test run')).getByText('Failed')).toBeInTheDocument();
   });
 
-  it('shows placeholders, an explanation and no zeros when nothing was observed', () => {
+  it('shows only the explanation, and no zeros, when nothing was observed', () => {
     render(<OutcomeCard outcomes={none} />);
     const card = screen.getByRole('region', { name: 'Outcome' });
     expect(
       within(card).getByText('Outcome evidence is collected only while VS Code is open with this extension.'),
     ).toBeInTheDocument();
-    expect(within(card).getAllByText('—').length).toBeGreaterThan(5);
+    // One explanation instead of a wall of unavailable rows; and never a zero.
+    expect(within(card).queryByRole('term')).toBeNull();
+    expect(within(card).queryAllByText('Unavailable')).toHaveLength(0);
     expect(screen.queryByText('0')).toBeNull();
-    expect(within(card).getAllByText('Unavailable').length).toBeGreaterThan(5);
   });
 
   it('does not show the explanation when something was observed', () => {
