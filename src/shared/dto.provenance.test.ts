@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { githubUsageSchema, overviewSchema, sessionDetailSchema, sessionListSchema } from './dto';
+import {
+  githubUsageSchema,
+  overviewSchema,
+  sessionDetailSchema,
+  sessionListSchema,
+  survivalByModelRowSchema,
+} from './dto';
 
 interface Def {
   type: string;
@@ -68,6 +74,7 @@ const ALLOWED = {
     'today.turns',
   ],
   githubUsage: ['lastSyncedAt'],
+  survivalByModel: ['rows[].edits', 'rows[].sampleSize'],
 } as const;
 
 describe('provenance is enforced on every DTO', () => {
@@ -76,6 +83,7 @@ describe('provenance is enforced on every DTO', () => {
     ['session detail', sessionDetailSchema, ALLOWED.sessionDetail],
     ['overview', overviewSchema, ALLOWED.overview],
     ['github usage', githubUsageSchema, ALLOWED.githubUsage],
+    ['survival by model', z.object({ rows: z.array(survivalByModelRowSchema) }), ALLOWED.survivalByModel],
   ])('%s has no raw measurement numbers', (_name, schema, allowed) => {
     expect(unmeasured(schema)).toEqual([...allowed].sort());
   });

@@ -83,7 +83,15 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
     outputTokens: exactNumber(2600, 'chatSessions.completionTokens'),
     credits: exactNumber(1.626141, 'chatSessions.copilotCredits'),
     debug: { calls: 4, internalCalls: 1, unmatchedCalls: 1 },
-    outcomes: { linesAdded: missing(), linesRemoved: missing() },
+    outcomes: {
+      linesAdded: missing(),
+      linesRemoved: missing(),
+      editsKept: missing(),
+      editsUndone: missing(),
+      editsUserModified: missing(),
+      editKeepRate: missing(),
+      laterSurvival: missing(),
+    },
     analysis: {
       intent: {
         value: 'bugfix',

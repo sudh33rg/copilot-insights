@@ -32,6 +32,7 @@ import {
 import { IngestController } from './ingestController';
 import { VscodeGit } from './observers/gitAdapter';
 import { LiveObserver } from './observers/liveObserver';
+import { readWorkspaceFile } from './observers/readFile';
 import { DashboardPanel } from './webviewHost/dashboardPanel';
 import type { RpcHandlers } from './webviewHost/rpcHost';
 import { SidebarProvider } from './webviewHost/sidebarProvider';
@@ -68,6 +69,8 @@ export function activate(context: vscode.ExtensionContext): void {
     database,
     observations,
     git: new VscodeGit(),
+    readFile: readWorkspaceFile,
+    salt: () => state.getMeta(META.salt) ?? '',
     log: {
       warn: (message) => {
         log.warn(message);
@@ -128,6 +131,7 @@ export function activate(context: vscode.ExtensionContext): void {
     listSessions: (params) => queries.listSessions(params),
     getSession: ({ id }) => queries.getSession(id),
     getOverview: () => queries.getOverview(localDay()),
+    getSurvivalByModel: () => ({ rows: queries.getSurvivalByModel() }),
     clearData: ({ scope }) => confirmAndClear(dataDeps, scope),
     exportData: () => exportToFile(dataDeps),
     getGithubUsage: ({ days }) => {

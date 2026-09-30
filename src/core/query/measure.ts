@@ -43,3 +43,13 @@ const TURN_STATES: readonly TurnState[] = ['pending', 'complete', 'cancelled', '
 export function toTurnState(value: string | null): TurnState {
   return TURN_STATES.find((state) => state === value) ?? 'unknown';
 }
+
+export function groupBy<T, K>(rows: readonly T[], key: (row: T) => K): Map<K, T[]> {
+  const result = new Map<K, T[]>();
+  for (const row of rows) {
+    const group = result.get(key(row)) ?? [];
+    group.push(row);
+    result.set(key(row), group);
+  }
+  return result;
+}

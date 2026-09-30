@@ -1,9 +1,10 @@
-import type { Overview, SessionDetail, SessionList } from '../../shared/dto';
+import type { Overview, SessionDetail, SessionList, SurvivalByModelRow } from '../../shared/dto';
 import { AnalysisStore } from '../analysis/analysisStore';
 import type { Database } from '../storage/database';
 import { getOverview } from './overview';
 import { getSessionDetail } from './sessionDetail';
 import { listSessions, type SessionListQuery } from './sessionList';
+import { getSurvivalByModel } from './survivalByModel';
 
 /** What the extension exposes to the webview: raw queries plus cached analysis. */
 export class InsightsQueries {
@@ -28,5 +29,9 @@ export class InsightsQueries {
 
   getOverview(today: string): Overview {
     return getOverview(this.database, today);
+  }
+
+  getSurvivalByModel(): SurvivalByModelRow[] {
+    return getSurvivalByModel(this.database);
   }
 }

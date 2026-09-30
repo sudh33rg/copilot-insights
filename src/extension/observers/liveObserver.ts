@@ -1,32 +1,55 @@
 import type { Database } from '../../core/storage/database';
 import { LIVE_WINDOW_MS, shouldBaseline, takeSnapshot } from '../../core/git/snapshots';
 import type { GitPort } from '../../core/git/types';
+import { SurvivalChecker } from '../../core/outcomes/survival';
 import type { ObservationStore } from '../../core/storage/observationStore';
 
 export interface LiveObserverDeps {
   database: Database;
   observations: ObservationStore;
   git: GitPort;
+  /** File text, `null` when the file is gone; rejects when it exists but cannot be read. */
+  readFile(path: string): Promise<string | null>;
+  salt(): string;
   now?: () => number;
   log: { warn(message: string): void };
 }
 
 export class LiveObserver {
   private running = false;
-  constructor(private readonly deps: LiveObserverDeps) {}
+  private readonly survival: SurvivalChecker;
+
+  constructor(private readonly deps: LiveObserverDeps) {
+    this.survival = new SurvivalChecker({
+      database: deps.database,
+      observations: deps.observations,
+      git: deps.git,
+      readFile: (path) => deps.readFile(path),
+      salt: () => deps.salt(),
+      now: () => (deps.now ?? Date.now)(),
+    });
+  }
 
   /** Idempotent and re-entrancy safe; called after every sync and on a 60 s timer. */
   async tick(): Promise<void> {
     if (this.running) return;
     this.running = true;
     try {
-      await this.observeGit();
+      // Independent steps: one failing (say, git is unavailable) must not stop the others.
+      await this.step(() => this.observeGit());
+      await this.step(() => this.survival.run());
+    } finally {
+      this.running = false;
+    }
+  }
+
+  private async step(run: () => Promise<unknown>): Promise<void> {
+    try {
+      await run();
     } catch (error) {
       this.deps.log.warn(
         `Live observation failed: ${error instanceof Error ? error.message : String(error)}`,
       );
-    } finally {
-      this.running = false;
     }
   }
 

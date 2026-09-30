@@ -3,7 +3,7 @@ import { modelNameFromId } from '../ingest/chatSession';
 import { isCaptureLevel } from '../privacy/captureLevel';
 import type { Database } from '../storage/database';
 import { exact, unavailable } from '../../shared/provenance';
-import { known, SOURCES, summed, toTurnState } from './measure';
+import { groupBy, known, SOURCES, summed, toTurnState } from './measure';
 import { routingFor } from './routing';
 import { getSessionOutcomes } from './sessionOutcomes';
 
@@ -162,16 +162,6 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
           },
     turns,
   };
-}
-
-function groupBy<T>(rows: readonly T[], key: (row: T) => number): Map<number, T[]> {
-  const result = new Map<number, T[]>();
-  for (const row of rows) {
-    const group = result.get(key(row)) ?? [];
-    group.push(row);
-    result.set(key(row), group);
-  }
-  return result;
 }
 
 function countJsonArray(text: string): number {

@@ -41,6 +41,7 @@ const handlers: RpcHandlers = {
   }),
   listSessions: () => ({ rows: [], total: 0 }),
   getSession: () => null,
+  getSurvivalByModel: () => ({ rows: [] }),
   getOverview: () => {
     const none = { value: null, provenance: { kind: 'unavailable' as const, source: 'test' } };
     const period = {

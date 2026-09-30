@@ -102,6 +102,13 @@ export type TurnDetail = z.infer<typeof turnDetailSchema>;
 export const outcomesSchema = z.object({
   linesAdded: measuredNumber,
   linesRemoved: measuredNumber,
+  editsKept: measuredNumber,
+  editsUndone: measuredNumber,
+  editsUserModified: measuredNumber,
+  /** kept ÷ (kept + undone + user-modified) */
+  editKeepRate: measuredNumber,
+  /** Fraction (0–1) of Copilot's inserted lines still present at the latest check. */
+  laterSurvival: measuredNumber,
 });
 export type Outcomes = z.infer<typeof outcomesSchema>;
 
@@ -123,6 +130,17 @@ export const sessionDetailSchema = z.object({
   turns: z.array(turnDetailSchema),
 });
 export type SessionDetail = z.infer<typeof sessionDetailSchema>;
+
+export const survivalByModelRowSchema = z.object({
+  model: z.string(),
+  /** Keep/undo/user-modified events attributed to this model (the denominator of keepRate). */
+  edits: z.number(),
+  keepRate: measuredNumber,
+  laterSurvival: measuredNumber,
+  /** Edits (session, turn, file) that have a survival check behind laterSurvival. */
+  sampleSize: z.number(),
+});
+export type SurvivalByModelRow = z.infer<typeof survivalByModelRowSchema>;
 
 // ---- overview ----
 export const periodTotalsSchema = z.object({

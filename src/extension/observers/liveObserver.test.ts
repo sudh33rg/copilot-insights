@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seededStore } from '../../../test/fixtures/sessions';
 import type { GitPort, GitRepo } from '../../core/git/types';
+import { saltedHash } from '../../core/privacy/fingerprint';
 import { ObservationStore } from '../../core/storage/observationStore';
 import { LiveObserver } from './liveObserver';
 
@@ -32,6 +33,8 @@ function setup(ports: { repos: () => Promise<GitRepo[]> }) {
     database,
     observations,
     git,
+    readFile: () => Promise.resolve('const a = computeSomethingLong();\n'),
+    salt: () => 'salt',
     now: () => now,
     log: { warn: (message) => warnings.push(message) },
   });
@@ -107,5 +110,25 @@ describe('LiveObserver.tick', () => {
     release();
     await first;
     expect(calls).toBe(1);
+  });
+
+  it('runs survival checks on every tick, even when git observation fails', async () => {
+    const { observer, observations, database, advance } = setup({
+      repos: () => Promise.reject(new Error('git exploded')),
+    });
+    const hash = saltedHash('salt', 'const a = computeSomethingLong();');
+    database.db
+      .prepare('UPDATE turns SET ended_at = :t WHERE session_id = :id AND idx = 1')
+      .run({ t: NOW, id: 'fx-auto-1' });
+    database.db
+      .prepare(
+        "INSERT INTO edit_fingerprints (session_id, turn_idx, path, hashes) VALUES ('fx-auto-1', 1, '/repo/a.ts', :h)",
+      )
+      .run({ h: JSON.stringify([hash]) });
+    advance(2 * 3_600_000);
+    await observer.tick();
+    expect(observations.survivalChecks('fx-auto-1')).toEqual([
+      expect.objectContaining({ checkKind: '1h', present: 1, total: 1 }),
+    ]);
   });
 });
