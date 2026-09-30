@@ -1,10 +1,12 @@
 import type { CaptureLevel } from '../privacy/captureLevel';
+import { LlmCallStore } from '../storage/llmCallStore';
 import type { Database } from '../storage/database';
 import type { IngestStateStore } from '../storage/ingestStateStore';
 import type { SessionStore } from '../storage/sessionStore';
 import { localDay, retentionCutoff } from '../time';
 import type { StorageRoot } from './roots';
-import type { ScanInput, ScanOutput, ScanStats } from './scanner';
+import type { FullScanOutput } from './scanAll';
+import type { ScanInput, ScanStats } from './scanner';
 
 /** Bump when parsing or normalization changes so every source file is re-parsed on the next sync. */
 export const INGEST_VERSION = 1;
@@ -16,12 +18,12 @@ export const META = {
 } as const;
 
 export interface IngestDeps {
-  database: Pick<Database, 'transaction'>;
+  database: Database;
   sessions: SessionStore;
   state: IngestStateStore;
   lock: { tryAcquire(): boolean };
   resolveRoots(): StorageRoot[];
-  runScan(input: ScanInput): Promise<ScanOutput>;
+  runScan(input: ScanInput): Promise<FullScanOutput>;
   captureLevel(): CaptureLevel;
   retentionDays(): number;
   onChanged(): void;
@@ -38,7 +40,11 @@ export class IngestService {
   private queue: Promise<unknown> = Promise.resolve();
   private lastSeenChange: string | null = null;
 
-  constructor(private readonly deps: IngestDeps) {}
+  private readonly llmCalls: LlmCallStore;
+
+  constructor(private readonly deps: IngestDeps) {
+    this.llmCalls = new LlmCallStore(deps.database);
+  }
 
   /** Concurrent non-forced calls share one run; a forced call always runs after whatever is in flight. */
   sync(options: { force?: boolean } = {}): Promise<SyncResult> {
@@ -105,12 +111,19 @@ export class IngestService {
         }
         state.setFingerprint(result.file, result.fingerprint, result.session?.id ?? null, now);
       }
+      for (const debug of output.debug.results) {
+        if (debug.log !== null) {
+          this.llmCalls.replaceSession(debug.log, debug.file, now);
+          written++;
+        }
+        state.setFingerprint(debug.file, debug.fingerprint, debug.log?.sessionId ?? null, now);
+      }
       if (cutoff !== null) purged = sessions.purgeBefore(cutoff);
       state.setMeta(META.ingestVersion, String(INGEST_VERSION));
       state.setMeta(META.lastSyncAt, String(now));
       if (written > 0 || purged > 0) state.setMeta(META.lastChangeAt, String(now));
     });
-    for (const error of output.stats.errors.slice(0, 5))
+    for (const error of [...output.stats.errors, ...output.debug.stats.errors].slice(0, 5))
       log.warn(`Could not parse ${error.file}: ${error.message}`);
     if (written > 0 || purged > 0) {
       this.lastSeenChange = String(now);

@@ -94,4 +94,12 @@ describe('ClearService', () => {
       (database.db.prepare('SELECT count(*) AS n FROM github_daily_usage').get() as { n: number }).n,
     ).toBe(0);
   });
+
+  it('removes a deleted session’s debug-log telemetry with it', () => {
+    const { clear, database } = setup();
+    const calls = () => (database.db.prepare('SELECT count(*) AS n FROM llm_calls').get() as { n: number }).n;
+    expect(calls()).toBe(4);
+    clear.clear({ kind: 'session', id: 'fx-auto-1' });
+    expect(calls()).toBe(0);
+  });
 });

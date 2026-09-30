@@ -779,20 +779,19 @@ Append to `src/core/ingest/ingestService.test.ts` (inside the describe; reuse th
 for `createFixtureUserDir` + `IngestService` — read it to see the helper's name and shape):
 
 ```ts
-it('stores telemetry from debug logs, keeps no content, and removes it with the session', async () => {
-  const harness = /* the file's existing service-construction helper */ setup();
-  await harness.service.sync();
-  const calls = () =>
-    (harness.database.db.prepare('SELECT count(*) AS n FROM llm_calls').get() as { n: number }).n;
-  expect(calls()).toBe(4);
-  expect(JSON.stringify(harness.database.db.prepare('SELECT * FROM llm_calls').all())).not.toContain(
-    'SECRET',
-  );
-  harness.database.db.exec("UPDATE sessions SET day = '2000-01-01'");
-  await harness.service.sync({ force: true });
-  // Retention (30 days by default in this harness) purges the session and its calls together.
-  expect(harness.sessions.counts().sessions).toBe(0);
-  expect(calls()).toBe(0);
+it('stores telemetry from debug logs and keeps no conversation content', async () => {
+  const { service, database } = setup();
+  await service.sync();
+  const calls = database.db.prepare('SELECT * FROM llm_calls').all();
+  expect(calls).toHaveLength(4);
+  expect(JSON.stringify(calls)).not.toContain('SECRET');
+});
+
+it('purges debug-log calls together with their session at the retention cutoff', async () => {
+  const { service, database, sessions } = setup({ retentionDays: 1, now: 1_800_000_000_000 });
+  await service.sync();
+  expect(sessions.counts().sessions).toBe(0);
+  expect((database.db.prepare('SELECT count(*) AS n FROM llm_calls').get() as { n: number }).n).toBe(0);
 });
 ```
 

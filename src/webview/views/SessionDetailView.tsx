@@ -89,6 +89,12 @@ function Detail({ session }: { session: SessionDetail }) {
           <Measure measure={session.credits} format={(value) => formatCredits(Number(value))} />
         </dd>
       </dl>
+      {session.debug === null && (
+        <p className="muted">
+          Agent debug logging is off for this session, so cached tokens, per-call latency and usage are not
+          available. Run “Copilot Insights: Enable Exact Telemetry…” to turn it on for future sessions.
+        </p>
+      )}
       {session.analysis && <AnalysisCard analysis={session.analysis} />}
       <h3>Timeline</h3>
       {session.turns.map((turn) => (
@@ -188,6 +194,22 @@ function TurnCard({ turn }: { turn: TurnDetail }) {
           <Measure measure={turn.credits} format={(value) => formatCredits(Number(value))} />
         </dd>
       </dl>
+      {[turn.cachedTokens, turn.ttftMs, turn.nanoAiu].some((measure) => measure.value !== null) && (
+        <dl className="facts facts--row" aria-label="Exact telemetry">
+          <dt>Cached</dt>
+          <dd>
+            <Measure measure={turn.cachedTokens} format={(value) => formatInt(Number(value))} />
+          </dd>
+          <dt>First token</dt>
+          <dd>
+            <Measure measure={turn.ttftMs} format={(value) => formatDuration(Number(value))} />
+          </dd>
+          <dt>Usage (nano-AIU)</dt>
+          <dd>
+            <Measure measure={turn.nanoAiu} format={(value) => formatInt(Number(value))} />
+          </dd>
+        </dl>
+      )}
       {extras.length > 0 && <p className="muted">{extras.join(' · ')}</p>}
       {turn.toolCalls.length > 0 && (
         <ul className="chips" aria-label="Tool calls">

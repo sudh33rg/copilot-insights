@@ -51,6 +51,9 @@ export function turnDetail(overrides: Partial<TurnDetail> = {}): TurnDetail {
     inputTokens: exactNumber(24000, 'chatSessions.promptTokens'),
     outputTokens: exactNumber(1700, 'chatSessions.completionTokens'),
     credits: exactNumber(1.126141, 'chatSessions.copilotCredits'),
+    cachedTokens: exactNumber(18000, 'agent debug log'),
+    ttftMs: exactNumber(2100, 'agent debug log'),
+    nanoAiu: exactNumber(1126141000, 'agent debug log'),
     reasoningMs: 4200,
     toolRounds: 2,
     compactions: 1,
@@ -78,6 +81,7 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
     inputTokens: exactNumber(54000, 'chatSessions.promptTokens'),
     outputTokens: exactNumber(2600, 'chatSessions.completionTokens'),
     credits: exactNumber(1.626141, 'chatSessions.copilotCredits'),
+    debug: { calls: 4, internalCalls: 1, unmatchedCalls: 1 },
     analysis: {
       intent: {
         value: 'bugfix',
@@ -111,6 +115,9 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
         inputTokens: exactNumber(30000),
         outputTokens: exactNumber(900),
         credits: exactNumber(0.5),
+        cachedTokens: missing('agent debug log'),
+        ttftMs: missing('agent debug log'),
+        nanoAiu: missing('agent debug log'),
         toolCalls: [{ name: 'create_file', status: 'complete' }],
         fileEvents: [{ path: '/repo/test/manager.test.ts', action: 'created' }],
         compactions: 0,

@@ -6,6 +6,10 @@ export const SOURCES = {
   inputTokens: 'chatSessions.promptTokens',
   outputTokens: 'chatSessions.completionTokens',
   credits: 'chatSessions.copilotCredits',
+  cachedTokens: 'agent debug log: llm_request.cachedTokens',
+  ttftMs: 'agent debug log: llm_request.ttft',
+  nanoAiu: 'agent debug log: llm_request.copilotUsageNanoAiu',
+  noDebugLog: 'agent debug log has no request for this turn',
 } as const;
 
 /**

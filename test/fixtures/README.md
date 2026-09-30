@@ -9,3 +9,5 @@ changes, add a new fixture that reproduces the change instead of copying a real 
 - `chatSessions/byok-failed-session.jsonl` — bring-your-own-key model, failed turn, system-initiated turn,
   unknown response part kind and request key, and one invalid request entry.
 - `chatSessions/empty-session.jsonl` — a chat that was opened but never used.
+
+Debug-log fixtures (`debugLogs/`) contain `SECRET-*` sentinels in every content field; tests assert they never reach storage.

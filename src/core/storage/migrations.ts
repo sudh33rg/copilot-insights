@@ -118,4 +118,34 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (day, account)
   );
   `,
+  `
+  CREATE TABLE llm_calls (
+    session_id TEXT NOT NULL,
+    span_id TEXT NOT NULL,
+    response_id TEXT,
+    started_at INTEGER NOT NULL,
+    duration_ms INTEGER,
+    model TEXT,
+    debug_name TEXT,
+    role TEXT NOT NULL,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    cached_tokens INTEGER,
+    ttft_ms INTEGER,
+    nano_aiu INTEGER,
+    PRIMARY KEY (session_id, span_id)
+  );
+  CREATE INDEX idx_llm_calls_response ON llm_calls(response_id);
+  CREATE INDEX idx_llm_calls_started ON llm_calls(started_at);
+
+  CREATE TABLE debug_sessions (
+    session_id TEXT PRIMARY KEY,
+    copilot_version TEXT,
+    vscode_version TEXT,
+    file TEXT NOT NULL,
+    calls INTEGER NOT NULL,
+    bad_lines INTEGER NOT NULL DEFAULT 0,
+    ingested_at INTEGER NOT NULL
+  );
+  `,
 ];

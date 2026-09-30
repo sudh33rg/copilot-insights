@@ -154,7 +154,7 @@ function sessionFileNames(dir: string): string[] {
     .sort();
 }
 
-function safeReaddir(dir: string): string[] {
+export function safeReaddir(dir: string): string[] {
   try {
     return readdirSync(dir);
   } catch {
@@ -162,7 +162,7 @@ function safeReaddir(dir: string): string[] {
   }
 }
 
-function fileFingerprint(file: string): string | null {
+export function fileFingerprint(file: string): string | null {
   try {
     const stat = statSync(file);
     return `${stat.size}:${Math.floor(stat.mtimeMs)}`;

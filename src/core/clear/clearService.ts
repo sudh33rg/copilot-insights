@@ -1,5 +1,6 @@
 import type { ClearScope } from '../../shared/dto';
 import type { Database } from '../storage/database';
+import { LlmCallStore } from '../storage/llmCallStore';
 import type { IngestStateStore } from '../storage/ingestStateStore';
 import type { SessionStore } from '../storage/sessionStore';
 
@@ -31,6 +32,7 @@ export class ClearService {
       if (deletesSessions(scope)) {
         this.state.addTombstones(ids, 'deleted', this.now());
         this.sessions.deleteSessions(ids);
+        new LlmCallStore(this.database).deleteSessions(ids);
         if (scope.kind === 'everything') this.database.db.exec('DELETE FROM github_daily_usage');
       } else {
         this.state.addTombstones(ids, 'content-cleared', this.now());

@@ -2,6 +2,7 @@ import type { SessionDetail, TurnDetail } from '../../shared/dto';
 import { modelNameFromId } from '../ingest/chatSession';
 import { isCaptureLevel } from '../privacy/captureLevel';
 import type { Database } from '../storage/database';
+import { unavailable } from '../../shared/provenance';
 import { known, SOURCES, summed, toTurnState } from './measure';
 import { routingFor } from './routing';
 
@@ -18,6 +19,7 @@ interface SessionHeader {
 
 interface TurnRow {
   idx: number;
+  response_id: string | null;
   started_at: number | null;
   state: string;
   system_initiated: number;
@@ -48,7 +50,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
   if (header === undefined) return null;
   const turnRows = db
     .prepare(
-      `SELECT idx, started_at, state, system_initiated, mode, user_text, assistant_text, requested_model,
+      `SELECT idx, response_id, started_at, state, system_initiated, mode, user_text, assistant_text, requested_model,
               resolved_model, selection_mode, model_host, prompt_tokens, completion_tokens, credits,
               reasoning_ms, tool_rounds, compactions, error_code, error_message
          FROM turns WHERE session_id = :id ORDER BY idx`,
@@ -67,8 +69,26 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     (row) => row.turn_idx,
   );
 
+  const callRows = db
+    .prepare(
+      'SELECT response_id, role, cached_tokens, ttft_ms, nano_aiu FROM llm_calls WHERE session_id = :id',
+    )
+    .all({ id }) as unknown as {
+    response_id: string | null;
+    role: string;
+    cached_tokens: number | null;
+    ttft_ms: number | null;
+    nano_aiu: number | null;
+  }[];
+  const byResponse = new Map(
+    callRows.flatMap((call) => (call.response_id === null ? [] : [[call.response_id, call] as const])),
+  );
+  const matchedResponses = new Set<string>();
+
   const turns = turnRows.map((row): TurnDetail => {
     const model = row.resolved_model ?? row.requested_model;
+    const call = row.response_id === null ? undefined : byResponse.get(row.response_id);
+    if (call !== undefined && row.response_id !== null) matchedResponses.add(row.response_id);
     return {
       index: row.idx,
       startedAt: row.started_at,
@@ -83,6 +103,9 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       inputTokens: known(row.prompt_tokens, SOURCES.inputTokens),
       outputTokens: known(row.completion_tokens, SOURCES.outputTokens),
       credits: known(row.credits, SOURCES.credits),
+      cachedTokens: call ? known(call.cached_tokens, SOURCES.cachedTokens) : unavailable(SOURCES.noDebugLog),
+      ttftMs: call ? known(call.ttft_ms, SOURCES.ttftMs) : unavailable(SOURCES.noDebugLog),
+      nanoAiu: call ? known(call.nano_aiu, SOURCES.nanoAiu) : unavailable(SOURCES.noDebugLog),
       reasoningMs: row.reasoning_ms,
       toolRounds: row.tool_rounds,
       compactions: countJsonArray(row.compactions),
@@ -119,6 +142,18 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       turnRows.filter((row) => row.model_host !== 'byok').length,
     ),
     analysis: null,
+    debug:
+      callRows.length === 0
+        ? null
+        : {
+            calls: callRows.length,
+            internalCalls: callRows.filter((call) => call.role === 'COPILOT_INTERNAL').length,
+            unmatchedCalls: callRows.filter(
+              (call) =>
+                call.role !== 'COPILOT_INTERNAL' &&
+                (call.response_id === null || !matchedResponses.has(call.response_id)),
+            ).length,
+          },
     turns,
   };
 }

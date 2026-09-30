@@ -1,5 +1,6 @@
 import { Worker } from 'node:worker_threads';
-import { scanChatSessions, type ScanInput, type ScanOutput } from './scanner';
+import { scanAll, type FullScanOutput } from './scanAll';
+import type { ScanInput } from './scanner';
 
 export interface RunScanOptions {
   /** Path to the bundled dist/scanWorker.js. When omitted the scan runs in-process (unit tests). */
@@ -7,16 +8,16 @@ export interface RunScanOptions {
   timeoutMs?: number;
 }
 
-type WorkerReply = { ok: true; value: ScanOutput } | { ok: false; error: string };
+type WorkerReply = { ok: true; value: FullScanOutput } | { ok: false; error: string };
 
-export function runScan(input: ScanInput, options: RunScanOptions = {}): Promise<ScanOutput> {
+export function runScan(input: ScanInput, options: RunScanOptions = {}): Promise<FullScanOutput> {
   const { workerFile, timeoutMs = 120_000 } = options;
   if (workerFile === undefined) {
     return new Promise((resolve) => {
-      resolve(scanChatSessions(input));
+      resolve(scanAll(input));
     });
   }
-  return new Promise<ScanOutput>((resolve, reject) => {
+  return new Promise<FullScanOutput>((resolve, reject) => {
     const worker = new Worker(workerFile, { workerData: input });
     const timer = setTimeout(() => {
       void worker.terminate();

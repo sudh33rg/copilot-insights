@@ -31,6 +31,7 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
     now: () => options.now ?? 1_790_500_000_000,
   });
   return {
+    database,
     service,
     sessions,
     state,
@@ -107,5 +108,23 @@ describe('IngestService', () => {
     await service.changeCaptureLevel('metrics');
     expect(sessions.getSession('fx-auto-1')?.turns[0]?.userText).toBeNull();
     expect(sessions.getSession('fx-auto-1')?.captureLevel).toBe('metrics');
+  });
+
+  it('stores telemetry from debug logs and keeps no conversation content', async () => {
+    const { service, database } = setup();
+    await service.sync();
+    const calls = database.db.prepare('SELECT * FROM llm_calls').all();
+    expect(calls).toHaveLength(4);
+    expect(JSON.stringify(calls)).not.toContain('SECRET');
+  });
+
+  it('purges debug-log calls together with their session at the retention cutoff', async () => {
+    const { service, database, sessions } = setup({ retentionDays: 1, now: 1_800_000_000_000 });
+    await service.sync();
+    expect(sessions.counts().sessions).toBe(0);
+    expect((database.db.prepare('SELECT count(*) AS n FROM llm_calls').get() as { n: number }).n).toBe(0);
+    expect((database.db.prepare('SELECT count(*) AS n FROM debug_sessions').get() as { n: number }).n).toBe(
+      0,
+    );
   });
 });

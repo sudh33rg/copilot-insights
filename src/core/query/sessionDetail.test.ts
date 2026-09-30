@@ -59,4 +59,26 @@ describe('getSessionDetail', () => {
     expect(detail?.turns.every((turn) => turn.userText === null && turn.assistantText === null)).toBe(true);
     expect(detail?.turns[0]?.inputTokens.value).toBe(24000);
   });
+
+  it('joins debug-log telemetry to turns by responseId, exact and only when matched', () => {
+    const detail = getSessionDetail(seededStore().database, 'fx-auto-1');
+    const [first, second] = detail?.turns ?? [];
+    expect(first?.cachedTokens).toEqual({
+      value: 18000,
+      provenance: { kind: 'exact', source: 'agent debug log: llm_request.cachedTokens' },
+    });
+    expect(first?.ttftMs.value).toBe(2100);
+    expect(first?.nanoAiu.value).toBe(1126141000);
+    expect(second?.cachedTokens.value).toBe(25000);
+    expect(detail?.debug).toEqual({ calls: 4, internalCalls: 1, unmatchedCalls: 1 });
+  });
+
+  it('marks telemetry unavailable, with the reason, when there is no matching log', () => {
+    const detail = getSessionDetail(seededStore().database, 'fx-byok-1');
+    expect(detail?.debug).toBeNull();
+    expect(detail?.turns[0]?.cachedTokens).toEqual({
+      value: null,
+      provenance: { kind: 'unavailable', source: 'agent debug log has no request for this turn' },
+    });
+  });
 });

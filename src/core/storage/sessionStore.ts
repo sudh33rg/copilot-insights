@@ -304,7 +304,15 @@ export class SessionStore {
 
   /** Deletes sessions whose day is before `day`; returns how many were removed. */
   purgeBefore(day: string): number {
-    return Number(this.database.db.prepare('DELETE FROM sessions WHERE day < :day').run({ day }).changes);
+    const params = { day };
+    const { db } = this.database;
+    db.prepare('DELETE FROM llm_calls WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)').run(
+      params,
+    );
+    db.prepare(
+      'DELETE FROM debug_sessions WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)',
+    ).run(params);
+    return Number(db.prepare('DELETE FROM sessions WHERE day < :day').run(params).changes);
   }
 
   counts(): { sessions: number; turns: number } {

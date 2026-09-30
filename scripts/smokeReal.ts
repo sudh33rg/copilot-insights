@@ -7,6 +7,7 @@ import { defaultUserDir, resolveStorageRoots } from '../src/core/ingest/roots';
 import { listChatSessionFiles } from '../src/core/ingest/scanner';
 import { isRecord } from '../src/core/json';
 import type { NormalizedSession } from '../src/core/ingest/types';
+import { scanDebugLogs } from '../src/core/debuglog/scanner';
 import { checkQueryLayer } from './smokeQueries';
 
 const product = process.env.VSCODE_PRODUCT ?? 'Code';
@@ -118,4 +119,48 @@ if (accounted !== totals.requests) {
   for (const failure of failures) console.error(`FAIL: ${failure}`);
   if (failures.length > 0) process.exitCode = 1;
   else console.log('OK: query layer matches parsed totals.');
+  reportDebugLogs();
+}
+
+/** Aggregates only: counts and Copilot's own debugName identifiers, never any log content. */
+function reportDebugLogs(): void {
+  const debug = scanDebugLogs({ roots, known: {}, tombstones: {} });
+  const calls = debug.results.flatMap((result) => result.log?.calls ?? []);
+  const responseIds = new Set(
+    normalized.flatMap((session) =>
+      session.turns.flatMap((turn) => (turn.responseId === null ? [] : [turn.responseId])),
+    ),
+  );
+  const byRole: Record<string, number> = {};
+  const unknownNames: Record<string, number> = {};
+  for (const call of calls) {
+    bump(byRole, call.role);
+    if (call.role === 'UNKNOWN') bump(unknownNames, call.debugName ?? '(unnamed)');
+  }
+  const badLines = debug.results.reduce((sum, result) => sum + (result.log?.badLines ?? 0), 0);
+  console.log(
+    JSON.stringify(
+      {
+        debugLogs: {
+          files: debug.stats.files,
+          parsed: debug.stats.parsed,
+          errors: debug.stats.errors.length,
+          badLines,
+          calls: calls.length,
+          byRole,
+          unknownDebugNames: unknownNames,
+          joinedToTurns: calls.filter((call) => call.responseId !== null && responseIds.has(call.responseId))
+            .length,
+        },
+      },
+      null,
+      2,
+    ),
+  );
+  if (debug.stats.errors.length > 0) {
+    console.error('FAIL: some debug logs could not be parsed.');
+    process.exitCode = 1;
+  } else {
+    console.log(`OK: debug logs parsed (${String(calls.length)} calls, none of their content kept).`);
+  }
 }

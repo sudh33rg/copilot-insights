@@ -1,11 +1,14 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { parseDebugLog } from '../../src/core/debuglog/parseDebugLog';
 import { normalizeChatSession } from '../../src/core/ingest/chatSession';
 import { replayMutationLog } from '../../src/core/ingest/mutationLog';
 import type { NormalizedSession } from '../../src/core/ingest/types';
 import { applyCaptureLevel, type CaptureLevel } from '../../src/core/privacy/captureLevel';
 import { Database } from '../../src/core/storage/database';
+import { LlmCallStore } from '../../src/core/storage/llmCallStore';
 import { SessionStore } from '../../src/core/storage/sessionStore';
-import { fixturePath } from './fixtures';
+import { DEBUG_LOG_FIXTURES, fixturePath } from './fixtures';
 
 export function loadFixtureSession(
   name: string,
@@ -40,5 +43,10 @@ export function seededStore(level: CaptureLevel = 'full') {
   const sessions = new SessionStore(database);
   sessions.replaceSession(loadFixtureSession('auto-agent-session.jsonl', 'alpha', level), level, 1);
   sessions.replaceSession(loadFixtureSession('byok-failed-session.jsonl', 'beta', level), level, 1);
+  new LlmCallStore(database).replaceSession(
+    parseDebugLog('fx-auto-1', readFileSync(join(DEBUG_LOG_FIXTURES, 'fx-auto-1', 'main.jsonl'), 'utf8')),
+    'fixture',
+    1,
+  );
   return { database, sessions };
 }

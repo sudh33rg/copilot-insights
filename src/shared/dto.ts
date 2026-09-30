@@ -86,6 +86,9 @@ export const turnDetailSchema = z.object({
   inputTokens: measuredNumber,
   outputTokens: measuredNumber,
   credits: measuredNumber,
+  cachedTokens: measuredNumber,
+  ttftMs: measuredNumber,
+  nanoAiu: measuredNumber,
   reasoningMs: z.number(),
   toolRounds: z.number(),
   compactions: z.number(),
@@ -109,6 +112,7 @@ export const sessionDetailSchema = z.object({
   outputTokens: measuredNumber,
   credits: measuredNumber,
   analysis: analysisSchema.nullable(),
+  debug: z.object({ calls: z.number(), internalCalls: z.number(), unmatchedCalls: z.number() }).nullable(),
   turns: z.array(turnDetailSchema),
 });
 export type SessionDetail = z.infer<typeof sessionDetailSchema>;

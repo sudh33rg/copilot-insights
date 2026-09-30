@@ -120,4 +120,25 @@ describe('SessionDetailView', () => {
     });
     expect(onBack).not.toHaveBeenCalled();
   });
+
+  it('shows exact debug-log telemetry when a turn has it and a hint when the session has none', async () => {
+    view({ getSession: sessionDetail() });
+    const first = await screen.findByRole('article', { name: 'Turn 1' });
+    expect(within(first).getByText('18,000')).toBeInTheDocument();
+    expect(within(first).getByText('2.1 s')).toBeInTheDocument();
+    expect(within(first).getByText('1,126,141,000')).toBeInTheDocument();
+    expect(screen.queryByText(/Agent debug logging is off/)).not.toBeInTheDocument();
+  });
+
+  it('explains how to get exact telemetry when the session has no debug log', async () => {
+    view({
+      getSession: sessionDetail({
+        debug: null,
+        turns: [turnDetail({ cachedTokens: missing('x'), ttftMs: missing('x'), nanoAiu: missing('x') })],
+      }),
+    });
+    expect(await screen.findByText(/Agent debug logging is off/)).toBeInTheDocument();
+    const turn = screen.getByRole('article', { name: 'Turn 1' });
+    expect(within(turn).queryByText('Cached')).not.toBeInTheDocument();
+  });
 });
