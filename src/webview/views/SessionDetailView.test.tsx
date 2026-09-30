@@ -49,6 +49,33 @@ describe('SessionDetailView', () => {
     expect(within(outcome).getByText(/collected only while VS Code is open/)).toBeInTheDocument();
   });
 
+  it('shows how the session compares with your own baseline, and nothing without one', async () => {
+    const detail = sessionDetail();
+    const { unmount } = view({
+      getSession: {
+        ...detail,
+        baseline: {
+          taskType: 'bugfix',
+          model: 'gpt-5.6-luna',
+          sessions: 12,
+          verdict: { value: 'high', provenance: { kind: 'inferred', source: 'rule' } },
+          median: { value: 48_000, provenance: { kind: 'derived', source: 's' } },
+          typicalLow: { value: 40_000, provenance: { kind: 'derived', source: 's' } },
+          typicalHigh: { value: 60_000, provenance: { kind: 'derived', source: 's' } },
+          thisSession: { value: 210_000, provenance: { kind: 'derived', source: 's' } },
+          message:
+            'Your bugfix sessions on gpt-5.6-luna normally use 40,000–60,000 input tokens. This one used 210,000.',
+        },
+      },
+    });
+    expect(await screen.findByText(/normally use 40,000–60,000 input tokens/)).toBeInTheDocument();
+    expect(screen.getAllByText('Inferred').length).toBeGreaterThan(0);
+    unmount();
+    view({ getSession: detail });
+    await screen.findByRole('heading', { name: 'Fix run timeout race' });
+    expect(screen.queryByText(/normally use/)).toBeNull();
+  });
+
   it('renders a timeline of turns with model, tokens, credits, tools and files', async () => {
     view({ getSession: sessionDetail() });
     const first = await screen.findByRole('article', { name: 'Turn 1' });

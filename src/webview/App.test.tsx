@@ -83,4 +83,10 @@ describe('App', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Diagnostics' }));
     expect(await screen.findByRole('region', { name: 'Environment' })).toBeInTheDocument();
   });
+
+  it('has a Learning tab', async () => {
+    renderDashboard({ getIndexStatus: status(), getBaselines: { rows: [], outliers: [] } });
+    await userEvent.click(await screen.findByRole('button', { name: 'Learning' }));
+    expect(await screen.findByRole('region', { name: 'Learning' })).toBeInTheDocument();
+  });
 });

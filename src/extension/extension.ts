@@ -137,6 +137,7 @@ export function activate(context: vscode.ExtensionContext): void {
     getSurvivalByModel: () => ({ rows: queries.getSurvivalByModel() }),
     getCommitCosts: () => ({ rows: queries.getCommitCosts() }),
     getFailureAnalytics: () => queries.getFailureAnalytics(),
+    getBaselines: () => queries.getBaselines(),
     clearData: ({ scope }) => confirmAndClear(dataDeps, scope),
     exportData: () => exportToFile(dataDeps),
     getGithubUsage: ({ days }) => {

@@ -91,6 +91,11 @@ function Detail({ session }: { session: SessionDetail }) {
           <Measure measure={session.credits} format={(value) => formatCredits(Number(value))} />
         </dd>
       </dl>
+      {session.baseline !== null && (
+        <p className="muted">
+          {session.baseline.message} <ProvenanceBadge provenance={session.baseline.verdict.provenance} />
+        </p>
+      )}
       {session.debug === null && (
         <p className="muted">
           Agent debug logging is off for this session, so cached tokens, per-call latency and usage are not

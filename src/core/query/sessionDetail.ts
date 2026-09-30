@@ -159,6 +159,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     analysis: null,
     outcomes,
     efficiency: getSessionEfficiency(database, turns, id, outcomes),
+    baseline: null,
     debug:
       callRows.length === 0
         ? null

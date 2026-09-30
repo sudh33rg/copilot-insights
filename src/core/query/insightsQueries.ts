@@ -1,4 +1,5 @@
 import type {
+  Baselines,
   CommitCostRow,
   FailureAnalytics,
   Overview,
@@ -8,9 +9,11 @@ import type {
 } from '../../shared/dto';
 import { AnalysisStore } from '../analysis/analysisStore';
 import type { Database } from '../storage/database';
+import { getBaselines, sessionBaseline } from './baselineQueries';
 import { getCommitCosts } from './commitCosts';
 import { getFailureAnalytics } from './failureAnalytics';
 import { getOverview } from './overview';
+import { SessionFactsStore } from './sessionFactsStore';
 import { getSessionDetail } from './sessionDetail';
 import { listSessions, type SessionListQuery } from './sessionList';
 import { getSurvivalByModel } from './survivalByModel';
@@ -18,9 +21,11 @@ import { getSurvivalByModel } from './survivalByModel';
 /** What the extension exposes to the webview: raw queries plus cached analysis. */
 export class InsightsQueries {
   private readonly analysis: AnalysisStore;
+  private readonly facts: SessionFactsStore;
 
   constructor(private readonly database: Database) {
     this.analysis = new AnalysisStore(database);
+    this.facts = new SessionFactsStore(database);
   }
 
   listSessions(query: SessionListQuery): SessionList {
@@ -33,7 +38,16 @@ export class InsightsQueries {
 
   getSession(id: string): SessionDetail | null {
     const detail = getSessionDetail(this.database, id);
-    return detail === null ? null : { ...detail, analysis: this.analysis.forDetail(detail) };
+    if (detail === null) return null;
+    return {
+      ...detail,
+      analysis: this.analysis.forDetail(detail),
+      baseline: sessionBaseline(this.facts.all(), id),
+    };
+  }
+
+  getBaselines(): Baselines {
+    return getBaselines(this.database, this.facts.all());
   }
 
   getOverview(today: string): Overview {

@@ -192,6 +192,47 @@ export const efficiencySchema = z.object({
 });
 export type Efficiency = z.infer<typeof efficiencySchema>;
 
+export const baselineSchema = z.object({
+  taskType: z.string(),
+  model: z.string(),
+  /** How many of your other sessions the comparison rests on. */
+  sessions: z.number(),
+  verdict: measured(z.enum(['typical', 'high', 'low'])),
+  median: measuredNumber,
+  typicalLow: measuredNumber,
+  typicalHigh: measuredNumber,
+  thisSession: measuredNumber,
+  message: z.string(),
+});
+export type Baseline = z.infer<typeof baselineSchema>;
+
+export const baselineRowSchema = z.object({
+  taskType: z.string(),
+  model: z.string(),
+  sessions: z.number(),
+  inputMedian: measuredNumber,
+  creditsMedian: measuredNumber,
+  /** Copilot sessions with exact credits behind `creditsMedian`. */
+  creditSessions: z.number(),
+});
+export type BaselineRowDto = z.infer<typeof baselineRowSchema>;
+
+export const baselinesSchema = z.object({
+  rows: z.array(baselineRowSchema),
+  outliers: z.array(
+    z.object({
+      sessionId: z.string(),
+      title: z.string().nullable(),
+      taskType: z.string(),
+      model: z.string(),
+      verdict: measured(z.enum(['typical', 'high', 'low'])),
+      thisSession: measuredNumber,
+      median: measuredNumber,
+    }),
+  ),
+});
+export type Baselines = z.infer<typeof baselinesSchema>;
+
 export const sessionDetailSchema = z.object({
   id: z.string(),
   workspace: z.string(),
@@ -207,6 +248,8 @@ export const sessionDetailSchema = z.object({
   analysis: analysisSchema.nullable(),
   outcomes: outcomesSchema,
   efficiency: efficiencySchema,
+  /** How this session compares with your own history; set by the query layer, null without enough history. */
+  baseline: baselineSchema.nullable(),
   debug: z.object({ calls: z.number(), internalCalls: z.number(), unmatchedCalls: z.number() }).nullable(),
   turns: z.array(turnDetailSchema),
 });
