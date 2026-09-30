@@ -91,6 +91,11 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
       editsUserModified: missing(),
       editKeepRate: missing(),
       laterSurvival: missing(),
+      terminalRuns: missing(),
+      terminalFailures: missing(),
+      testRuns: missing(),
+      testFailures: missing(),
+      lastTestPassed: { value: null, provenance: { kind: 'unavailable', source: 'test' } },
     },
     analysis: {
       intent: {

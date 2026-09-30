@@ -6,7 +6,7 @@ import { GithubClient } from '../core/github/client';
 import { syncGithubUsage } from '../core/github/usage';
 import { GithubUsageStore } from '../core/github/usageStore';
 import { indexStatus } from '../core/ingest/indexStatus';
-import { IngestService, META } from '../core/ingest/ingestService';
+import { IngestService, META, getOrCreateSalt } from '../core/ingest/ingestService';
 import { resolveStorageRoots, userDirsFromGlobalStorage } from '../core/ingest/roots';
 import { runScan } from '../core/ingest/runScan';
 import { WriterLock } from '../core/ingest/writerLock';
@@ -33,6 +33,7 @@ import { IngestController } from './ingestController';
 import { VscodeGit } from './observers/gitAdapter';
 import { LiveObserver } from './observers/liveObserver';
 import { readWorkspaceFile } from './observers/readFile';
+import { registerTerminalObserver } from './observers/terminalObserver';
 import { DashboardPanel } from './webviewHost/dashboardPanel';
 import type { RpcHandlers } from './webviewHost/rpcHost';
 import { SidebarProvider } from './webviewHost/sidebarProvider';
@@ -70,7 +71,7 @@ export function activate(context: vscode.ExtensionContext): void {
     observations,
     git: new VscodeGit(),
     readFile: readWorkspaceFile,
-    salt: () => state.getMeta(META.salt) ?? '',
+    salt: () => getOrCreateSalt(state),
     log: {
       warn: (message) => {
         log.warn(message);
@@ -177,6 +178,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     dataChanged,
+    registerTerminalObserver(observations, () => getOrCreateSalt(state)),
     dashboard,
     sidebar,
     dataChanged.event(() => {

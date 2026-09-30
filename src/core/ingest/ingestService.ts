@@ -21,6 +21,15 @@ export const META = {
   salt: 'privacy.salt',
 } as const;
 
+/** Random per install, created on first use, never leaves the machine; removed by "clear everything". */
+export function getOrCreateSalt(state: IngestStateStore): string {
+  const existing = state.getMeta(META.salt);
+  if (existing !== null) return existing;
+  const created = newSalt();
+  state.setMeta(META.salt, created);
+  return created;
+}
+
 export interface IngestDeps {
   database: Database;
   sessions: SessionStore;
@@ -90,16 +99,6 @@ export class IngestService {
     return this.sync({ force: true });
   }
 
-  /** Random per install, created on first use, never leaves the machine; removed by "clear everything". */
-  private salt(): string {
-    const { state } = this.deps;
-    const existing = state.getMeta(META.salt);
-    if (existing !== null) return existing;
-    const created = newSalt();
-    state.setMeta(META.salt, created);
-    return created;
-  }
-
   private async run(force: boolean): Promise<SyncResult> {
     const { sessions, state, log } = this.deps;
     if (!this.deps.lock.tryAcquire()) {
@@ -116,7 +115,7 @@ export class IngestService {
       known: reparseAll ? {} : state.getFingerprints(),
       captureLevel: this.deps.captureLevel(),
       tombstones: state.getTombstones(),
-      salt: this.salt(),
+      salt: getOrCreateSalt(state),
     });
     const now = this.deps.now?.() ?? Date.now();
     const cutoff = retentionCutoff(this.deps.retentionDays(), localDay(now));

@@ -5,7 +5,7 @@ import { CatalogStore } from '../storage/catalogStore';
 import { Database } from '../storage/database';
 import { IngestStateStore } from '../storage/ingestStateStore';
 import { SessionStore } from '../storage/sessionStore';
-import { IngestService, META } from './ingestService';
+import { IngestService, META, getOrCreateSalt } from './ingestService';
 import { resolveStorageRoots } from './roots';
 import { runScan } from './runScan';
 import type { ScanInput } from './scanner';
@@ -66,6 +66,14 @@ describe('IngestService', () => {
     expect(salt).toMatch(/^[0-9a-f]{32}$/);
     await service.sync({ force: true });
     expect(state.getMeta(META.salt)).toBe(salt);
+  });
+
+  it('getOrCreateSalt is stable once created', () => {
+    const { state } = setup();
+    const first = getOrCreateSalt(state);
+    expect(first).toMatch(/^[0-9a-f]{32}$/);
+    expect(getOrCreateSalt(state)).toBe(first);
+    expect(state.getMeta(META.salt)).toBe(first);
   });
 
   it('passes the stored salt to every scan', async () => {

@@ -1,7 +1,9 @@
 import type { Outcomes } from '../../shared/dto';
 import { derived, exact, unavailable, type Measured } from '../../shared/provenance';
 import { diffSnapshots } from '../git/snapshots';
+import { TERMINAL_TOOL } from '../ingest/toolNames';
 import { attributeEditOutcomes } from '../outcomes/editOutcomes';
+import { matchTerminalRuns, SLACK_AFTER_MS, SYSTEM_LEAD_MS, type MatchTurn } from '../outcomes/terminalMatch';
 import type { Database } from '../storage/database';
 import { ObservationReader, type StoredSnapshot, type SurvivalCheck } from '../storage/observationStore';
 
@@ -18,6 +20,7 @@ export function getSessionOutcomes(database: Pick<Database, 'db'>, id: string): 
     linesRemoved: lineCount(lines, 'removed'),
     ...edits,
     laterSurvival: laterSurvival(observations.survivalChecks(id)),
+    ...terminalOutcomes(database, observations, id),
   };
 }
 
@@ -96,4 +99,92 @@ function linesChanged(start: readonly StoredSnapshot[], latest: readonly StoredS
       ? 'HEAD changed during the session; see linked commits'
       : 'no repository was observed at both the start and the latest check',
   };
+}
+
+type TerminalOutcomes = Pick<
+  Outcomes,
+  'terminalRuns' | 'terminalFailures' | 'testRuns' | 'testFailures' | 'lastTestPassed'
+>;
+
+function terminalOutcomes(
+  database: Pick<Database, 'db'>,
+  observations: ObservationReader,
+  id: string,
+): TerminalOutcomes {
+  const turns = matchTurns(database, id);
+  const starts = turns.flatMap((turn) => (turn.startedAt === null ? [] : [turn.startedAt]));
+  const ends = turns.flatMap((turn) => (turn.endedAt === null ? [] : [turn.endedAt]));
+  const runs =
+    starts.length === 0 || ends.length === 0
+      ? []
+      : observations.terminalRunsBetween(
+          Math.min(...starts) - SYSTEM_LEAD_MS,
+          Math.max(...ends) + SLACK_AFTER_MS,
+        );
+  const { matched, terminalCallCount } = matchTerminalRuns(turns, runs);
+
+  if (terminalCallCount === 0 && matched.length === 0)
+    return allTerminal(unavailable('no terminal activity observed'));
+  if (matched.length === 0) {
+    return allTerminal(
+      unavailable('terminal exit codes are only recorded while VS Code is open with shell integration'),
+    );
+  }
+  const partial = matched.length < terminalCallCount;
+  const source = `terminal runs observed by VS Code shell integration and matched to this session; a run without an exit code counts as a run, never as a failure${
+    partial
+      ? ` (lower bound: ${String(matched.length)} of ${String(terminalCallCount)} terminal tool calls were observed)`
+      : ''
+  }`;
+  const failed = (run: { exitCode: number | null }) => run.exitCode !== null && run.exitCode !== 0;
+  const all = matched.map((entry) => entry.run);
+  const tests = all.filter((run) => run.kind === 'test');
+  const lastKnownTest = [...tests].reverse().find((run) => run.exitCode !== null);
+  return {
+    terminalRuns: derived(all.length, source),
+    terminalFailures: derived(all.filter(failed).length, source),
+    testRuns: derived(tests.length, source),
+    testFailures: derived(tests.filter(failed).length, source),
+    lastTestPassed:
+      lastKnownTest === undefined
+        ? unavailable('no test run with a known exit code was observed')
+        : derived(lastKnownTest.exitCode === 0, source),
+  };
+}
+
+function allTerminal(none: Measured<never>): TerminalOutcomes {
+  return {
+    terminalRuns: none,
+    terminalFailures: none,
+    testRuns: none,
+    testFailures: none,
+    lastTestPassed: none,
+  };
+}
+
+function matchTurns(database: Pick<Database, 'db'>, id: string): MatchTurn[] {
+  const turns = database.db
+    .prepare(
+      'SELECT idx, started_at, ended_at, system_initiated FROM turns WHERE session_id = :id ORDER BY idx',
+    )
+    .all({ id }) as unknown as {
+    idx: number;
+    started_at: number | null;
+    ended_at: number | null;
+    system_initiated: number;
+  }[];
+  const calls = database.db
+    .prepare(
+      'SELECT turn_idx, name, command_hash FROM tool_calls WHERE session_id = :id ORDER BY turn_idx, seq',
+    )
+    .all({ id }) as unknown as { turn_idx: number; name: string; command_hash: string | null }[];
+  return turns.map((turn) => ({
+    index: turn.idx,
+    startedAt: turn.started_at,
+    endedAt: turn.ended_at,
+    systemInitiated: turn.system_initiated === 1,
+    terminalCalls: calls
+      .filter((call) => call.turn_idx === turn.idx && TERMINAL_TOOL.test(call.name))
+      .map((call) => ({ commandHash: call.command_hash })),
+  }));
 }

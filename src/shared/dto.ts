@@ -109,6 +109,12 @@ export const outcomesSchema = z.object({
   editKeepRate: measuredNumber,
   /** Fraction (0–1) of Copilot's inserted lines still present at the latest check. */
   laterSurvival: measuredNumber,
+  terminalRuns: measuredNumber,
+  terminalFailures: measuredNumber,
+  testRuns: measuredNumber,
+  testFailures: measuredNumber,
+  /** Whether the last test run with a known exit code passed. */
+  lastTestPassed: measured(z.boolean()),
 });
 export type Outcomes = z.infer<typeof outcomesSchema>;
 
