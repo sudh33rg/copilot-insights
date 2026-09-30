@@ -1,0 +1,7 @@
+dist/
+out/
+coverage/
+.vscode-test/
+.superpowers/
+pnpm-lock.yaml
+test/fixtures/

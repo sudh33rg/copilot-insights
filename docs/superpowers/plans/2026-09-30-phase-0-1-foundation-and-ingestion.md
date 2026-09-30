@@ -114,12 +114,14 @@ test/integration/                    tests that run inside VS Code
 ## Task 0.1: Toolchain, skeleton, and provenance types
 
 **Files:**
+
 - Restore from git history: `LICENSE`, `media/icon.svg` (the only non-code assets worth keeping)
 - Create: `package.json`, `.gitignore`, `.vscodeignore`, `.vscode/launch.json`, `pnpm-workspace.yaml`, `.vscode/tasks.json`, `tsconfig.json`, `esbuild.mjs`, `vitest.config.mjs`, `eslint.config.mjs`,
   `.prettierrc.json`, `.prettierignore`, `src/extension/extension.ts`, `src/shared/provenance.ts`,
   `src/shared/provenance.test.ts`
 
 **Interfaces:**
+
 - Produces: `ProvenanceKind`, `Provenance`, `Measured<T>`, `exact`, `derived`, `inferred`, `unavailable`,
   `weakest(...kinds)`, `sumMeasured(items, source)` from `src/shared/provenance.ts`.
 
@@ -431,7 +433,10 @@ describe('provenance', () => {
     expect(exact(5, 'a')).toEqual({ value: 5, provenance: { kind: 'exact', source: 'a' } });
     expect(derived(1, 'rule').provenance.kind).toBe('derived');
     expect(inferred('x', 'rule').provenance.kind).toBe('inferred');
-    expect(unavailable('no data')).toEqual({ value: null, provenance: { kind: 'unavailable', source: 'no data' } });
+    expect(unavailable('no data')).toEqual({
+      value: null,
+      provenance: { kind: 'unavailable', source: 'no data' },
+    });
   });
 
   it('weakest picks the least trustworthy kind', () => {
@@ -483,7 +488,10 @@ export interface Measured<T> {
   readonly provenance: Provenance;
 }
 
-export const exact = <T>(value: T, source: string): Measured<T> => ({ value, provenance: { kind: 'exact', source } });
+export const exact = <T>(value: T, source: string): Measured<T> => ({
+  value,
+  provenance: { kind: 'exact', source },
+});
 export const derived = <T>(value: T, source: string): Measured<T> => ({
   value,
   provenance: { kind: 'derived', source },
@@ -559,11 +567,13 @@ git commit -m "chore: set up TypeScript toolchain and provenance types"
 ## Task 0.2: Integration test harness and CI
 
 **Files:**
+
 - Create: `.vscode-test.mjs`, `test/integration/tsconfig.json`, `test/integration/activation.test.ts`,
   `.github/workflows/ci.yml`
 - Modify: `package.json` (scripts), `tsconfig.json` is unchanged (it already excludes `test/integration`)
 
 **Interfaces:**
+
 - Produces: `pnpm test:integration`; integration tests are bundled to `out/integration/*.test.js`.
 
 - [ ] **Step 1: Install the harness**
@@ -701,6 +711,7 @@ git commit -m "test: add VS Code integration harness (stable + 1.105 floor) and 
 ## Task 0.3: React webview shell with typed RPC
 
 **Files:**
+
 - Create: `src/shared/protocol.ts`, `src/shared/protocol.test.ts`, `src/extension/webviewHost/webviewHtml.ts`,
   `src/extension/webviewHost/webviewHtml.test.ts`, `src/extension/webviewHost/rpcHost.ts`,
   `src/extension/webviewHost/rpcHost.test.ts`, `src/extension/webviewHost/attachWebview.ts`,
@@ -712,6 +723,7 @@ git commit -m "test: add VS Code integration harness (stable + 1.105 floor) and 
 - Modify: `package.json`, `vitest.config.mjs`, `eslint.config.mjs`, `src/extension/extension.ts`
 
 **Interfaces:**
+
 - Produces (`src/shared/protocol.ts`): `rpcSchemas` (method → `{ params, result }` zod schemas), `RpcMethod`,
   `RpcParams<M>`, `RpcResult<M>`, `webviewToHost` (zod), `HostEvent`, `HostToWebview`, `isRpcMethod(name)`.
 - Produces (`src/extension/webviewHost/rpcHost.ts`): `RpcHandlers`, `WebviewLike`,
@@ -799,7 +811,9 @@ export default defineConfig({
         entryFileNames: 'main.js',
         chunkFileNames: 'chunk-[hash].js',
         assetFileNames: (asset) =>
-          (asset.names ?? []).some((name) => name.endsWith('.css')) ? 'main.css' : 'assets/[name]-[hash][extname]',
+          (asset.names ?? []).some((name) => name.endsWith('.css'))
+            ? 'main.css'
+            : 'assets/[name]-[hash][extname]',
       },
     },
   },
@@ -944,7 +958,12 @@ export type RpcParams<M extends RpcMethod> = z.infer<(typeof rpcSchemas)[M]['par
 export type RpcResult<M extends RpcMethod> = z.infer<(typeof rpcSchemas)[M]['result']>;
 
 export const webviewToHost = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('rpc'), id: z.number().int().nonnegative(), method: z.string(), params: z.unknown() }),
+  z.object({
+    kind: z.literal('rpc'),
+    id: z.number().int().nonnegative(),
+    method: z.string(),
+    params: z.unknown(),
+  }),
   z.object({ kind: z.literal('ready') }),
 ]);
 export type WebviewToHost = z.infer<typeof webviewToHost>;
@@ -990,7 +1009,9 @@ describe('renderWebviewHtml', () => {
   });
 
   it('loads the bundle with the nonce and marks the view', () => {
-    expect(html).toContain('<script type="module" nonce="N0NCE" src="vscode-webview://abc/main.js"></script>');
+    expect(html).toContain(
+      '<script type="module" nonce="N0NCE" src="vscode-webview://abc/main.js"></script>',
+    );
     expect(html).toContain('<div id="root" data-view="sidebar"></div>');
     expect(html).toContain('<title>Copilot &lt;Insights&gt;</title>');
   });
@@ -1048,7 +1069,13 @@ export function createNonce(): string {
   return randomBytes(16).toString('base64');
 }
 
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
@@ -1098,7 +1125,9 @@ describe('RpcHost', () => {
     const fake = fakeWebview();
     new RpcHost(fake.webview, handlers);
     await fake.send({ kind: 'rpc', id: 4, method: 'ping', params: {} });
-    expect(fake.posted).toEqual([{ kind: 'rpc-result', id: 4, ok: true, result: { version: '1.2.3', now: 7 } }]);
+    expect(fake.posted).toEqual([
+      { kind: 'rpc-result', id: 4, ok: true, result: { version: '1.2.3', now: 7 } },
+    ]);
   });
 
   it('rejects unknown methods and invalid params', async () => {
@@ -1595,9 +1624,14 @@ export class DashboardPanel implements vscode.Disposable {
       this.panel.reveal(vscode.ViewColumn.One);
       return;
     }
-    const panel = vscode.window.createWebviewPanel('copilotInsights.dashboard', 'Copilot Insights', vscode.ViewColumn.One, {
-      enableScripts: true,
-    });
+    const panel = vscode.window.createWebviewPanel(
+      'copilotInsights.dashboard',
+      'Copilot Insights',
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+      },
+    );
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'icon.svg');
     this.rpc = attachWebview(panel.webview, this.extensionUri, 'dashboard', this.handlers, this.log);
     panel.onDidDispose(() => {
@@ -1728,9 +1762,11 @@ git commit -m "feat: add React webview shell with CSP and zod-validated RPC"
 ## Task 1.1: Time utilities
 
 **Files:**
+
 - Create: `src/core/time.ts`, `src/core/time.test.ts`
 
 **Interfaces:**
+
 - Produces: `localDay(ms?: number): string`, `daysAgo(day: string, count: number): string`,
   `retentionCutoff(retentionDays: number, today: string): string | null`.
 
@@ -1819,9 +1855,11 @@ git commit -m "feat(core): add local-day and retention utilities"
 ## Task 1.2: Mutation-log replayer
 
 **Files:**
+
 - Create: `src/core/json.ts`, `src/core/ingest/mutationLog.ts`, `src/core/ingest/mutationLog.test.ts`
 
 **Interfaces:**
+
 - Produces (`src/core/json.ts`): `isRecord(value: unknown): value is Record<string, unknown>` (plain objects,
   not arrays).
 - Produces (`mutationLog.ts`): `applyMutation(state: unknown, entry: unknown): unknown`,
@@ -1848,7 +1886,12 @@ describe('replayMutationLog', () => {
         { kind: 1, k: ['inputState', 'inputText'], v: 'draft' },
       ),
     );
-    expect(state).toEqual({ sessionId: 's1', requests: [], customTitle: 'Title', inputState: { inputText: 'draft' } });
+    expect(state).toEqual({
+      sessionId: 's1',
+      requests: [],
+      customTitle: 'Title',
+      inputState: { inputText: 'draft' },
+    });
   });
 
   it('appends with kind 2 and truncates to i before appending', () => {
@@ -1907,7 +1950,9 @@ describe('replayMutationLog', () => {
 
   it('handles very large appends without spreading arguments', () => {
     const big = Array.from({ length: 200_000 }, (_, index) => index);
-    const { state } = replayMutationLog(lines({ kind: 0, v: { list: [] } }, { kind: 2, k: ['list'], v: big }));
+    const { state } = replayMutationLog(
+      lines({ kind: 0, v: { list: [] } }, { kind: 2, k: ['list'], v: big }),
+    );
     expect((state as { list: number[] }).list).toHaveLength(200_000);
   });
 });
@@ -2056,7 +2101,12 @@ function appendItems(parent: Container, key: PathKey, items: unknown, truncateTo
   const current = parent[key];
   const array: unknown[] = Array.isArray(current) ? current : [];
   parent[key] = array;
-  if (typeof truncateTo === 'number' && Number.isInteger(truncateTo) && truncateTo >= 0 && truncateTo < array.length) {
+  if (
+    typeof truncateTo === 'number' &&
+    Number.isInteger(truncateTo) &&
+    truncateTo >= 0 &&
+    truncateTo < array.length
+  ) {
     array.length = truncateTo;
   }
   // Push one by one: spreading a 100k-item array into push() overflows the call stack.
@@ -2086,18 +2136,20 @@ git commit -m "feat(ingest): replay VS Code chat-session mutation logs safely"
 ## Task 1.3: Synthetic fixtures and the chat-session normalizer
 
 **Files:**
+
 - Create: `test/fixtures/README.md`, `test/fixtures/fixtures.ts`,
   `test/fixtures/chatSessions/auto-agent-session.jsonl`, `test/fixtures/chatSessions/byok-failed-session.jsonl`,
   `test/fixtures/chatSessions/empty-session.jsonl`, `src/core/ingest/types.ts`,
   `src/core/ingest/chatSessionSchema.ts`, `src/core/ingest/chatSession.ts`, `src/core/ingest/chatSession.test.ts`
 
 **Interfaces:**
+
 - Consumes: `replayMutationLog` (Task 1.2), `isRecord` (Task 1.2).
 - Produces (`types.ts`): `TurnState`, `SelectionMode`, `SelectionSource`, `ModelHost`, `FileAction`,
   `TombstoneKind = 'deleted' | 'content-cleared'`, `ToolCall`, `FileEvent`, `Compaction`, `PromptShare`,
   `NormalizedTurn`, `NormalizedSession` (exact fields below).
 - Produces (`chatSession.ts`): `normalizeChatSession(state: unknown, context: { file: string; workspace: string }):
-  NormalizedSession | null`, `modelHost(modelId: string | null): ModelHost`, `modelNameFromId(id: string): string`,
+NormalizedSession | null`, `modelHost(modelId: string | null): ModelHost`, `modelNameFromId(id: string): string`,
   `toolFileAction(toolName: string): FileAction`.
 - Produces (`test/fixtures/fixtures.ts`): `CHAT_SESSION_FIXTURES: string`, `fixturePath(name: string): string`.
 
@@ -2180,7 +2232,10 @@ import { replayMutationLog } from './mutationLog';
 
 function load(name: string) {
   const file = fixturePath(name);
-  return normalizeChatSession(replayMutationLog(readFileSync(file, 'utf8')).state, { file, workspace: 'alpha' });
+  return normalizeChatSession(replayMutationLog(readFileSync(file, 'utf8')).state, {
+    file,
+    workspace: 'alpha',
+  });
 }
 
 describe('normalizeChatSession', () => {
@@ -2227,7 +2282,9 @@ describe('normalizeChatSession', () => {
       toolInputRetries: 1,
       maxToolCallsExceeded: false,
       errorCode: null,
-      compactions: [{ contextLengthBefore: 98000, model: 'gpt-5.6-mini', durationMs: 900, outcome: 'success' }],
+      compactions: [
+        { contextLengthBefore: 98000, model: 'gpt-5.6-mini', durationMs: 900, outcome: 'success' },
+      ],
     });
     expect(session?.turns[0]?.promptComposition).toContainEqual({
       category: 'System',
@@ -2238,7 +2295,9 @@ describe('normalizeChatSession', () => {
       ['read_file', 'toolCallRound'],
       ['replace_string_in_file', 'toolCallRound'],
     ]);
-    expect(session?.turns[0]?.toolCalls[0]?.args).toMatchObject({ filePath: '/repo/src/execution/manager.ts' });
+    expect(session?.turns[0]?.toolCalls[0]?.args).toMatchObject({
+      filePath: '/repo/src/execution/manager.ts',
+    });
     expect(session?.turns[0]?.fileEvents).toEqual([
       { path: '/repo/src/execution/manager.ts', action: 'read', source: 'tool:copilot_readFile' },
       { path: '/repo/src/execution/manager.ts', action: 'edited', source: 'textEditGroup' },
@@ -2449,7 +2508,10 @@ export const requestSchema = z.looseObject({
     .array(z.looseObject({ category: str, label: str, percentageOfPrompt: num }))
     .optional()
     .catch(undefined),
-  editedFileEvents: z.array(z.looseObject({ uri, eventKind: num })).optional().catch(undefined),
+  editedFileEvents: z
+    .array(z.looseObject({ uri, eventKind: num }))
+    .optional()
+    .catch(undefined),
   isSystemInitiated: bool,
   hiddenFromTranscript: bool,
   response: list,
@@ -2478,7 +2540,12 @@ export type EditedFileEvent = NonNullable<ChatRequest['editedFileEvents']>[numbe
 
 export const toolCallRoundSchema = z.looseObject({ id: str, toolInputRetry: num, toolCalls: list });
 export const toolCallSchema = z.looseObject({ id: str, name: str, arguments: z.unknown() });
-export const summarySchema = z.looseObject({ contextLengthBefore: num, model: str, durationMs: num, outcome: str });
+export const summarySchema = z.looseObject({
+  contextLengthBefore: num,
+  model: str,
+  durationMs: num,
+  outcome: str,
+});
 
 export const markdownPartSchema = z.looseObject({ value: z.string() });
 export const autoModePartSchema = z.looseObject({ resolved: z.looseObject({ id: z.string() }) });
@@ -2528,9 +2595,18 @@ import type {
 } from './types';
 
 // modelState.value, confirmed against result.errorDetails on real data.
-const TURN_STATES: Partial<Record<number, TurnState>> = { 0: 'pending', 1: 'complete', 2: 'cancelled', 3: 'failed' };
+const TURN_STATES: Partial<Record<number, TurnState>> = {
+  0: 'pending',
+  1: 'complete',
+  2: 'cancelled',
+  3: 'failed',
+};
 // VS Code ChatRequestEditedFileEventKind: 1 Keep, 2 Undo, 3 UserModification.
-const EDIT_EVENT_ACTIONS: Partial<Record<number, FileAction>> = { 1: 'kept', 2: 'undone', 3: 'user-modified' };
+const EDIT_EVENT_ACTIONS: Partial<Record<number, FileAction>> = {
+  1: 'kept',
+  2: 'undone',
+  3: 'user-modified',
+};
 
 const KNOWN_PART_KINDS = new Set([
   'thinking',
@@ -2627,13 +2703,15 @@ export function normalizeChatSession(state: unknown, context: NormalizeContext):
 function normalizeTurn(request: ChatRequest, index: number, unknownPartKinds: Set<string>): NormalizedTurn {
   const parts = request.response ?? [];
   for (const part of parts) {
-    if (isRecord(part) && typeof part.kind === 'string' && !KNOWN_PART_KINDS.has(part.kind)) unknownPartKinds.add(part.kind);
+    if (isRecord(part) && typeof part.kind === 'string' && !KNOWN_PART_KINDS.has(part.kind))
+      unknownPartKinds.add(part.kind);
   }
   const meta = request.result?.metadata;
   const startedAt = request.timestamp ?? null;
   const elapsedMs = request.elapsedMs ?? request.result?.timings?.totalElapsed ?? null;
   const completedAt = request.modelState?.completedAt ?? null;
-  const endedAt = completedAt ?? (startedAt !== null && elapsedMs !== null ? startedAt + elapsedMs : startedAt);
+  const endedAt =
+    completedAt ?? (startedAt !== null && elapsedMs !== null ? startedAt + elapsedMs : startedAt);
   const rounds = parseRounds(meta?.toolCallRounds);
   const toolCalls = collectToolCalls(rounds, parts);
   const reasoning = parsePartsOfKind(parts, 'thinking', thinkingPartSchema);
@@ -2683,8 +2761,13 @@ interface Routing {
   modelHost: ModelHost;
 }
 
-function modelRouting(requestedModel: string | null, parts: readonly unknown[], metadataModel: string | null): Routing {
-  const autoResolved = parsePartsOfKind(parts, 'autoModeResolution', autoModePartSchema)[0]?.resolved.id ?? null;
+function modelRouting(
+  requestedModel: string | null,
+  parts: readonly unknown[],
+  metadataModel: string | null,
+): Routing {
+  const autoResolved =
+    parsePartsOfKind(parts, 'autoModeResolution', autoModePartSchema)[0]?.resolved.id ?? null;
   const isAuto = autoResolved !== null || (requestedModel !== null && /(^|\/)auto$/i.test(requestedModel));
   const isManual = !isAuto && requestedModel !== null;
   let resolvedModel: string | null = null;
@@ -2778,7 +2861,8 @@ function collectToolCalls(rounds: readonly Round[], parts: readonly unknown[]): 
       name: invocation.toolId ?? 'tool',
       args: null,
       origin: 'invocation',
-      status: invocation.isComplete === undefined ? 'unknown' : invocation.isComplete ? 'complete' : 'incomplete',
+      status:
+        invocation.isComplete === undefined ? 'unknown' : invocation.isComplete ? 'complete' : 'incomplete',
     }),
   );
 }
@@ -2791,7 +2875,8 @@ function collectFileEvents(
   const events: FileEvent[] = [];
   const add = (path: string | null, action: FileAction, source: string): void => {
     if (path === null || path === '') return;
-    if (!events.some((event) => event.path === path && event.action === action)) events.push({ path, action, source });
+    if (!events.some((event) => event.path === path && event.action === action))
+      events.push({ path, action, source });
   };
   for (const part of parts) {
     if (!isRecord(part)) continue;
@@ -2890,10 +2975,12 @@ git commit -m "feat(ingest): normalize real Copilot chat sessions with exact usa
 ## Task 1.4: Privacy — secret redaction and capture levels
 
 **Files:**
+
 - Create: `src/core/privacy/redact.ts`, `src/core/privacy/redact.test.ts`, `src/core/privacy/captureLevel.ts`,
   `src/core/privacy/captureLevel.test.ts`
 
 **Interfaces:**
+
 - Consumes: `NormalizedSession`, `NormalizedTurn` (Task 1.3).
 - Produces (`redact.ts`): `redactSecrets(text: string): string`, `redactDeep(value: unknown): unknown`.
 - Produces (`captureLevel.ts`): `type CaptureLevel = 'metrics' | 'summaries' | 'full'`, `CAPTURE_LEVELS`,
@@ -2971,7 +3058,10 @@ describe('applyCaptureLevel', () => {
   });
 
   it('summaries truncates text and drops tool arguments', () => {
-    const long = { ...session, turns: session.turns.map((turn) => ({ ...turn, assistantText: 'x'.repeat(1000) })) };
+    const long = {
+      ...session,
+      turns: session.turns.map((turn) => ({ ...turn, assistantText: 'x'.repeat(1000) })),
+    };
     const summaries = applyCaptureLevel(long, 'summaries');
     expect(summaries.turns[0]?.assistantText).toHaveLength(420);
     expect(summaries.turns.flatMap((turn) => turn.toolCalls).every((call) => call.args === null)).toBe(true);
@@ -3030,7 +3120,8 @@ const PATTERNS: readonly (readonly [name: string, pattern: RegExp])[] = [
 ];
 
 // `password = "…"`, `apiKey: '…'`, etc. Over-redaction is acceptable; leaking is not.
-const ASSIGNMENT = /\b((?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)["']?\s*[:=]\s*["']?)([^\s"'`]{8,})/gi;
+const ASSIGNMENT =
+  /\b((?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)["']?\s*[:=]\s*["']?)([^\s"'`]{8,})/gi;
 
 export function redactSecrets(text: string): string {
   let result = text;
@@ -3083,7 +3174,8 @@ function captureTurn(turn: NormalizedTurn, level: CaptureLevel): NormalizedTurn 
     errorMessage: captureText(turn.errorMessage, level, SUMMARY_LIMITS.error),
     toolCalls: turn.toolCalls.map((call) => ({
       ...call,
-      args: level === 'full' && call.args !== null ? (redactDeep(call.args) as Record<string, unknown>) : null,
+      args:
+        level === 'full' && call.args !== null ? (redactDeep(call.args) as Record<string, unknown>) : null,
     })),
   };
 }
@@ -3118,22 +3210,24 @@ git commit -m "feat(privacy): redact secrets and enforce capture levels before s
 ## Task 1.5: SQLite storage
 
 **Files:**
+
 - Create: `src/core/storage/database.ts`, `src/core/storage/database.test.ts`, `src/core/storage/migrations.ts`,
   `src/core/storage/sessionStore.ts`, `src/core/storage/sessionStore.test.ts`,
   `src/core/storage/ingestStateStore.ts`, `src/core/storage/ingestStateStore.test.ts`
 
 **Interfaces:**
+
 - Consumes: `NormalizedSession` (1.3), `CaptureLevel`, `SUMMARY_LIMITS`, `applyCaptureLevel` (1.4),
   `localDay`, `daysAgo` (1.1), `TombstoneKind` (1.3).
 - Produces (`database.ts`): `type SqlValue`, `class Database { readonly db: DatabaseSync; constructor(filename);
-  transaction<T>(fn: () => T): T; close() }`.
+transaction<T>(fn: () => T): T; close() }`.
 - Produces (`sessionStore.ts`): `SessionFilter`, `StoredSession`, `StoredTurn`, `class SessionStore {
-  replaceSession(session, captureLevel, ingestedAt): void; getSession(id): StoredSession | null;
-  listSessionIds(filter?): string[]; deleteSessions(ids): void; clearContent(ids): void;
-  downgradeStoredContent(level): void; purgeBefore(day): number; counts(): { sessions: number; turns: number } }`.
+replaceSession(session, captureLevel, ingestedAt): void; getSession(id): StoredSession | null;
+listSessionIds(filter?): string[]; deleteSessions(ids): void; clearContent(ids): void;
+downgradeStoredContent(level): void; purgeBefore(day): number; counts(): { sessions: number; turns: number } }`.
 - Produces (`ingestStateStore.ts`): `class IngestStateStore { getFingerprints(): Record<string, string>;
-  setFingerprint(file, fingerprint, sessionId, scannedAt): void; addTombstones(ids, kind, createdAt): void;
-  getTombstones(): Record<string, TombstoneKind>; getMeta(key): string | null; setMeta(key, value): void }`.
+setFingerprint(file, fingerprint, sessionId, scannedAt): void; addTombstones(ids, kind, createdAt): void;
+getTombstones(): Record<string, TombstoneKind>; getMeta(key): string | null; setMeta(key, value): void }`.
 
 - [ ] **Step 1: Write the failing database test** — `src/core/storage/database.test.ts`
 
@@ -3161,7 +3255,9 @@ describe('Database', () => {
 
   it('enables foreign keys', () => {
     const database = new Database(':memory:');
-    expect((database.db.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number }).foreign_keys).toBe(1);
+    expect((database.db.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number }).foreign_keys).toBe(
+      1,
+    );
   });
 
   it('rolls back a failed transaction and supports nesting', () => {
@@ -3169,7 +3265,9 @@ describe('Database', () => {
     expect(() => {
       database.transaction(() => {
         database.db.prepare("INSERT INTO meta (key, value) VALUES ('a', '1')").run();
-        database.transaction(() => database.db.prepare("INSERT INTO meta (key, value) VALUES ('b', '2')").run());
+        database.transaction(() =>
+          database.db.prepare("INSERT INTO meta (key, value) VALUES ('b', '2')").run(),
+        );
         throw new Error('boom');
       });
     }).toThrow('boom');
@@ -3310,7 +3408,9 @@ export class Database {
   constructor(filename: string) {
     this.db = new DatabaseSync(filename);
     // WAL lets other windows read while the leader writes; busy_timeout rides out brief lock contention.
-    this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;');
+    this.db.exec(
+      'PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;',
+    );
     this.migrate();
   }
 
@@ -3404,7 +3504,10 @@ describe('SessionStore', () => {
       modelHost: 'copilot',
       systemInitiated: false,
     });
-    expect(stored?.turns[0]?.toolCalls.map((call) => call.name)).toEqual(['read_file', 'replace_string_in_file']);
+    expect(stored?.turns[0]?.toolCalls.map((call) => call.name)).toEqual([
+      'read_file',
+      'replace_string_in_file',
+    ]);
     expect(stored?.turns[1]?.fileEvents.map((event) => event.action)).toEqual(['created', 'kept']);
     expect(sessions.counts()).toEqual({ sessions: 1, turns: 2 });
   });
@@ -3413,7 +3516,11 @@ describe('SessionStore', () => {
     const { sessions } = newStore();
     const session = fixture();
     sessions.replaceSession(session, 'full', 1);
-    sessions.replaceSession({ ...session, sourceFile: 'moved.jsonl', turns: session.turns.slice(0, 1) }, 'full', 2);
+    sessions.replaceSession(
+      { ...session, sourceFile: 'moved.jsonl', turns: session.turns.slice(0, 1) },
+      'full',
+      2,
+    );
     expect(sessions.counts()).toEqual({ sessions: 1, turns: 1 });
     expect(sessions.getSession('fx-auto-1')?.turns[0]?.toolCalls).toHaveLength(2);
   });
@@ -3433,7 +3540,10 @@ describe('SessionStore', () => {
   it('downgrades stored full content to summaries', () => {
     const { sessions } = newStore();
     const session = fixture();
-    const long = { ...session, turns: session.turns.map((turn) => ({ ...turn, assistantText: 'y'.repeat(1000) })) };
+    const long = {
+      ...session,
+      turns: session.turns.map((turn) => ({ ...turn, assistantText: 'y'.repeat(1000) })),
+    };
     sessions.replaceSession(long, 'full', 1);
     sessions.downgradeStoredContent('summaries');
     const stored = sessions.getSession('fx-auto-1');
@@ -3541,17 +3651,65 @@ export interface StoredSession {
 }
 
 const SESSION_COLUMNS = [
-  'id', 'source_file', 'workspace', 'title', 'location', 'started_at', 'ended_at', 'active_ms', 'day',
-  'capture_level', 'unknown_part_kinds', 'unknown_request_keys', 'invalid_requests', 'ingested_at',
+  'id',
+  'source_file',
+  'workspace',
+  'title',
+  'location',
+  'started_at',
+  'ended_at',
+  'active_ms',
+  'day',
+  'capture_level',
+  'unknown_part_kinds',
+  'unknown_request_keys',
+  'invalid_requests',
+  'ingested_at',
 ] as const;
 const TURN_COLUMNS = [
-  'session_id', 'idx', 'request_id', 'response_id', 'started_at', 'ended_at', 'elapsed_ms', 'day', 'state',
-  'system_initiated', 'hidden', 'mode', 'user_text', 'assistant_text', 'requested_model', 'resolved_model',
-  'resolved_model_source', 'selection_mode', 'selection_source', 'model_host', 'prompt_tokens',
-  'completion_tokens', 'credits', 'prompt_composition', 'reasoning_blocks', 'reasoning_ms', 'tool_rounds',
-  'tool_input_retries', 'max_tool_calls_exceeded', 'compactions', 'error_code', 'error_message',
+  'session_id',
+  'idx',
+  'request_id',
+  'response_id',
+  'started_at',
+  'ended_at',
+  'elapsed_ms',
+  'day',
+  'state',
+  'system_initiated',
+  'hidden',
+  'mode',
+  'user_text',
+  'assistant_text',
+  'requested_model',
+  'resolved_model',
+  'resolved_model_source',
+  'selection_mode',
+  'selection_source',
+  'model_host',
+  'prompt_tokens',
+  'completion_tokens',
+  'credits',
+  'prompt_composition',
+  'reasoning_blocks',
+  'reasoning_ms',
+  'tool_rounds',
+  'tool_input_retries',
+  'max_tool_calls_exceeded',
+  'compactions',
+  'error_code',
+  'error_message',
 ] as const;
-const TOOL_COLUMNS = ['session_id', 'turn_idx', 'seq', 'call_id', 'name', 'args', 'origin', 'status'] as const;
+const TOOL_COLUMNS = [
+  'session_id',
+  'turn_idx',
+  'seq',
+  'call_id',
+  'name',
+  'args',
+  'origin',
+  'status',
+] as const;
 const FILE_COLUMNS = ['session_id', 'turn_idx', 'seq', 'path', 'action', 'source'] as const;
 
 type Row<C extends readonly string[]> = Record<C[number], SqlValue>;
@@ -3617,9 +3775,12 @@ export class SessionStore {
   getSession(id: string): StoredSession | null {
     const { db } = this.database;
     // node:sqlite rows are Record<string, SQLOutputValue>; row interfaces describe our schema.
-    const session = db.prepare('SELECT * FROM sessions WHERE id = :id').get({ id }) as unknown as SessionRow | undefined;
+    const session = db.prepare('SELECT * FROM sessions WHERE id = :id').get({ id }) as unknown as
+      SessionRow | undefined;
     if (session === undefined) return null;
-    const turns = db.prepare('SELECT * FROM turns WHERE session_id = :id ORDER BY idx').all({ id }) as unknown as TurnRow[];
+    const turns = db
+      .prepare('SELECT * FROM turns WHERE session_id = :id ORDER BY idx')
+      .all({ id }) as unknown as TurnRow[];
     const tools = db
       .prepare('SELECT * FROM tool_calls WHERE session_id = :id ORDER BY turn_idx, seq')
       .all({ id }) as unknown as ToolRow[];
@@ -3694,9 +3855,13 @@ export class SessionStore {
     const { db } = this.database;
     const params = { ids: JSON.stringify(ids) };
     this.database.transaction(() => {
-      db.prepare(`UPDATE turns SET user_text = NULL, assistant_text = NULL, error_message = NULL WHERE session_id IN (${IDS})`).run(params);
+      db.prepare(
+        `UPDATE turns SET user_text = NULL, assistant_text = NULL, error_message = NULL WHERE session_id IN (${IDS})`,
+      ).run(params);
       db.prepare(`UPDATE tool_calls SET args = NULL WHERE session_id IN (${IDS})`).run(params);
-      db.prepare(`UPDATE sessions SET title = NULL, capture_level = 'metrics' WHERE id IN (${IDS})`).run(params);
+      db.prepare(`UPDATE sessions SET title = NULL, capture_level = 'metrics' WHERE id IN (${IDS})`).run(
+        params,
+      );
     });
   }
 
@@ -3708,7 +3873,9 @@ export class SessionStore {
     if (level === 'full') return;
     if (level === 'metrics') {
       const ids = (
-        this.database.db.prepare("SELECT id FROM sessions WHERE capture_level <> 'metrics'").all() as unknown as { id: string }[]
+        this.database.db
+          .prepare("SELECT id FROM sessions WHERE capture_level <> 'metrics'")
+          .all() as unknown as { id: string }[]
       ).map((row) => row.id);
       this.clearContent(ids);
       return;
@@ -3722,7 +3889,9 @@ export class SessionStore {
         `UPDATE turns SET ${cut('user_text', SUMMARY_LIMITS.user)}, ${cut('assistant_text', SUMMARY_LIMITS.assistant)}, ${cut('error_message', SUMMARY_LIMITS.error)} WHERE session_id IN (${full})`,
       );
       db.exec(`UPDATE tool_calls SET args = NULL WHERE session_id IN (${full})`);
-      db.exec(`UPDATE sessions SET ${cut('title', SUMMARY_LIMITS.title)}, capture_level = 'summaries' WHERE capture_level = 'full'`);
+      db.exec(
+        `UPDATE sessions SET ${cut('title', SUMMARY_LIMITS.title)}, capture_level = 'summaries' WHERE capture_level = 'full'`,
+      );
     });
   }
 
@@ -3747,7 +3916,11 @@ function bit(value: boolean): number {
   return value ? 1 : 0;
 }
 
-function sessionRow(session: NormalizedSession, captureLevel: CaptureLevel, ingestedAt: number): Row<typeof SESSION_COLUMNS> {
+function sessionRow(
+  session: NormalizedSession,
+  captureLevel: CaptureLevel,
+  ingestedAt: number,
+): Row<typeof SESSION_COLUMNS> {
   return {
     id: session.id,
     source_file: session.sourceFile,
@@ -3937,14 +4110,15 @@ export class IngestStateStore {
 
   getMeta(key: string): string | null {
     const row = this.database.db.prepare('SELECT value FROM meta WHERE key = :key').get({ key }) as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     return row?.value ?? null;
   }
 
   setMeta(key: string, value: string): void {
     this.database.db
-      .prepare('INSERT INTO meta (key, value) VALUES (:key, :value) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .prepare(
+        'INSERT INTO meta (key, value) VALUES (:key, :value) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      )
       .run({ key, value });
   }
 }
@@ -3965,20 +4139,22 @@ git commit -m "feat(storage): add SQLite schema v1 with session, tombstone and s
 ## Task 1.6: Storage roots and the scanner
 
 **Files:**
+
 - Create: `src/core/ingest/roots.ts`, `src/core/ingest/roots.test.ts`, `src/core/ingest/scanner.ts`,
   `src/core/ingest/scanner.test.ts`
 - Modify: `test/fixtures/fixtures.ts` (add `createFixtureUserDir`)
 
 **Interfaces:**
+
 - Consumes: `loadChatSessionState` (1.2), `normalizeChatSession` (1.3), `applyCaptureLevel`, `CaptureLevel`
   (1.4), `TombstoneKind`, `NormalizedSession` (1.3), `isRecord` (1.2).
 - Produces (`roots.ts`): `StorageRoot { kind: 'workspaceStorage' | 'emptyWindow'; dir: string }`,
   `userDirsFromGlobalStorage(dir): string[]`, `defaultUserDir(product?, platform?, env?, home?): string`,
   `resolveStorageRoots({ userDirs, extraWorkspaceStorageRoots? }): StorageRoot[]`.
 - Produces (`scanner.ts`): `SessionFile`, `ScanInput { roots; known: Record<string,string>; captureLevel;
-  tombstones: Record<string, TombstoneKind> }`, `ScanResult { file; fingerprint; session: NormalizedSession | null;
-  captureLevel; skipped: 'empty' | 'deleted' | null }`, `ScanStats { files; parsed; unchanged; empty; deleted;
-  badLines; errors: { file; message }[] }`, `ScanOutput { results; stats }`, `listChatSessionFiles(roots)`,
+tombstones: Record<string, TombstoneKind> }`, `ScanResult { file; fingerprint; session: NormalizedSession | null;
+captureLevel; skipped: 'empty' | 'deleted' | null }`, `ScanStats { files; parsed; unchanged; empty; deleted;
+badLines; errors: { file; message }[] }`, `ScanOutput { results; stats }`, `listChatSessionFiles(roots)`,
   `readWorkspaceLabel(workspaceDir)`, `scanChatSessions(input): ScanOutput`.
 - Produces (`fixtures.ts`): `createFixtureUserDir(): { userDir: string; globalStorageDir: string }` — a temp
   `User/` dir with `workspaceStorage/ws1` (auto + empty sessions, workspace "alpha") and
@@ -4002,7 +4178,10 @@ export function createFixtureUserDir(): { userDir: string; globalStorageDir: str
   const workspaceDir = join(userDir, 'workspaceStorage', 'ws1');
   mkdirSync(join(workspaceDir, 'chatSessions'), { recursive: true });
   writeFileSync(join(workspaceDir, 'workspace.json'), JSON.stringify({ folder: 'file:///repo/alpha' }));
-  copyFileSync(fixturePath('auto-agent-session.jsonl'), join(workspaceDir, 'chatSessions', 'fx-auto-1.jsonl'));
+  copyFileSync(
+    fixturePath('auto-agent-session.jsonl'),
+    join(workspaceDir, 'chatSessions', 'fx-auto-1.jsonl'),
+  );
   copyFileSync(fixturePath('empty-session.jsonl'), join(workspaceDir, 'chatSessions', 'fx-empty-1.jsonl'));
   const emptyWindowDir = join(userDir, 'globalStorage', 'emptyWindowChatSessions');
   mkdirSync(emptyWindowDir, { recursive: true });
@@ -4115,12 +4294,20 @@ describe('scanner', () => {
     const { input } = setup();
     expect(JSON.stringify(scanChatSessions(input).results)).not.toContain('ghp_');
     const summaries = scanChatSessions({ ...input, captureLevel: 'summaries' });
-    expect(summaries.results.flatMap((r) => r.session?.turns ?? []).flatMap((t) => t.toolCalls).every((c) => c.args === null)).toBe(true);
+    expect(
+      summaries.results
+        .flatMap((r) => r.session?.turns ?? [])
+        .flatMap((t) => t.toolCalls)
+        .every((c) => c.args === null),
+    ).toBe(true);
   });
 
   it('parses a file that Copilot is still writing (truncated last line)', () => {
     const { userDir, input } = setup();
-    appendFileSync(join(userDir, 'workspaceStorage', 'ws1', 'chatSessions', 'fx-auto-1.jsonl'), '\n{"kind":1,"k":[');
+    appendFileSync(
+      join(userDir, 'workspaceStorage', 'ws1', 'chatSessions', 'fx-auto-1.jsonl'),
+      '\n{"kind":1,"k":[',
+    );
     const { results, stats } = scanChatSessions(input);
     expect(stats.badLines).toBe(1);
     expect(results.find((result) => result.session?.id === 'fx-auto-1')?.session?.turns).toHaveLength(2);
@@ -4129,7 +4316,9 @@ describe('scanner', () => {
   it('labels workspaces with a missing or corrupt workspace.json', () => {
     const { userDir, input } = setup();
     writeFileSync(join(userDir, 'workspaceStorage', 'ws1', 'workspace.json'), 'not json');
-    expect(listChatSessionFiles(input.roots).find((file) => file.file.includes('ws1'))?.workspace).toBe('workspace:ws1');
+    expect(listChatSessionFiles(input.roots).find((file) => file.file.includes('ws1'))?.workspace).toBe(
+      'workspace:ws1',
+    );
   });
 
   it('records unreadable files as errors and keeps going', () => {
@@ -4188,7 +4377,10 @@ export function resolveStorageRoots(options: {
   extraWorkspaceStorageRoots?: readonly string[];
 }): StorageRoot[] {
   const candidates: StorageRoot[] = [
-    ...(options.extraWorkspaceStorageRoots ?? []).map((dir) => ({ kind: 'workspaceStorage' as const, dir: resolve(dir) })),
+    ...(options.extraWorkspaceStorageRoots ?? []).map((dir) => ({
+      kind: 'workspaceStorage' as const,
+      dir: resolve(dir),
+    })),
     ...options.userDirs.flatMap((userDir) => [
       { kind: 'workspaceStorage' as const, dir: join(userDir, 'workspaceStorage') },
       { kind: 'emptyWindow' as const, dir: join(userDir, 'globalStorage', 'emptyWindowChatSessions') },
@@ -4266,7 +4458,8 @@ export function listChatSessionFiles(roots: readonly StorageRoot[]): SessionFile
   const files: SessionFile[] = [];
   for (const root of roots) {
     if (root.kind === 'emptyWindow') {
-      for (const name of sessionFileNames(root.dir)) files.push({ file: join(root.dir, name), workspace: 'No workspace' });
+      for (const name of sessionFileNames(root.dir))
+        files.push({ file: join(root.dir, name), workspace: 'No workspace' });
       continue;
     }
     for (const entry of safeReaddir(root.dir)) {
@@ -4282,7 +4475,15 @@ export function listChatSessionFiles(roots: readonly StorageRoot[]): SessionFile
 
 /** Pure and synchronous: runs inside the scan worker in production. Never throws for a single bad file. */
 export function scanChatSessions(input: ScanInput): ScanOutput {
-  const stats: ScanStats = { files: 0, parsed: 0, unchanged: 0, empty: 0, deleted: 0, badLines: 0, errors: [] };
+  const stats: ScanStats = {
+    files: 0,
+    parsed: 0,
+    unchanged: 0,
+    empty: 0,
+    deleted: 0,
+    badLines: 0,
+    errors: [],
+  };
   const results: ScanResult[] = [];
   for (const { file, workspace } of listChatSessionFiles(input.roots)) {
     stats.files++;
@@ -4298,17 +4499,35 @@ export function scanChatSessions(input: ScanInput): ScanOutput {
       const session = normalizeChatSession(state, { file, workspace });
       if (session === null) {
         stats.empty++;
-        results.push({ file, fingerprint, session: null, captureLevel: input.captureLevel, skipped: 'empty' });
+        results.push({
+          file,
+          fingerprint,
+          session: null,
+          captureLevel: input.captureLevel,
+          skipped: 'empty',
+        });
         continue;
       }
       const tombstone = input.tombstones[session.id];
       if (tombstone === 'deleted') {
         stats.deleted++;
-        results.push({ file, fingerprint, session: null, captureLevel: input.captureLevel, skipped: 'deleted' });
+        results.push({
+          file,
+          fingerprint,
+          session: null,
+          captureLevel: input.captureLevel,
+          skipped: 'deleted',
+        });
         continue;
       }
       const captureLevel: CaptureLevel = tombstone === 'content-cleared' ? 'metrics' : input.captureLevel;
-      results.push({ file, fingerprint, session: applyCaptureLevel(session, captureLevel), captureLevel, skipped: null });
+      results.push({
+        file,
+        fingerprint,
+        session: applyCaptureLevel(session, captureLevel),
+        captureLevel,
+        skipped: null,
+      });
       stats.parsed++;
     } catch (error) {
       stats.errors.push({ file, message: error instanceof Error ? error.message : String(error) });
@@ -4321,7 +4540,12 @@ export function readWorkspaceLabel(workspaceDir: string): string {
   try {
     const parsed: unknown = JSON.parse(readFileSync(join(workspaceDir, 'workspace.json'), 'utf8'));
     if (isRecord(parsed)) {
-      const uri = typeof parsed.folder === 'string' ? parsed.folder : typeof parsed.workspace === 'string' ? parsed.workspace : null;
+      const uri =
+        typeof parsed.folder === 'string'
+          ? parsed.folder
+          : typeof parsed.workspace === 'string'
+            ? parsed.workspace
+            : null;
       if (uri !== null) {
         const name = basename(decodeURIComponent(new URL(uri).pathname)).replace(/\.code-workspace$/i, '');
         if (name !== '') return name;
@@ -4374,15 +4598,17 @@ git commit -m "feat(ingest): discover chat sessions across profiles and empty wi
 ## Task 1.7: Scan worker and multi-window writer lock
 
 **Files:**
+
 - Create: `src/core/ingest/scanWorker.ts`, `src/core/ingest/runScan.ts`, `src/core/ingest/runScan.test.ts`,
   `src/core/ingest/writerLock.ts`, `src/core/ingest/writerLock.test.ts`
 - Modify: `esbuild.mjs` (add the worker entry)
 
 **Interfaces:**
+
 - Consumes: `scanChatSessions`, `ScanInput`, `ScanOutput` (1.6).
 - Produces: `runScan(input: ScanInput, options?: { workerFile?: string; timeoutMs?: number }): Promise<ScanOutput>`
   (worker when `workerFile` is set, in-process otherwise); `class WriterLock { constructor(dir, options?:
-  { staleMs?; pid?; now?; isAlive? }); tryAcquire(): boolean; release(): void }`; `isProcessAlive(pid): boolean`;
+{ staleMs?; pid?; now?; isAlive? }); tryAcquire(): boolean; release(): void }`; `isProcessAlive(pid): boolean`;
   bundle `dist/scanWorker.js`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -4403,7 +4629,12 @@ import type { ScanInput } from './scanner';
 
 function input(): ScanInput {
   const { userDir } = createFixtureUserDir();
-  return { roots: resolveStorageRoots({ userDirs: [userDir] }), known: {}, captureLevel: 'summaries', tombstones: {} };
+  return {
+    roots: resolveStorageRoots({ userDirs: [userDir] }),
+    known: {},
+    captureLevel: 'summaries',
+    tombstones: {},
+  };
 }
 
 describe('runScan', () => {
@@ -4421,7 +4652,9 @@ describe('runScan', () => {
     const inWorker = await runScan(scanInput, { workerFile: join(outdir, 'scanWorker.js') });
     const inProcess = await runScan(scanInput);
     expect(inWorker.stats).toEqual(inProcess.stats);
-    expect(inWorker.results.map((result) => result.session?.id)).toEqual(inProcess.results.map((result) => result.session?.id));
+    expect(inWorker.results.map((result) => result.session?.id)).toEqual(
+      inProcess.results.map((result) => result.session?.id),
+    );
   });
 
   it('rejects when the worker cannot start', async () => {
@@ -4502,7 +4735,10 @@ if (port === null) throw new Error('scanWorker must run inside a worker thread')
 try {
   port.postMessage({ ok: true, value: scanChatSessions(workerData as ScanInput) });
 } catch (error) {
-  port.postMessage({ ok: false, error: error instanceof Error ? (error.stack ?? error.message) : String(error) });
+  port.postMessage({
+    ok: false,
+    error: error instanceof Error ? (error.stack ?? error.message) : String(error),
+  });
 }
 ```
 
@@ -4675,16 +4911,18 @@ git commit -m "feat(ingest): scan in a worker thread and elect a single writing 
 ## Task 1.8: Ingest service
 
 **Files:**
+
 - Create: `src/core/ingest/ingestService.ts`, `src/core/ingest/ingestService.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Database`, `SessionStore`, `IngestStateStore` (1.5), `StorageRoot`, `resolveStorageRoots` (1.6),
   `ScanInput`, `ScanOutput`, `ScanStats` (1.6), `runScan` (1.7), `CaptureLevel` (1.4), `localDay`,
   `retentionCutoff` (1.1).
 - Produces: `INGEST_VERSION`, `META` (meta keys), `IngestDeps`, `SyncResult`
   (`{ role: 'leader'; purged: number } & ScanStats | { role: 'follower' }`),
   `class IngestService { sync(options?: { force?: boolean }): Promise<SyncResult>;
-  changeCaptureLevel(level): Promise<SyncResult>; lastResult: SyncResult | null; lastError: string | null }`.
+changeCaptureLevel(level): Promise<SyncResult>; lastResult: SyncResult | null; lastError: string | null }`.
 
 - [ ] **Step 1: Write the failing test** — `src/core/ingest/ingestService.test.ts`
 
@@ -4921,7 +5159,8 @@ export class IngestService {
       state.setMeta(META.lastSyncAt, String(now));
       if (written > 0 || purged > 0) state.setMeta(META.lastChangeAt, String(now));
     });
-    for (const error of output.stats.errors.slice(0, 5)) log.warn(`Could not parse ${error.file}: ${error.message}`);
+    for (const error of output.stats.errors.slice(0, 5))
+      log.warn(`Could not parse ${error.file}: ${error.message}`);
     if (written > 0 || purged > 0) {
       this.lastSeenChange = String(now);
       log.info(`Indexed ${written} session(s); purged ${purged} past retention.`);
@@ -4949,15 +5188,17 @@ git commit -m "feat(ingest): orchestrate leader/follower sync with retention and
 ## Task 1.9: Extension wiring, index status, and settings
 
 **Files:**
+
 - Create: `src/core/ingest/indexStatus.ts`, `src/core/ingest/indexStatus.test.ts`, `src/extension/config.ts`,
   `src/extension/ingestController.ts`, `test/integration/ingest.test.ts`
 - Modify: `src/shared/protocol.ts`, `src/extension/extension.ts`, `src/webview/App.tsx`,
   `src/webview/App.test.tsx`, `package.json`
 
 **Interfaces:**
+
 - Consumes: everything from Tasks 1.1–1.8; `RpcHandlers`, `DashboardPanel`, `SidebarProvider` (0.3).
 - Produces: RPC method `getIndexStatus` returning `IndexStatus { sessions; turns; lastSyncAt: number | null;
-  role: 'leader' | 'follower' | 'idle'; lastError: string | null; captureLevel }`; commands
+role: 'leader' | 'follower' | 'idle'; lastError: string | null; captureLevel }`; commands
   `copilotInsights.refreshSessions` and `copilotInsights.rebuildIndex` (both return `SyncResult`); settings
   `copilotInsights.captureLevel`, `retentionDays`, `nativeRefreshSeconds`, `nativeStorageRoots`.
 
@@ -5028,7 +5269,12 @@ describe('indexStatus', () => {
     state.setMeta(META.lastSyncAt, '1790000000000');
     expect(
       indexStatus({ lastResult: { role: 'follower' }, lastError: 'boom' }, sessions, state, 'metrics'),
-    ).toMatchObject({ lastSyncAt: 1790000000000, role: 'follower', lastError: 'boom', captureLevel: 'metrics' });
+    ).toMatchObject({
+      lastSyncAt: 1790000000000,
+      role: 'follower',
+      lastError: 'boom',
+      captureLevel: 'metrics',
+    });
   });
 });
 ```
@@ -5225,7 +5471,9 @@ export class IngestController implements vscode.Disposable {
     if (this.workspaceStorageUri === undefined) return;
     // context.storageUri is <workspaceStorage>/<hash>/<extension id>; Copilot writes to <hash>/chatSessions.
     const chatSessions = vscode.Uri.joinPath(this.workspaceStorageUri, '..', 'chatSessions');
-    const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(chatSessions, '*.jsonl'));
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(chatSessions, '*.jsonl'),
+    );
     this.disposables.push(
       watcher,
       watcher.onDidChange(() => {
@@ -5242,7 +5490,9 @@ export class IngestController implements vscode.Disposable {
     if (event.affectsConfiguration(`${CONFIG_SECTION}.nativeRefreshSeconds`)) this.scheduleInterval();
     if (event.affectsConfiguration(`${CONFIG_SECTION}.captureLevel`)) {
       this.service.changeCaptureLevel(readConfig().captureLevel).catch((error: unknown) => {
-        this.log.error(`Applying the capture level failed: ${error instanceof Error ? error.message : String(error)}`);
+        this.log.error(
+          `Applying the capture level failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
       });
       return;
     }
@@ -5294,7 +5544,8 @@ export function activate(context: vscode.ExtensionContext): void {
         userDirs: userDirsFromGlobalStorage(storageDir),
         extraWorkspaceStorageRoots: readConfig().storageRoots,
       }),
-    runScan: (input) => runScan(input, { workerFile: join(context.extensionUri.fsPath, 'dist', 'scanWorker.js') }),
+    runScan: (input) =>
+      runScan(input, { workerFile: join(context.extensionUri.fsPath, 'dist', 'scanWorker.js') }),
     captureLevel: () => readConfig().captureLevel,
     retentionDays: () => readConfig().retentionDays,
     onChanged: () => {
@@ -5436,7 +5687,9 @@ function IndexStatusSummary({ status }: { status: IndexStatus }) {
         {status.lastSyncAt !== null && ` · last scan ${new Date(status.lastSyncAt).toLocaleString()}`}
       </p>
       {status.role === 'follower' && (
-        <p className="muted">Another VS Code window is indexing Copilot sessions; showing the shared index.</p>
+        <p className="muted">
+          Another VS Code window is indexing Copilot sessions; showing the shared index.
+        </p>
       )}
       {status.lastError !== null && <p role="alert">Last scan failed: {status.lastError}</p>}
     </section>
@@ -5504,10 +5757,12 @@ git commit -m "feat: wire ingestion into VS Code with settings, commands, file w
 ## Task 1.10: Real-data smoke test and documentation
 
 **Files:**
+
 - Create: `scripts/smokeReal.ts`
 - Modify: `esbuild.mjs`, `package.json`, `README.md`, `CHANGELOG.md`
 
 **Interfaces:**
+
 - Consumes: `defaultUserDir`, `resolveStorageRoots` (1.6), `listChatSessionFiles` (1.6),
   `loadChatSessionState` (1.2), `normalizeChatSession` (1.3), `isRecord` (1.2).
 - Produces: `pnpm smoke:real` — exits 1 if any request fails to become a turn or no prompt text is recovered.
@@ -5525,7 +5780,10 @@ import { listChatSessionFiles } from '../src/core/ingest/scanner';
 import { isRecord } from '../src/core/json';
 
 const product = process.env.VSCODE_PRODUCT ?? 'Code';
-const roots = resolveStorageRoots({ userDirs: [defaultUserDir(product)], extraWorkspaceStorageRoots: process.argv.slice(2) });
+const roots = resolveStorageRoots({
+  userDirs: [defaultUserDir(product)],
+  extraWorkspaceStorageRoots: process.argv.slice(2),
+});
 
 const totals = {
   roots: roots.length,
@@ -5615,7 +5873,9 @@ console.log(
 
 const accounted = totals.turns + totals.invalidRequests;
 if (accounted !== totals.requests) {
-  console.error(`FAIL: ${totals.requests} requests on disk, but ${accounted} turns + invalid requests parsed.`);
+  console.error(
+    `FAIL: ${totals.requests} requests on disk, but ${accounted} turns + invalid requests parsed.`,
+  );
   process.exitCode = 1;
 } else if (totals.requests > 0 && totals.turnsWithUserText === 0) {
   console.error('FAIL: no user prompt text was recovered.');
@@ -5644,6 +5904,7 @@ In `package.json` scripts add:
 Run: `pnpm smoke:real`
 Expected — the plan's code was dry-run on the owner's machine on 2026-09-30 and produced the baseline below;
 counts only grow as Copilot is used:
+
 - `OK: all N requests became turns.` with N ≥ 312 (baseline: 483 files, 412 empty, 71 sessions, 312 turns,
   0 invalid requests, 0 bad lines)
 - `turnsWithUserText` ≥ 308, `turnsWithAssistantText` ≥ 244, `systemInitiatedTurns` ≥ 14
@@ -5692,12 +5953,12 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 
 ## Settings
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `copilotInsights.captureLevel` | `summaries` | `metrics`, `summaries`, or `full` |
-| `copilotInsights.retentionDays` | `30` | Days of history to keep (`0` = forever) |
-| `copilotInsights.nativeRefreshSeconds` | `60` | Background scan interval (15–600) |
-| `copilotInsights.nativeStorageRoots` | `[]` | Extra `workspaceStorage` folders |
+| Setting                                | Default     | Meaning                                 |
+| -------------------------------------- | ----------- | --------------------------------------- |
+| `copilotInsights.captureLevel`         | `summaries` | `metrics`, `summaries`, or `full`       |
+| `copilotInsights.retentionDays`        | `30`        | Days of history to keep (`0` = forever) |
+| `copilotInsights.nativeRefreshSeconds` | `60`        | Background scan interval (15–600)       |
+| `copilotInsights.nativeStorageRoots`   | `[]`        | Extra `workspaceStorage` folders        |
 
 ## Development
 

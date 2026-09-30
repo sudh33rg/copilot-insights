@@ -28,12 +28,12 @@ Roadmap: `docs/ROADMAP.md`. Executable plans: `docs/superpowers/plans/`.
 
 ## Layering (enforced by ESLint `no-restricted-imports`)
 
-| Folder | May import | Must not import |
-|---|---|---|
-| `src/shared/` | `zod`, other `shared` files | `vscode`, `node:*`, `react`, `core`, `extension`, `webview` |
-| `src/core/` | `node:*`, `zod`, `shared`, other `core` files | `vscode`, `react`, `extension`, `webview` |
-| `src/extension/` | `vscode`, `core`, `shared` | `webview`, `react` |
-| `src/webview/` | `react`, browser APIs, `shared` | `vscode`, `node:*`, `core`, `extension` |
+| Folder           | May import                                    | Must not import                                             |
+| ---------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| `src/shared/`    | `zod`, other `shared` files                   | `vscode`, `node:*`, `react`, `core`, `extension`, `webview` |
+| `src/core/`      | `node:*`, `zod`, `shared`, other `core` files | `vscode`, `react`, `extension`, `webview`                   |
+| `src/extension/` | `vscode`, `core`, `shared`                    | `webview`, `react`                                          |
+| `src/webview/`   | `react`, browser APIs, `shared`               | `vscode`, `node:*`, `core`, `extension`                     |
 
 Business logic lives in `src/core` so it is unit-testable without VS Code. `src/extension` is thin glue.
 
