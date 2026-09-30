@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 — rewrite foundation
+
+- Rewrote the extension in strict TypeScript with a React webview, esbuild/Vite builds, Vitest, ESLint, CI,
+  and integration tests against VS Code stable and 1.105.0.
+- Chat sessions are now parsed by replaying VS Code's real JSONL mutation log. The 0.2 parser recovered no
+  turns from real sessions.
+- Exact per-turn prompt/completion tokens, Copilot credits, Auto-routing resolution, context composition,
+  compactions, reasoning time, tool calls, file events, failures, and system-initiated turns.
+- Normalized SQLite storage (`insights.db`) with migrations; per-turn day bucketing.
+- Privacy: default capture level `summaries`; secret redaction; `metrics` stores no text; lowering the level
+  scrubs stored content; tombstones prevent re-importing deleted sessions.
+- Scanning runs in a worker thread; only one VS Code window writes; `extensionKind: ui` for remote workspaces.
+- The 0.2 dashboard, analysis, and GitHub usage sync are temporarily unavailable (Phase 2). The 0.2 database
+  (`usage.sqlite3`) is left untouched.
+
 ## 0.2.0
 
 - Replaced `@insights`-owned chat capture with passive native GitHub Copilot Chat ingestion.

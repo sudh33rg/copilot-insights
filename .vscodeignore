@@ -1,6 +1,8 @@
 **
-!dist/**
-dist/**/*.map
+!dist/extension.js
+!dist/scanWorker.js
+!dist/webview/main.js
+!dist/webview/main.css
 !media/**
 !package.json
 !README.md

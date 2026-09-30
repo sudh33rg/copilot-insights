@@ -139,7 +139,8 @@
     "vscode:prepublish": "pnpm run build:prod",
     "package": "vsce package --no-dependencies",
     "test:integration": "pnpm run build && node esbuild.mjs --integration && vscode-test",
-    "watch:webview": "vite build --config vite.config.mjs --watch"
+    "watch:webview": "vite build --config vite.config.mjs --watch",
+    "smoke:real": "node esbuild.mjs --smoke && node out/smokeReal.js"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

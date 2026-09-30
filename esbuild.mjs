@@ -36,6 +36,10 @@ if (integration) {
   });
 }
 
+if (process.argv.includes('--smoke')) {
+  builds.push({ ...node, entryPoints: { smokeReal: 'scripts/smokeReal.ts' }, outdir: 'out' });
+}
+
 const contexts = await Promise.all(builds.map((options) => esbuild.context(options)));
 if (watch) {
   await Promise.all(contexts.map((context) => context.watch()));
