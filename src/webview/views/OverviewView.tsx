@@ -67,6 +67,7 @@ function OverviewBody({ overview }: { overview: Overview }) {
           />
         </>
       )}
+      <InternalCard internal={overview.internal} />
       <GithubUsageCard />
     </>
   );
@@ -130,3 +131,63 @@ const workspaceColumns: Column<BreakdownRow>[] = [
   { id: 'workspace', header: 'Workspace', cell: (row) => row.label },
   ...usageColumns,
 ];
+
+const ROLE_LABEL = {
+  USER_FACING: 'Your requests',
+  COPILOT_INTERNAL: 'Copilot internal',
+  UNKNOWN: 'Not classified',
+} as const;
+
+function InternalCard({ internal }: { internal: Overview['internal'] }) {
+  return (
+    <section className="card" aria-label="Copilot internal calls">
+      <h3>Copilot internal calls</h3>
+      {internal.sessionsWithLogs === 0 ? (
+        <p className="muted">
+          No agent debug logs found. Enable “Copilot Insights: Enable Exact Telemetry…” to see the utility
+          requests (titles, summaries, …) Copilot makes on its own.
+        </p>
+      ) : (
+        <>
+          <p className="muted">
+            Utility requests Copilot made itself, this month. Totals cover only sessions with agent debug
+            logging, so they are lower bounds.
+          </p>
+          <dl className="facts">
+            <dt>Calls</dt>
+            <dd>{formatInt(internal.calls)}</dd>
+            <dt>Input tokens</dt>
+            <dd>
+              <Measure measure={internal.inputTokens} format={int} />
+            </dd>
+            <dt>Output tokens</dt>
+            <dd>
+              <Measure measure={internal.outputTokens} format={int} />
+            </dd>
+            <dt>Usage (nano-AIU)</dt>
+            <dd>
+              <Measure measure={internal.nanoAiu} format={int} />
+            </dd>
+          </dl>
+          <DataTable
+            caption="Requests by name"
+            columns={[
+              { id: 'name', header: 'debugName', cell: (row) => row.name },
+              { id: 'role', header: 'Kind', cell: (row) => ROLE_LABEL[row.role] },
+              { id: 'calls', header: 'Calls', align: 'end', cell: (row) => formatInt(row.calls) },
+              {
+                id: 'input',
+                header: 'Input',
+                align: 'end',
+                cell: (row) => <Measure measure={row.inputTokens} format={int} />,
+              },
+            ]}
+            rows={internal.byName}
+            rowKey={(row) => `${row.name}|${row.role}`}
+            empty="No calls this month."
+          />
+        </>
+      )}
+    </section>
+  );
+}

@@ -52,7 +52,22 @@ const handlers: RpcHandlers = {
       outputTokens: none,
       credits: none,
     };
-    return { today: period, month: period, failureRate: none, byModel: [], byWorkspace: [], hostSplit: [] };
+    return {
+      today: period,
+      month: period,
+      failureRate: none,
+      byModel: [],
+      byWorkspace: [],
+      hostSplit: [],
+      internal: {
+        sessionsWithLogs: 0,
+        calls: 0,
+        inputTokens: none,
+        outputTokens: none,
+        nanoAiu: none,
+        byName: [],
+      },
+    };
   },
   clearData: () => ({ confirmed: false, sessions: 0 }),
   exportData: () => ({ saved: false }),

@@ -50,4 +50,29 @@ describe('OverviewView', () => {
     renderWithHost(<OverviewView />, {});
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the overview: boom');
   });
+
+  it('shows utility calls Copilot made on its own, as a lower bound, with names', async () => {
+    renderWithHost(<OverviewView />, { getOverview: overview() });
+    const card = await screen.findByRole('region', { name: 'Copilot internal calls' });
+    expect(within(card).getByText(/only sessions with agent debug logging/i)).toBeInTheDocument();
+    expect(within(card).getByRole('table', { name: 'Requests by name' })).toBeInTheDocument();
+    expect(within(card).getByText('title')).toBeInTheDocument();
+    expect(within(card).getByText('Not classified')).toBeInTheDocument();
+  });
+
+  it('says so when no debug logs exist', async () => {
+    renderWithHost(<OverviewView />, {
+      getOverview: overview({
+        internal: {
+          sessionsWithLogs: 0,
+          calls: 0,
+          inputTokens: missing('agent debug log'),
+          outputTokens: missing('agent debug log'),
+          nanoAiu: missing('agent debug log'),
+          byName: [],
+        },
+      }),
+    });
+    expect(await screen.findByText(/No agent debug logs found/)).toBeInTheDocument();
+  });
 });

@@ -69,4 +69,10 @@ describe('getOverview', () => {
     expect(overview.failureRate.provenance.kind).toBe('unavailable');
     expect(overview.byModel).toEqual([]);
   });
+
+  it('includes internal Copilot usage for the month from debug logs', () => {
+    const overview = getOverview(seededStore().database, localDay(AUTO_START));
+    expect(overview.internal.sessionsWithLogs).toBe(1);
+    expect(overview.internal.calls).toBe(1);
+  });
 });

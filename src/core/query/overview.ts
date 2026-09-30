@@ -2,6 +2,7 @@ import type { BreakdownRow, Overview, PeriodTotals } from '../../shared/dto';
 import { derived, unavailable } from '../../shared/provenance';
 import { modelNameFromId } from '../ingest/chatSession';
 import type { Database } from '../storage/database';
+import { getInternalUsage } from './internalUsage';
 import { SOURCES, summed } from './measure';
 
 interface SumRow {
@@ -32,6 +33,7 @@ export function getOverview(database: Pick<Database, 'db'>, today: string): Over
     byModel: breakdown(database, 'model', monthStart, today),
     byWorkspace: breakdown(database, 'workspace', monthStart, today),
     hostSplit: hostSplit(database, monthStart, today),
+    internal: getInternalUsage(database, monthStart, today),
   };
 }
 

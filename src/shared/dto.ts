@@ -148,6 +148,21 @@ export const overviewSchema = z.object({
   byModel: z.array(breakdownRowSchema),
   byWorkspace: z.array(breakdownRowSchema),
   hostSplit: z.array(z.object({ host: hostSchema, turns: z.number(), sessions: z.number() })),
+  internal: z.object({
+    sessionsWithLogs: z.number(),
+    calls: z.number(),
+    inputTokens: measuredNumber,
+    outputTokens: measuredNumber,
+    nanoAiu: measuredNumber,
+    byName: z.array(
+      z.object({
+        name: z.string(),
+        role: z.enum(['USER_FACING', 'COPILOT_INTERNAL', 'UNKNOWN']),
+        calls: z.number(),
+        inputTokens: measuredNumber,
+      }),
+    ),
+  }),
 });
 export type Overview = z.infer<typeof overviewSchema>;
 

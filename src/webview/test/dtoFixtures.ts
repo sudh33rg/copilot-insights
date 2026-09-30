@@ -175,6 +175,57 @@ export function overview(overrides: Partial<Overview> = {}): Overview {
       { host: 'byok', turns: 2, sessions: 1 },
       { host: 'copilot', turns: 2, sessions: 1 },
     ],
+    internal: {
+      sessionsWithLogs: 1,
+      calls: 2,
+      inputTokens: {
+        value: 300,
+        provenance: {
+          kind: 'derived' as const,
+          source: 'agent debug log (lower bound: only sessions with agent debug logging are observable)',
+        },
+      },
+      outputTokens: {
+        value: 12,
+        provenance: {
+          kind: 'derived' as const,
+          source: 'agent debug log (lower bound: only sessions with agent debug logging are observable)',
+        },
+      },
+      nanoAiu: {
+        value: 2000000,
+        provenance: {
+          kind: 'derived' as const,
+          source: 'agent debug log (lower bound: only sessions with agent debug logging are observable)',
+        },
+      },
+      byName: [
+        {
+          name: 'title',
+          role: 'COPILOT_INTERNAL' as const,
+          calls: 1,
+          inputTokens: {
+            value: 300,
+            provenance: {
+              kind: 'derived' as const,
+              source: 'agent debug log (lower bound: only sessions with agent debug logging are observable)',
+            },
+          },
+        },
+        {
+          name: 'mystery-thing',
+          role: 'UNKNOWN' as const,
+          calls: 1,
+          inputTokens: {
+            value: 10,
+            provenance: {
+              kind: 'derived' as const,
+              source: 'agent debug log (lower bound: only sessions with agent debug logging are observable)',
+            },
+          },
+        },
+      ],
+    },
     ...overrides,
   };
 }
