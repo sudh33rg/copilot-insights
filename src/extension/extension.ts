@@ -18,8 +18,9 @@ import { ObservationStore } from '../core/storage/observationStore';
 import { SessionStore } from '../core/storage/sessionStore';
 import { daysAgo, localDay } from '../core/time';
 import { getDiagnostics } from '../core/query/diagnostics';
+import { getActiveSession } from '../core/query/activeSession';
 import { assertRange } from '../core/query/trends';
-import { readConfig } from './config';
+import { CONFIG_SECTION, readConfig } from './config';
 import { readDebugLoggingEnabled, runEnableDebugLogging } from './telemetry';
 import { githubSession } from './githubAuth';
 import {
@@ -31,6 +32,7 @@ import {
   type DataCommandDeps,
 } from './dataCommands';
 import { BudgetAlerts } from './budgetAlerts';
+import { LiveNudge } from './liveNudge';
 import { IngestController } from './ingestController';
 import { snapshotDiagnostics } from './observers/diagnosticsAdapter';
 import { VscodeGit } from './observers/gitAdapter';
@@ -42,6 +44,7 @@ import type { RpcHandlers } from './webviewHost/rpcHost';
 import { SidebarProvider } from './webviewHost/sidebarProvider';
 
 const LIVE_TICK_MS = 60_000;
+const NUDGE_DEBOUNCE_MS = 1000;
 
 export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel('Copilot Insights', { log: true });
@@ -109,6 +112,7 @@ export function activate(context: vscode.ExtensionContext): void {
     onChanged: () => {
       dataChanged.fire();
       void liveObserver.tick();
+      scheduleNudge();
       void budgetAlerts.check().catch((error: unknown) => {
         log.warn(`Budget check failed: ${error instanceof Error ? error.message : String(error)}`);
       });
@@ -123,7 +127,34 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   });
   const controller = new IngestController(service, context.storageUri, log);
-  const liveTimer = setInterval(() => void liveObserver.tick(), LIVE_TICK_MS);
+  const nudgeItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  nudgeItem.command = 'copilotInsights.openDashboard';
+  const liveNudge = new LiveNudge({
+    enabled: () => readConfig().liveNudge,
+    active: () => getActiveSession(database),
+    statusBar: {
+      show: (text, tooltip) => {
+        nudgeItem.text = text;
+        nudgeItem.tooltip = tooltip;
+        nudgeItem.show();
+      },
+      hide: () => {
+        nudgeItem.hide();
+      },
+    },
+    now: Date.now,
+  });
+  let nudgeTimer: ReturnType<typeof setTimeout> | undefined;
+  const scheduleNudge = () => {
+    clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(() => {
+      liveNudge.update();
+    }, NUDGE_DEBOUNCE_MS);
+  };
+  const liveTimer = setInterval(() => {
+    void liveObserver.tick();
+    liveNudge.update();
+  }, LIVE_TICK_MS);
 
   // `dashboard` is created after the handlers; the closure reads it lazily.
   const syncGithub = async () => {
@@ -211,6 +242,9 @@ export function activate(context: vscode.ExtensionContext): void {
       () => getOrCreateSalt(state),
       () => readConfig().captureLevel,
     ),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration(`${CONFIG_SECTION}.liveNudge`)) liveNudge.update();
+    }),
     dashboard,
     sidebar,
     dataChanged.event(() => {
@@ -241,6 +275,8 @@ export function activate(context: vscode.ExtensionContext): void {
     {
       dispose: () => {
         clearInterval(liveTimer);
+        clearTimeout(nudgeTimer);
+        nudgeItem.dispose();
         controller.dispose();
         lock.release();
         database.close();

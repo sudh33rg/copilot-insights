@@ -2,7 +2,7 @@
   "name": "copilot-insights",
   "displayName": "Copilot Insights",
   "description": "Local observability and optimization for native GitHub Copilot Chat sessions in VS Code.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "local",
   "license": "MIT",
   "private": true,
@@ -138,6 +138,11 @@
           "maximum": 600,
           "default": 60,
           "markdownDescription": "How often to look for new or changed Copilot chat sessions. Sessions in the current workspace also refresh when their files change."
+        },
+        "copilotInsights.liveNudge": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Show the active Copilot session's context size and credits in the status bar, with a hint when the context has grown a lot."
         },
         "copilotInsights.monthlyCreditBudget": {
           "type": "number",

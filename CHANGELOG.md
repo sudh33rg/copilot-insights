@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.0 — personal learning & analytics
+
+- **Learning** tab built from your own sessions, every statistic with its sample size and "not enough data" under
+  five sessions: baselines per task type and model (median and spread) with unusual sessions flagged, a model
+  leaderboard (credits per successful session, corrections, edits kept, failure rate, first-token latency), prompt
+  habits compared with follow-up corrections, and an Auto-routing audit against your manual picks.
+- Session detail now says how the session compares with your own history, for example "Your bugfix sessions on
+  gpt-5.6-luna normally use 40,000–60,000 input tokens … This one used 210,000."
+- **Analytics** tab: credits per day (chart plus table), day drill-down to that day's sessions, model and workspace
+  breakdowns for the chosen range, and a side-by-side session compare.
+- Budgets: `copilotInsights.monthlyCreditBudget` and `copilotInsights.workspaceCreditBudgets`. The Overview shows
+  spend, a linear projection (an estimate) and status; you get a non-modal warning once per month at 80% and 100%.
+  Spend is the credits recorded on this machine, a lower bound.
+- Opt-in live status bar (`copilotInsights.liveNudge`): the active session's context size and credits, with a hint
+  when the context is three times where the session started or has been compacted twice.
+
 ## 0.7.0 — efficiency & model intelligence
 
 - Session detail explains _why_ a session cost what it did: context growth, what filled the prompt, tool rounds and

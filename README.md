@@ -31,6 +31,14 @@ participant, proxy, server, or AI provider is involved.
   and prompt findings with their evidence, failure analytics, and a score shown as its measured components.
   Estimates (a fresh-session restart, the same tokens on other models at list prices) are labelled _Inferred_ /
   _Derived_ and never added to exact totals.
+- **Learning (from your own history)** — what is normal for you per task type and model, which models worked best,
+  whether opening-prompt habits go with fewer corrections, and how Auto routing compares with your manual picks.
+  Everything shows its sample size and stays blank under five sessions.
+- **Analytics and budgets** — credits per day, day drill-down, model/workspace breakdowns for a range, session
+  compare, and optional monthly/per-workspace credit budgets with a projection and 80%/100% warnings (based on
+  credits recorded on this machine).
+- **Live status (opt-in)** — the active session's context size and credits in the status bar, with a hint when it
+  may be cheaper to start fresh.
 - **Credit reconciliation** — after a GitHub sync, per day: GitHub-billed credits vs credits recorded locally,
   coverage %, and the unexplained remainder (other machines, Copilot CLI, github.com, other clients).
 - **Model tiers** — each model's tier comes from Copilot's own model catalog, not from name matching.
@@ -85,12 +93,15 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 
 ## Settings
 
-| Setting                                | Default     | Meaning                                 |
-| -------------------------------------- | ----------- | --------------------------------------- |
-| `copilotInsights.captureLevel`         | `summaries` | `metrics`, `summaries`, or `full`       |
-| `copilotInsights.retentionDays`        | `30`        | Days of history to keep (`0` = forever) |
-| `copilotInsights.nativeRefreshSeconds` | `60`        | Background scan interval (15–600)       |
-| `copilotInsights.nativeStorageRoots`   | `[]`        | Extra `workspaceStorage` folders        |
+| Setting                                  | Default     | Meaning                                 |
+| ---------------------------------------- | ----------- | --------------------------------------- |
+| `copilotInsights.captureLevel`           | `summaries` | `metrics`, `summaries`, or `full`       |
+| `copilotInsights.retentionDays`          | `30`        | Days of history to keep (`0` = forever) |
+| `copilotInsights.nativeRefreshSeconds`   | `60`        | Background scan interval (15–600)       |
+| `copilotInsights.nativeStorageRoots`     | `[]`        | Extra `workspaceStorage` folders        |
+| `copilotInsights.monthlyCreditBudget`    | `0`         | Monthly credit budget (`0` = off)       |
+| `copilotInsights.workspaceCreditBudgets` | `{}`        | Per-workspace monthly budgets           |
+| `copilotInsights.liveNudge`              | `false`     | Status bar item for the active session  |
 
 ## Development
 

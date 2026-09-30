@@ -181,6 +181,16 @@ Goal: everything the prototype promised, working on real data, in a maintainable
 
 ## Phase 6 — Personal learning & analytics UX
 
+> **Done — shipped in 0.8.0.** Design decisions (see `docs/superpowers/plans/2026-09-30-phase-6-personal-learning-and-analytics.md`):
+> D-P6-1 statistics over fewer than 5 sessions are unavailable and always show their sample size; D-P6-2 median and
+> MAD with an outlier rule that also needs a 1.5× ratio; D-P6-3 a session succeeded when it has no failed user turns,
+> no undone edits and no failed last test run; D-P6-4 facts come from existing evidence only, credits are Copilot's
+> own per-request credits (never GitHub's daily totals) and BYOK sessions are excluded from credit statistics; D-P6-5
+> prompt-style features are coarse (names a file, states success, states constraints) and only inferred correlations;
+> D-P6-6 budgets use credits recorded on this machine, projections are inferred, alerts are non-modal once per month
+> per threshold; D-P6-7 the live nudge is opt-in. The roadmap is complete; further work would come from new product
+> goals.
+
 | Task                            | Deliverable                                                                                                               | Acceptance                |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | 6.1 Baselines                   | per task type × model: median and MAD of tokens/credits; outliers flagged; sample size shown; "not enough data" under n=5 | statistical unit tests    |

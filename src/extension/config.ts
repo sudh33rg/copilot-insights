@@ -10,6 +10,8 @@ export interface InsightsConfig {
   refreshSeconds: number;
   storageRoots: string[];
   budgets: BudgetSettings;
+  /** Opt-in status bar item for the active session. */
+  liveNudge: boolean;
 }
 
 export function readConfig(): InsightsConfig {
@@ -25,6 +27,7 @@ export function readConfig(): InsightsConfig {
     storageRoots: Array.isArray(storageRoots)
       ? storageRoots.filter((value): value is string => typeof value === 'string' && value.trim() !== '')
       : [],
+    liveNudge: config.get<unknown>('liveNudge') === true,
     budgets: parseBudgetSettings(
       config.get<unknown>('monthlyCreditBudget'),
       config.get<unknown>('workspaceCreditBudgets'),
