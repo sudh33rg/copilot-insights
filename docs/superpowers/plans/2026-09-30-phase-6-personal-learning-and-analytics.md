@@ -256,7 +256,7 @@ itself from the reference set and returns `null` when fewer than `MIN_SAMPLE` ot
       to click it). `LearningView` (region `Learning`) renders, for this task, a `Baselines` section: a table
       `Typical usage by task type and model` (Task, Model, Sessions, Median input tokens `Measure`, Median credits
       `Measure`; under-sample cells show `—` + badge and the source text in the badge title) and an `Unusual
-  sessions` list (title, verdict badge, `210,000 vs median 48,000`). Empty text
+sessions` list (title, verdict badge, `210,000 vs median 48,000`). Empty text
       `Not enough history yet: baselines need at least 5 sessions of the same task type on the same model.`
       `SessionDetailView` shows `baseline.message` (muted, with the verdict badge) under the totals when non-null.
       Tests: table values and badges, under-sample placeholder, outlier list, empty state, error line; the detail
@@ -311,8 +311,8 @@ task type appears only when at least one row has `sessions ≥ MIN_SAMPLE`.
 
 - [ ] **Step 1: Failing tests:** two models on the same task type with 6 sessions each — credits per success uses
       only successful sessions with exact credits (a failed session's credits are excluded; a session with `credits:
-  null` is skipped and not counted in `creditSessions`); corrections mean ignores sessions with `corrections:
-  null`; a model with 4 sessions has every metric `null`; a task type whose only model has 4 sessions is
+null` is skipped and not counted in `creditSessions`); corrections mean ignores sessions with `corrections:
+null`; a model with 4 sessions has every metric `null`; a task type whose only model has 4 sessions is
       omitted; rows sorted; BYOK sessions contribute to failure rate and latency but not to credits.
 - [ ] **Step 2: Run → FAIL. Step 3: Implement + DTO + protocol + handler. Step 4: UI:** `Model leaderboard`
       section in `LearningView` — one table per task type (`Best models for <task> work`), columns Model, Sessions,
@@ -366,8 +366,8 @@ that order.
       or one user turn are excluded; all three features returned even when empty.
 - [ ] **Step 2: Run → FAIL. Step 3: Implement + DTO + protocol + handler. Step 4: UI:** `Prompt style` section:
       for each feature a sentence `Opening prompts that name a file: 0.3 corrections per session (6 sessions)
-  vs 2.2 without (6 sessions)` built from measures with badges, the note `Correlation from your own history,
-  not proof that the habit causes fewer corrections. Needs stored prompt text.`, and `Not enough data yet`
+vs 2.2 without (6 sessions)` built from measures with badges, the note `Correlation from your own history,
+not proof that the habit causes fewer corrections. Needs stored prompt text.`, and `Not enough data yet`
       lines for under-sample sides. Tests for text, badges, note, placeholders.
 - [ ] **Step 5:** `pnpm format && pnpm verify` → PASS. **Step 6: Commit**
 
@@ -421,7 +421,7 @@ sessions having it. A task type appears only when both sides have at least one s
       metrics `null`; mixed/unknown selection counted in `excludedSessions` (via the store-level wrapper) and not in
       either side; BYOK sessions excluded from credits.
 - [ ] **Step 2: Run → FAIL. Step 3: Implement + DTO + protocol + handler. Step 4: UI:** `Auto routing vs your own
-  picks` table per task type with columns for Auto and Manual side by side (sessions, credits per session,
+picks` table per task type with columns for Auto and Manual side by side (sessions, credits per session,
       failure rate, edits kept) and the line `Sessions where the routing was mixed or unknown are left out (N).`;
       neutral wording (no verdict like "Auto is better"). Tests: values, placeholders, excluded note, empty state
       `Needs at least 5 sessions on one side and some on the other.`

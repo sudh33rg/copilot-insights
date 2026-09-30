@@ -72,8 +72,8 @@ export function promptFindings(turns: readonly TurnDetail[]): Finding[] {
   return findings;
 }
 
-const FILE_REFERENCE = /[\w./-]+\.[a-z]{1,5}\b|`[^`]+`|#file:/i;
-const ACCEPTANCE_CUE = /\b(should|must|expect|so that|when|until|passes?|returns?)\b/i;
+export const FILE_REFERENCE = /[\w./-]+\.[a-z]{1,5}\b|`[^`]+`|#file:/i;
+export const ACCEPTANCE_CUE = /\b(should|must|expect|so that|when|until|passes?|returns?)\b/i;
 const CONSTRAINT = /\b(must|only|never|don'?t|do not|without|make sure|ensure|instead of)\b/gi;
 const MIN_UNDERSPECIFIED_TURNS = 3;
 const MIN_LATE_TURN_ORDINAL = 3;
@@ -88,7 +88,7 @@ function isUnderspecifiedStart(first: string | undefined, userTurns: number): bo
   );
 }
 
-const constraintWords = (text: string): string[] => [
+export const constraintWords = (text: string): string[] => [
   ...new Set([...text.matchAll(CONSTRAINT)].map((match) => match[0].toLowerCase())),
 ];
 
