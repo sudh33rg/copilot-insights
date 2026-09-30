@@ -6,6 +6,8 @@ import { loadChatSessionState } from '../src/core/ingest/mutationLog';
 import { defaultUserDir, resolveStorageRoots } from '../src/core/ingest/roots';
 import { listChatSessionFiles } from '../src/core/ingest/scanner';
 import { isRecord } from '../src/core/json';
+import type { NormalizedSession } from '../src/core/ingest/types';
+import { checkQueryLayer } from './smokeQueries';
 
 const product = process.env.VSCODE_PRODUCT ?? 'Code';
 const roots = resolveStorageRoots({
@@ -40,6 +42,7 @@ const bySelection: Record<string, number> = {};
 const byResolvedModelSource: Record<string, number> = {};
 const unknownPartKinds: Record<string, number> = {};
 const unknownRequestKeys: Record<string, number> = {};
+const normalized: NormalizedSession[] = [];
 const bump = (counts: Record<string, number>, key: string): void => {
   counts[key] = (counts[key] ?? 0) + 1;
 };
@@ -56,6 +59,7 @@ for (const { file, workspace } of listChatSessionFiles(roots)) {
       continue;
     }
     totals.sessions++;
+    normalized.push(session);
     totals.invalidRequests += session.diagnostics.invalidRequests;
     for (const kind of session.diagnostics.unknownPartKinds) bump(unknownPartKinds, kind);
     for (const key of session.diagnostics.unknownRequestKeys) bump(unknownRequestKeys, key);
@@ -110,4 +114,8 @@ if (accounted !== totals.requests) {
   process.exitCode = 1;
 } else {
   console.log(`OK: all ${totals.requests} requests became turns.`);
+  const failures = checkQueryLayer(normalized);
+  for (const failure of failures) console.error(`FAIL: ${failure}`);
+  if (failures.length > 0) process.exitCode = 1;
+  else console.log('OK: query layer matches parsed totals.');
 }

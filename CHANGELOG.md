@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 — parity dashboard
+
+- Overview, Sessions and Session detail views (React) on the real ingested data, with provenance badges on every
+  metric (`exact` / `derived` / `inferred` / `unavailable`); partial sums are lower bounds, never exact.
+- Deterministic session analysis: intent, outcome sentence, areas touched, complexity, prompt findings (system-
+  initiated turns excluded; failures come from turn state). Cached per session and invalidated on re-ingest,
+  content clear and analyzer version.
+- Search across title, workspace, prompt text and model; failed-only filter; paged list.
+- Clear a session's text, delete a session, delete by date or workspace, delete everything, export JSON; deletions
+  survive rescans through tombstones; modal confirmation in VS Code.
+- Opt-in GitHub billed-credit sync (individual billing endpoint, API version 2026-03-10); the token is only ever
+  sent to `api.github.com`.
+- Offer to delete unused data from the previous version (`usage.sqlite3`, `usage.json`).
+
 ## 0.3.0 — rewrite foundation
 
 - Rewrote the extension in strict TypeScript with a React webview, esbuild/Vite builds, Vitest, ESLint, CI,

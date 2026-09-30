@@ -4,8 +4,27 @@ A local VS Code extension that observes your native GitHub Copilot Chat sessions
 what it cost, and how to get better results next time. You keep using Copilot Chat normally; no chat
 participant, proxy, server, or AI provider is involved.
 
-> Status: **0.3.0 (rewrite in progress)**. The TypeScript/React foundation and exact session ingestion are
-> done. Dashboards, analysis, and GitHub usage sync return in Phase 2 — see `docs/ROADMAP.md`.
+> Status: **0.4.0**. Dashboard, session detail, analysis, clear/export and opt-in GitHub usage sync are back on
+> top of exact ingestion. Exact telemetry, outcome and efficiency intelligence follow — see `docs/ROADMAP.md`.
+
+## What you get
+
+- **Overview** — today and this month: sessions, turns, exact input/output tokens and Copilot credits, failure rate,
+  and breakdowns by model, workspace, and host (Copilot vs BYOK/local).
+- **Sessions** — searchable list (title, workspace, prompt text, model) with routing (`Auto → model` /
+  `Manual · model`), tokens, credits, turn count and state; failed-only filter; paged.
+- **Session detail** — the full timeline: prompt, response (always shown as plain text), model, tokens, credits,
+  reasoning time, compactions, tool calls, file activity and errors, plus a deterministic analysis: intent,
+  outcome sentence, areas touched, complexity, and prompt findings with their evidence.
+- **Provenance on every number** — `Exact` (recorded by Copilot), `Derived` (computed from exact data; partial sums
+  are lower bounds), `Inferred` (heuristic), `Unavailable` (never shown as zero). Hover a badge for its source.
+- **Clear and export** — delete or clear one session, or by date/workspace/everything; export the index as JSON.
+  Deleted sessions are not re-imported. Confirmations happen in VS Code dialogs.
+- **GitHub billed credits (opt-in)** — "Sync now" fetches your own daily billed AI credits from GitHub (individual
+  billing only). They are shown account-wide, never attributed to sessions.
+
+Commands (Command Palette, category _Copilot Insights_): Open Dashboard, Refresh Copilot Sessions, Rebuild Session
+Index, Clear Data…, Export Index as JSON…, Sync GitHub Usage, Delete Data From Previous Version….
 
 ## What it reads
 
@@ -27,6 +46,9 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 - Secrets (GitHub/AWS/Slack tokens, API keys, JWTs, private keys, `password=` assignments) are redacted before
   anything is stored.
 - Copilot's own files and GitHub-side data are never modified or deleted.
+- The only network access is the GitHub REST API (`api.github.com`) when you click _Sync now_; the token is sent
+  nowhere else. No AI provider is ever called.
+- Tool arguments are never shown in the dashboard or exported.
 
 ## Settings
 
