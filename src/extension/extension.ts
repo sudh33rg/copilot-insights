@@ -18,6 +18,7 @@ import { ObservationStore } from '../core/storage/observationStore';
 import { SessionStore } from '../core/storage/sessionStore';
 import { daysAgo, localDay } from '../core/time';
 import { getDiagnostics } from '../core/query/diagnostics';
+import { assertRange } from '../core/query/trends';
 import { readConfig } from './config';
 import { readDebugLoggingEnabled, runEnableDebugLogging } from './telemetry';
 import { githubSession } from './githubAuth';
@@ -141,6 +142,11 @@ export function activate(context: vscode.ExtensionContext): void {
     getLeaderboard: () => queries.getLeaderboard(),
     getPromptStyle: () => queries.getPromptStyle(),
     getAutoAudit: () => queries.getAutoAudit(),
+    getTrends: ({ days }) => ({ days: queries.getTrends(localDay(), days) }),
+    getRangeBreakdown: ({ from, to }) => {
+      assertRange(from, to);
+      return queries.getRangeBreakdown(from, to);
+    },
     clearData: ({ scope }) => confirmAndClear(dataDeps, scope),
     exportData: () => exportToFile(dataDeps),
     getGithubUsage: ({ days }) => {

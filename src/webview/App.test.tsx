@@ -89,4 +89,15 @@ describe('App', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Learning' }));
     expect(await screen.findByRole('region', { name: 'Learning' })).toBeInTheDocument();
   });
+
+  it('has an Analytics tab and can open a session from it', async () => {
+    renderDashboard({
+      getIndexStatus: status(),
+      getTrends: { days: [] },
+      getRangeBreakdown: { byModel: [], byWorkspace: [] },
+    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Analytics' }));
+    expect(await screen.findByRole('region', { name: 'Analytics' })).toBeInTheDocument();
+    expect(await screen.findByText('No usage in this range.')).toBeInTheDocument();
+  });
 });

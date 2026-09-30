@@ -9,9 +9,11 @@ import {
   leaderboardSchema,
   promptStyleSchema,
   overviewSchema,
+  rangeBreakdownSchema,
   sessionDetailSchema,
   sessionListSchema,
   survivalByModelRowSchema,
+  trendsSchema,
 } from './dto';
 
 interface Def {
@@ -89,6 +91,8 @@ const ALLOWED = {
   commitCosts: ['rows[].committedAt', 'rows[].sessions'],
   autoAudit: ['excludedSessions', 'rows[].auto.sessions', 'rows[].manual.sessions'],
   baselines: ['rows[].creditSessions', 'rows[].sessions'],
+  trends: ['days[].sessions', 'days[].turns'],
+  rangeBreakdown: ['byModel[].sessions', 'byModel[].turns', 'byWorkspace[].sessions', 'byWorkspace[].turns'],
   promptStyle: ['rows[].withFeature.sessions', 'rows[].without.sessions'],
   leaderboard: [
     'groups[].rows[].creditSessions',
@@ -115,6 +119,8 @@ describe('provenance is enforced on every DTO', () => {
     ['commit costs', z.object({ rows: z.array(commitCostRowSchema) }), ALLOWED.commitCosts],
     ['failure analytics', failureAnalyticsSchema, ALLOWED.failureAnalytics],
     ['baselines', baselinesSchema, ALLOWED.baselines],
+    ['trends', trendsSchema, ALLOWED.trends],
+    ['range breakdown', rangeBreakdownSchema, ALLOWED.rangeBreakdown],
     ['auto audit', autoAuditSchema, ALLOWED.autoAudit],
     ['leaderboard', leaderboardSchema, ALLOWED.leaderboard],
     ['prompt style', promptStyleSchema, ALLOWED.promptStyle],

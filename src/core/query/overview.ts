@@ -48,7 +48,7 @@ function measures(row: SumRow) {
   };
 }
 
-function periodTotals(database: Pick<Database, 'db'>, from: string, to: string): PeriodTotals {
+export function periodTotals(database: Pick<Database, 'db'>, from: string, to: string): PeriodTotals {
   const row = database.db
     .prepare(`SELECT ${SUMS} FROM turns t WHERE t.day >= :from AND t.day <= :to`)
     .get({ from, to }) as unknown as SumRow;
@@ -66,7 +66,12 @@ function failureRate(database: Pick<Database, 'db'>, from: string, to: string) {
   return row.finished === 0 ? unavailable<number>(source) : derived(row.failed / row.finished, source);
 }
 
-function breakdown(database: Database, by: 'model' | 'workspace', from: string, to: string): BreakdownRow[] {
+export function breakdown(
+  database: Database,
+  by: 'model' | 'workspace',
+  from: string,
+  to: string,
+): BreakdownRow[] {
   const keyExpr = by === 'model' ? "coalesce(t.resolved_model, t.requested_model, 'unknown')" : 's.workspace';
   const hostExpr = by === 'model' ? 't.model_host' : 'NULL';
   const tiers = new CatalogStore(database).tiers();

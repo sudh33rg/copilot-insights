@@ -342,6 +342,20 @@ export const periodTotalsSchema = z.object({
 });
 export type PeriodTotals = z.infer<typeof periodTotalsSchema>;
 
+export const trendDaySchema = z.object({
+  day: dayString,
+  /** Rows of this index on that day (index facts). */
+  sessions: z.number(),
+  turns: z.number(),
+  inputTokens: measuredNumber,
+  outputTokens: measuredNumber,
+  credits: measuredNumber,
+});
+export type TrendDay = z.infer<typeof trendDaySchema>;
+
+export const trendsParams = z.object({ days: z.number().int().min(1).max(366) });
+export const rangeParams = z.object({ from: dayString, to: dayString });
+
 export const breakdownRowSchema = z.object({
   key: z.string(),
   label: z.string(),
@@ -354,6 +368,13 @@ export const breakdownRowSchema = z.object({
   credits: measuredNumber,
 });
 export type BreakdownRow = z.infer<typeof breakdownRowSchema>;
+
+export const trendsSchema = z.object({ days: z.array(trendDaySchema) });
+export const rangeBreakdownSchema = z.object({
+  byModel: z.array(breakdownRowSchema),
+  byWorkspace: z.array(breakdownRowSchema),
+});
+export type RangeBreakdown = z.infer<typeof rangeBreakdownSchema>;
 
 export const overviewSchema = z.object({
   today: periodTotalsSchema,

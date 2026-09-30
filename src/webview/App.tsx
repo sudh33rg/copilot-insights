@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from './ui/Button';
+import { AnalyticsView } from './views/AnalyticsView';
 import { DiagnosticsView } from './views/DiagnosticsView';
 import { IndexStatus } from './views/IndexStatus';
 import { LearningView } from './views/LearningView';
@@ -14,10 +15,11 @@ export function App({ view }: { view: 'dashboard' | 'sidebar' }) {
   );
 }
 
-const TABS = ['overview', 'sessions', 'learning', 'diagnostics'] as const;
+const TABS = ['overview', 'sessions', 'analytics', 'learning', 'diagnostics'] as const;
 const TAB_LABEL = {
   overview: 'Overview',
   sessions: 'Sessions',
+  analytics: 'Analytics',
   learning: 'Learning',
   diagnostics: 'Diagnostics',
 } as const;
@@ -46,6 +48,14 @@ function DashboardView() {
       </nav>
       {tab === 'overview' && <OverviewView />}
       {tab === 'diagnostics' && <DiagnosticsView />}
+      {tab === 'analytics' && (
+        <AnalyticsView
+          onOpenSession={(id) => {
+            setTab('sessions');
+            setSelected(id);
+          }}
+        />
+      )}
       {tab === 'learning' && (
         <LearningView
           onOpenSession={(id) => {

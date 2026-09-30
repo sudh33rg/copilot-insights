@@ -6,9 +6,11 @@ import type {
   CommitCostRow,
   FailureAnalytics,
   Overview,
+  RangeBreakdown,
   SessionDetail,
   SessionList,
   SurvivalByModelRow,
+  TrendDay,
 } from '../../shared/dto';
 import { AnalysisStore } from '../analysis/analysisStore';
 import type { Database } from '../storage/database';
@@ -21,6 +23,7 @@ import { SessionFactsStore } from './sessionFactsStore';
 import { getSessionDetail } from './sessionDetail';
 import { listSessions, type SessionListQuery } from './sessionList';
 import { getSurvivalByModel } from './survivalByModel';
+import { getRangeBreakdown, getTrends } from './trends';
 
 /** What the extension exposes to the webview: raw queries plus cached analysis. */
 export class InsightsQueries {
@@ -48,6 +51,14 @@ export class InsightsQueries {
       analysis: this.analysis.forDetail(detail),
       baseline: sessionBaseline(this.facts.all(), id),
     };
+  }
+
+  getTrends(toDay: string, days: number): TrendDay[] {
+    return getTrends(this.database, toDay, days);
+  }
+
+  getRangeBreakdown(from: string, to: string): RangeBreakdown {
+    return getRangeBreakdown(this.database, from, to);
   }
 
   getAutoAudit(): AutoAudit {
