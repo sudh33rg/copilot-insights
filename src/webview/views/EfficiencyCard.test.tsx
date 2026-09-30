@@ -6,6 +6,7 @@ import { EfficiencyCard } from './EfficiencyCard';
 const efficiency = (overrides: Partial<Efficiency> = {}): Efficiency => ({
   drivers: [],
   findings: [],
+  freshSession: null,
   ...overrides,
 });
 
@@ -90,5 +91,32 @@ describe('EfficiencyCard', () => {
   it('omits the advice section when there is none', () => {
     render(<EfficiencyCard efficiency={efficiency()} />);
     expect(screen.queryByRole('heading', { name: 'Context and model advice' })).toBeNull();
+  });
+
+  it('shows the fresh-session estimate as an inferred estimate kept apart from the exact totals', () => {
+    const inferred = (value: number) => ({
+      value,
+      provenance: { kind: 'inferred' as const, source: 'estimate: …' },
+    });
+    render(
+      <EfficiencyCard
+        efficiency={efficiency({
+          freshSession: { restartAtTurn: 4, tokensSaved: inferred(120_000), shareOfInput: inferred(0.63) },
+        })}
+      />,
+    );
+    const card = screen.getByRole('region', { name: 'Efficiency' });
+    expect(
+      within(card).getByText(
+        'Restarting in a fresh session at turn 4 would have saved an estimated 120,000 input tokens (63% of this session’s input).',
+      ),
+    ).toBeInTheDocument();
+    expect(within(card).getByText('Inferred')).toBeInTheDocument();
+    expect(within(card).getByText('Estimate, not part of the exact totals above.')).toBeInTheDocument();
+  });
+
+  it('shows no fresh-session line when there is no estimate', () => {
+    render(<EfficiencyCard efficiency={efficiency()} />);
+    expect(screen.queryByText(/fresh session/)).toBeNull();
   });
 });

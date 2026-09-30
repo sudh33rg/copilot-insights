@@ -1,6 +1,8 @@
 import type { Efficiency, TurnDetail } from '../../shared/dto';
+import { inferred } from '../../shared/provenance';
 import { contextBloat } from '../efficiency/contextBloat';
 import { costDrivers } from '../efficiency/costDrivers';
+import { freshSessionEstimate } from '../efficiency/freshSession';
 import type { Database } from '../storage/database';
 
 /** Everything that explains a session's cost and how to do better; see docs/superpowers/plans (Phase 5). */
@@ -12,6 +14,26 @@ export function getSessionEfficiency(
   return {
     drivers: costDrivers(turns),
     findings: [...contextFindings(database, turns, sessionId)],
+    freshSession: freshSession(turns),
+  };
+}
+
+const FRESH_SOURCE =
+  'estimate: a fresh session would resend the first request’s baseline instead of the accumulated context; ignores prompt-cache discounts';
+
+function freshSession(turns: readonly TurnDetail[]): Efficiency['freshSession'] {
+  const estimate = freshSessionEstimate(
+    turns.map((turn) => ({
+      index: turn.index,
+      inputTokens: turn.inputTokens.value,
+      systemInitiated: turn.systemInitiated,
+    })),
+  );
+  if (estimate === null) return null;
+  return {
+    restartAtTurn: estimate.restartAtTurn,
+    tokensSaved: inferred(estimate.tokensSaved, FRESH_SOURCE),
+    shareOfInput: inferred(estimate.shareOfInput, FRESH_SOURCE),
   };
 }
 

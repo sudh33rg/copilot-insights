@@ -168,6 +168,14 @@ export const efficiencySchema = z.object({
   drivers: z.array(costDriverSchema),
   /** Hedged advice about context and model choice, each with its evidence. */
   findings: z.array(findingSchema),
+  /** What restarting in a fresh session might have saved; an estimate, never part of the exact totals. */
+  freshSession: z
+    .object({
+      restartAtTurn: z.number(),
+      tokensSaved: measuredNumber,
+      shareOfInput: measuredNumber,
+    })
+    .nullable(),
 });
 export type Efficiency = z.infer<typeof efficiencySchema>;
 

@@ -54,6 +54,7 @@ const ALLOWED = {
     'debug.calls',
     'debug.internalCalls',
     'debug.unmatchedCalls',
+    'efficiency.freshSession.restartAtTurn',
     'endedAt',
     'outcomes.commits[].committedAt',
     'outcomes.commits[].editedFiles',
