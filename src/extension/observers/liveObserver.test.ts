@@ -168,4 +168,82 @@ describe('LiveObserver.tick', () => {
       expect(observations.hasDiagnostics('fx-auto-1', 'start')).toBe(true);
     });
   });
+
+  describe('commit linking', () => {
+    const COMMIT_AT = NOW - 1000;
+
+    function commitSetup(options: { fail?: boolean } = {}) {
+      const calls: number[] = [];
+      const repo: GitRepo = {
+        ...fakeRepo({ head: 'h1', added: 1 }),
+        commitsSince: (since) => {
+          calls.push(since);
+          if (options.fail) return Promise.reject(new Error('git log exploded'));
+          return Promise.resolve([
+            { hash: 'c1', committedAt: COMMIT_AT, files: ['/repo/a.ts', '/repo/other.ts'] },
+            { hash: 'c2', committedAt: COMMIT_AT, files: ['/repo/unrelated.ts'] },
+          ]);
+        },
+      };
+      const harness = setup({ repos: () => Promise.resolve([repo]) });
+      harness.database.db.exec('DELETE FROM file_events');
+      harness.database.db.exec(
+        "INSERT INTO file_events (session_id, turn_idx, seq, path, action, source) VALUES ('fx-auto-1', 1, 0, '/repo/a.ts', 'edited', 't')",
+      );
+      return { ...harness, calls };
+    }
+
+    it('links commits that touched an edited file and stores them', async () => {
+      const { observer, observations } = commitSetup();
+      await observer.tick();
+      expect(observations.sessionCommits('fx-auto-1')).toEqual([
+        { hash: 'c1', committedAt: COMMIT_AT, overlapFiles: 1, editedFiles: 1, linkedAt: NOW },
+      ]);
+    });
+
+    it('does not ask git again within the throttle window, but does after it', async () => {
+      const { observer, calls, advance } = commitSetup();
+      await observer.tick();
+      advance(60_000);
+      await observer.tick();
+      expect(calls).toHaveLength(1);
+      advance(5 * 60_000);
+      await observer.tick();
+      expect(calls).toHaveLength(2);
+    });
+
+    it('does not rewrite identical links, so cached analyses are not invalidated needlessly', async () => {
+      const { observer, observations, advance, calls } = commitSetup();
+      await observer.tick();
+      advance(6 * 60_000);
+      await observer.tick();
+      expect(calls).toHaveLength(2);
+      // A rewrite would have moved linkedAt to the later tick.
+      expect(observations.sessionCommits('fx-auto-1')).toEqual([
+        { hash: 'c1', committedAt: COMMIT_AT, overlapFiles: 1, editedFiles: 1, linkedAt: NOW },
+      ]);
+    });
+
+    it('stores nothing and does not throw when there is no repository', async () => {
+      const { observer, observations, database, warnings } = commitSetup();
+      database.db.exec("UPDATE file_events SET path = '/elsewhere/a.ts'");
+      await observer.tick();
+      expect(observations.sessionCommits('fx-auto-1')).toEqual([]);
+      expect(warnings).toEqual([]);
+    });
+
+    it('skips sessions that edited no files', async () => {
+      const { observer, calls, database } = commitSetup();
+      database.db.exec('DELETE FROM file_events');
+      await observer.tick();
+      expect(calls).toEqual([]);
+    });
+
+    it('catches a failing git log per session and keeps going', async () => {
+      const { observer, observations, warnings } = commitSetup({ fail: true });
+      await observer.tick();
+      expect(observations.sessionCommits('fx-auto-1')).toEqual([]);
+      expect(warnings).toEqual(['Could not link commits for session fx-auto-1: git log exploded']);
+    });
+  });
 });

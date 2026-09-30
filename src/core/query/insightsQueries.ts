@@ -1,6 +1,13 @@
-import type { Overview, SessionDetail, SessionList, SurvivalByModelRow } from '../../shared/dto';
+import type {
+  CommitCostRow,
+  Overview,
+  SessionDetail,
+  SessionList,
+  SurvivalByModelRow,
+} from '../../shared/dto';
 import { AnalysisStore } from '../analysis/analysisStore';
 import type { Database } from '../storage/database';
+import { getCommitCosts } from './commitCosts';
 import { getOverview } from './overview';
 import { getSessionDetail } from './sessionDetail';
 import { listSessions, type SessionListQuery } from './sessionList';
@@ -29,6 +36,10 @@ export class InsightsQueries {
 
   getOverview(today: string): Overview {
     return getOverview(this.database, today);
+  }
+
+  getCommitCosts(): CommitCostRow[] {
+    return getCommitCosts(this.database);
   }
 
   getSurvivalByModel(): SurvivalByModelRow[] {

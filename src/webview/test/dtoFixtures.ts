@@ -98,6 +98,7 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
       lastTestPassed: { value: null, provenance: { kind: 'unavailable', source: 'test' } },
       errorsDelta: missing(),
       warningsDelta: missing(),
+      commits: [],
     },
     analysis: {
       intent: {

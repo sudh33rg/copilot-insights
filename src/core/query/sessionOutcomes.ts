@@ -6,6 +6,7 @@ import { diagnosticsDelta } from '../outcomes/diagnosticsDelta';
 import { attributeEditOutcomes } from '../outcomes/editOutcomes';
 import { matchTerminalRuns, SLACK_AFTER_MS, SYSTEM_LEAD_MS, type MatchTurn } from '../outcomes/terminalMatch';
 import type { Database } from '../storage/database';
+import { getSessionCredits } from './sessionCredits';
 import { ObservationReader, type StoredSnapshot, type SurvivalCheck } from '../storage/observationStore';
 
 const GIT_SOURCE =
@@ -23,6 +24,7 @@ export function getSessionOutcomes(database: Pick<Database, 'db'>, id: string): 
     laterSurvival: laterSurvival(observations.survivalChecks(id)),
     ...terminalOutcomes(database, observations, id),
     ...diagnosticsOutcomes(database, observations, id),
+    commits: linkedCommits(database, observations, id),
   };
 }
 
@@ -212,4 +214,32 @@ function diagnosticsOutcomes(
   }
   const source = 'VS Code diagnostics for edited files at first vs latest observation';
   return { errorsDelta: derived(delta.errors, source), warningsDelta: derived(delta.warnings, source) };
+}
+
+const COMMIT_COST_SOURCE = 'session credits split evenly across the commits each session links to';
+
+function linkedCommits(
+  database: Pick<Database, 'db'>,
+  observations: ObservationReader,
+  id: string,
+): Outcomes['commits'] {
+  const links = observations.sessionCommits(id);
+  if (links.length === 0) return [];
+  const sessionCredits = getSessionCredits(database, id).get(id);
+  const share = sessionCredits?.value == null ? null : sessionCredits.value / links.length;
+  return links.map((link) => ({
+    hash: link.hash,
+    committedAt: link.committedAt,
+    overlapFiles: link.overlapFiles,
+    editedFiles: link.editedFiles,
+    credits:
+      share === null
+        ? unavailable('the session reported no Copilot credits')
+        : derived(
+            share,
+            sessionCredits?.provenance.source.includes('lower bound')
+              ? `${COMMIT_COST_SOURCE} (lower bound: the session's credits are partial)`
+              : COMMIT_COST_SOURCE,
+          ),
+  }));
 }

@@ -296,3 +296,42 @@ describe('getSessionOutcomes — diagnostics delta', () => {
     expect(getSessionOutcomes(database, 'fx-auto-1').errorsDelta.value).toBeNull();
   });
 });
+
+describe('getSessionOutcomes — linked commits', () => {
+  const link = (hash: string, committedAt: number) => ({
+    hash,
+    committedAt,
+    overlapFiles: 2,
+    editedFiles: 3,
+    linkedAt: 1,
+  });
+
+  it('is an empty list when no commit was linked', () => {
+    expect(getSessionOutcomes(seededStore().database, 'fx-auto-1').commits).toEqual([]);
+  });
+
+  it('lists linked commits with the session credits split evenly across them', () => {
+    const { database } = seededStore();
+    new ObservationStore(database).replaceSessionCommits('fx-auto-1', [link('c1', 10), link('c2', 20)]);
+    const { commits } = getSessionOutcomes(database, 'fx-auto-1');
+    expect(
+      commits.map((commit) => [commit.hash, commit.committedAt, commit.overlapFiles, commit.editedFiles]),
+    ).toEqual([
+      ['c1', 10, 2, 3],
+      ['c2', 20, 2, 3],
+    ]);
+    expect(commits[0]?.credits.value).toBeCloseTo(1.626141 / 2);
+    expect(commits[0]?.credits.provenance).toEqual({
+      kind: 'derived',
+      source: 'session credits split evenly across the commits each session links to',
+    });
+  });
+
+  it('has unavailable credits when the session reported none', () => {
+    const { database } = seededStore();
+    new ObservationStore(database).replaceSessionCommits('fx-byok-1', [link('c1', 10)]);
+    const commit = getSessionOutcomes(database, 'fx-byok-1').commits[0];
+    expect(commit?.credits.value).toBeNull();
+    expect(commit?.credits.provenance.kind).toBe('unavailable');
+  });
+});

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
+  commitCostRowSchema,
   githubUsageSchema,
   overviewSchema,
   sessionDetailSchema,
@@ -54,6 +55,9 @@ const ALLOWED = {
     'debug.internalCalls',
     'debug.unmatchedCalls',
     'endedAt',
+    'outcomes.commits[].committedAt',
+    'outcomes.commits[].editedFiles',
+    'outcomes.commits[].overlapFiles',
     'startedAt',
     'turns[].index',
     'turns[].startedAt',
@@ -75,6 +79,7 @@ const ALLOWED = {
   ],
   githubUsage: ['lastSyncedAt'],
   survivalByModel: ['rows[].edits', 'rows[].sampleSize'],
+  commitCosts: ['rows[].committedAt', 'rows[].sessions'],
 } as const;
 
 describe('provenance is enforced on every DTO', () => {
@@ -84,6 +89,7 @@ describe('provenance is enforced on every DTO', () => {
     ['overview', overviewSchema, ALLOWED.overview],
     ['github usage', githubUsageSchema, ALLOWED.githubUsage],
     ['survival by model', z.object({ rows: z.array(survivalByModelRowSchema) }), ALLOWED.survivalByModel],
+    ['commit costs', z.object({ rows: z.array(commitCostRowSchema) }), ALLOWED.commitCosts],
   ])('%s has no raw measurement numbers', (_name, schema, allowed) => {
     expect(unmeasured(schema)).toEqual([...allowed].sort());
   });

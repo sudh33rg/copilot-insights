@@ -100,6 +100,15 @@ export const turnDetailSchema = z.object({
 });
 export type TurnDetail = z.infer<typeof turnDetailSchema>;
 
+export const commitCostRowSchema = z.object({
+  hash: z.string(),
+  committedAt: z.number(),
+  /** Sessions linked to this commit. */
+  sessions: z.number(),
+  credits: measuredNumber,
+});
+export type CommitCostRow = z.infer<typeof commitCostRowSchema>;
+
 export const outcomesSchema = z.object({
   linesAdded: measuredNumber,
   linesRemoved: measuredNumber,
@@ -119,6 +128,16 @@ export const outcomesSchema = z.object({
   /** Change in VS Code error / warning counts over the files this session edited; negative means fewer. */
   errorsDelta: measuredNumber,
   warningsDelta: measuredNumber,
+  /** Commits this session is linked to (see linkCommits), with its credits split evenly across them. */
+  commits: z.array(
+    z.object({
+      hash: z.string(),
+      committedAt: z.number(),
+      overlapFiles: z.number(),
+      editedFiles: z.number(),
+      credits: measuredNumber,
+    }),
+  ),
 });
 export type Outcomes = z.infer<typeof outcomesSchema>;
 

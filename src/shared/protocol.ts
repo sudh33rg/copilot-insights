@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   clearScopeSchema,
+  commitCostRowSchema,
   diagnosticsSchema,
   survivalByModelRowSchema,
   githubSyncSchema,
@@ -49,6 +50,10 @@ export const rpcSchemas = {
     result: z.object({ outcome: z.enum(['already-enabled', 'declined', 'enabled']) }),
   },
   getDiagnostics: { params: z.object({}), result: diagnosticsSchema },
+  getCommitCosts: {
+    params: z.object({}),
+    result: z.object({ rows: z.array(commitCostRowSchema) }),
+  },
   getSurvivalByModel: {
     params: z.object({}),
     result: z.object({ rows: z.array(survivalByModelRowSchema) }),
