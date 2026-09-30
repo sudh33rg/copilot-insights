@@ -8,7 +8,7 @@ import { promptFindings } from './findings';
 import { classifyIntent } from './intent';
 
 /** Bump when any rule changes; cached analyses with an older version are recomputed on next read. */
-export const ANALYZER_VERSION = 2;
+export const ANALYZER_VERSION = 3;
 
 export function analyzeSession(input: Pick<SessionDetail, 'turns' | 'outcomes'>): Analysis {
   const { turns, outcomes } = input;
