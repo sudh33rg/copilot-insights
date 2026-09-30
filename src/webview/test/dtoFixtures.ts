@@ -1,4 +1,11 @@
-import type { MeasuredNumber, SessionDetail, SessionRow, TurnDetail } from '../../shared/dto';
+import type {
+  BreakdownRow,
+  MeasuredNumber,
+  Overview,
+  SessionDetail,
+  SessionRow,
+  TurnDetail,
+} from '../../shared/dto';
 
 export const exactNumber = (value: number, source = 'test'): MeasuredNumber => ({
   value,
@@ -110,6 +117,56 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
         reasoningMs: 0,
         toolRounds: 1,
       }),
+    ],
+    ...overrides,
+  };
+}
+
+export function breakdownRow(overrides: Partial<BreakdownRow> = {}): BreakdownRow {
+  return {
+    key: 'gpt-5.6-luna',
+    label: 'gpt-5.6-luna',
+    host: 'copilot',
+    sessions: 1,
+    turns: 2,
+    inputTokens: exactNumber(54000),
+    outputTokens: exactNumber(2600),
+    credits: exactNumber(1.626141),
+    ...overrides,
+  };
+}
+
+export function overview(overrides: Partial<Overview> = {}): Overview {
+  const period = {
+    from: '2026-09-01',
+    to: '2026-09-30',
+    sessions: 2,
+    turns: 4,
+    inputTokens: {
+      value: 59000,
+      provenance: {
+        kind: 'derived' as const,
+        source: 'chatSessions.promptTokens (lower bound: 3 of 4 turns reported it)',
+      },
+    },
+    outputTokens: exactNumber(2650),
+    credits: exactNumber(1.626141),
+  };
+  return {
+    today: { ...period, from: '2026-09-30', sessions: 1, turns: 2, inputTokens: exactNumber(54000) },
+    month: period,
+    failureRate: { value: 1 / 3, provenance: { kind: 'derived', source: 'turns.state' } },
+    byModel: [
+      breakdownRow(),
+      breakdownRow({ key: 'qwen3.5:35b', label: 'qwen3.5:35b', host: 'byok', credits: missing('BYOK') }),
+    ],
+    byWorkspace: [
+      breakdownRow({ key: 'alpha', label: 'alpha', host: null }),
+      breakdownRow({ key: 'beta', label: 'beta', host: null }),
+    ],
+    hostSplit: [
+      { host: 'byok', turns: 2, sessions: 1 },
+      { host: 'copilot', turns: 2, sessions: 1 },
     ],
     ...overrides,
   };

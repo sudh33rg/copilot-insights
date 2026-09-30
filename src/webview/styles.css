@@ -207,3 +207,14 @@ h3 {
 .error {
   color: var(--vscode-errorForeground);
 }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16em, 1fr));
+  gap: 12px;
+}
