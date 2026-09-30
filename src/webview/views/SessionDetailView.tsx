@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import type { Analysis, SessionDetail, TurnDetail } from '../../shared/dto';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Analysis, ClearScope, SessionDetail, TurnDetail } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { ProvenanceBadge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -22,7 +22,14 @@ const NOT_STORED = 'Not stored at this capture level.';
 
 export function SessionDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const rpc = useRpc();
+  const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ['session', id], queryFn: () => rpc.call('getSession', { id }) });
+  // The extension shows the confirmation dialog; `confirmed` is false when the user cancels.
+  const run = async (scope: ClearScope): Promise<boolean> => {
+    const result = await rpc.call('clearData', { scope });
+    if (result.confirmed) await queryClient.invalidateQueries();
+    return result.confirmed;
+  };
   return (
     <section aria-label="Session">
       <Button
@@ -32,6 +39,26 @@ export function SessionDetailView({ id, onBack }: { id: string; onBack: () => vo
       >
         ← Sessions
       </Button>
+      {query.data && (
+        <>
+          <Button
+            onClick={() => {
+              void run({ kind: 'sessionContent', id });
+            }}
+          >
+            Clear conversation text
+          </Button>
+          <Button
+            onClick={() => {
+              void run({ kind: 'session', id }).then((deleted) => {
+                if (deleted) onBack();
+              });
+            }}
+          >
+            Delete session
+          </Button>
+        </>
+      )}
       {query.isPending && <p className="muted">Loading…</p>}
       {query.isError && <p role="alert">Could not load the session: {query.error.message}</p>}
       {query.data === null && <p className="muted">This session is no longer in the index.</p>}

@@ -146,3 +146,14 @@ export const overviewSchema = z.object({
   hostSplit: z.array(z.object({ host: hostSchema, turns: z.number(), sessions: z.number() })),
 });
 export type Overview = z.infer<typeof overviewSchema>;
+
+// ---- clearing ----
+export const clearScopeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('session'), id: z.string().min(1).max(200) }),
+  z.object({ kind: z.literal('sessionContent'), id: z.string().min(1).max(200) }),
+  z.object({ kind: z.literal('beforeDay'), day: dayString }),
+  z.object({ kind: z.literal('workspace'), workspace: z.string().min(1).max(500) }),
+  z.object({ kind: z.literal('everything') }),
+  z.object({ kind: z.literal('allContent') }),
+]);
+export type ClearScope = z.infer<typeof clearScopeSchema>;

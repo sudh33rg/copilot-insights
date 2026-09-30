@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
+import { ClearService } from '../core/clear/clearService';
 import { indexStatus } from '../core/ingest/indexStatus';
 import { IngestService } from '../core/ingest/ingestService';
 import { resolveStorageRoots, userDirsFromGlobalStorage } from '../core/ingest/roots';
@@ -12,6 +13,14 @@ import { IngestStateStore } from '../core/storage/ingestStateStore';
 import { SessionStore } from '../core/storage/sessionStore';
 import { localDay } from '../core/time';
 import { readConfig } from './config';
+import {
+  clearFromPalette,
+  confirmAndClear,
+  deleteLegacyData,
+  exportToFile,
+  offerLegacyCleanup,
+  type DataCommandDeps,
+} from './dataCommands';
 import { IngestController } from './ingestController';
 import { DashboardPanel } from './webviewHost/dashboardPanel';
 import type { RpcHandlers } from './webviewHost/rpcHost';
@@ -28,8 +37,18 @@ export function activate(context: vscode.ExtensionContext): void {
   const sessions = new SessionStore(database);
   const state = new IngestStateStore(database);
   const queries = new InsightsQueries(database);
+  const clear = new ClearService(database, sessions, state);
   const lock = new WriterLock(storageDir);
   const dataChanged = new vscode.EventEmitter<void>();
+  const dataDeps: DataCommandDeps = {
+    database,
+    clear,
+    storageDir,
+    globalState: context.globalState,
+    notifyChanged: () => {
+      dataChanged.fire();
+    },
+  };
 
   const service = new IngestService({
     database,
@@ -66,6 +85,8 @@ export function activate(context: vscode.ExtensionContext): void {
     listSessions: (params) => queries.listSessions(params),
     getSession: ({ id }) => queries.getSession(id),
     getOverview: () => queries.getOverview(localDay()),
+    clearData: ({ scope }) => confirmAndClear(dataDeps, scope),
+    exportData: () => exportToFile(dataDeps),
     openDashboard: () => {
       dashboard.show();
       return { opened: true };
@@ -86,6 +107,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('copilotInsights.openDashboard', () => {
       dashboard.show();
     }),
+    vscode.commands.registerCommand('copilotInsights.clearData', () => clearFromPalette(dataDeps)),
+    vscode.commands.registerCommand('copilotInsights.exportData', () => exportToFile(dataDeps)),
+    vscode.commands.registerCommand('copilotInsights.deleteLegacyData', () => deleteLegacyData(dataDeps)),
     vscode.commands.registerCommand('copilotInsights.refreshSessions', () => controller.sync(false)),
     vscode.commands.registerCommand('copilotInsights.rebuildIndex', () => controller.sync(true)),
     // Stop background work before the database closes.
@@ -98,6 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
   controller.start();
+  offerLegacyCleanup(dataDeps);
   log.info(`Copilot Insights ${version} activated (storage: ${storageDir})`);
 }
 

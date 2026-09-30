@@ -84,4 +84,40 @@ describe('SessionDetailView', () => {
     view({});
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the session: boom');
   });
+
+  it('clears text or deletes the session through the extension, which asks for confirmation', async () => {
+    const onBack = vi.fn();
+    const user = userEvent.setup();
+    const { calls } = view(
+      { getSession: sessionDetail(), clearData: { confirmed: true, sessions: 1 } },
+      onBack,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Clear conversation text' }));
+    expect(calls.filter((call) => call.method === 'clearData').at(-1)).toEqual({
+      method: 'clearData',
+      params: { scope: { kind: 'sessionContent', id: 'fx-auto-1' } },
+    });
+    expect(onBack).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Delete session' }));
+    expect(calls.filter((call) => call.method === 'clearData').at(-1)).toEqual({
+      method: 'clearData',
+      params: { scope: { kind: 'session', id: 'fx-auto-1' } },
+    });
+    await vi.waitFor(() => {
+      expect(onBack).toHaveBeenCalledOnce();
+    });
+  });
+
+  it('stays on the session when the user cancels the confirmation', async () => {
+    const onBack = vi.fn();
+    const { calls } = view(
+      { getSession: sessionDetail(), clearData: { confirmed: false, sessions: 0 } },
+      onBack,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete session' }));
+    await vi.waitFor(() => {
+      expect(calls.some((call) => call.method === 'clearData')).toBe(true);
+    });
+    expect(onBack).not.toHaveBeenCalled();
+  });
 });

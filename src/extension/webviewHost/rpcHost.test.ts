@@ -54,6 +54,8 @@ const handlers: RpcHandlers = {
     };
     return { today: period, month: period, failureRate: none, byModel: [], byWorkspace: [], hostSplit: [] };
   },
+  clearData: () => ({ confirmed: false, sessions: 0 }),
+  exportData: () => ({ saved: false }),
   openDashboard: () => ({ opened: true }),
 };
 

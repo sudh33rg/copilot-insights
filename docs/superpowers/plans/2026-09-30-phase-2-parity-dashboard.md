@@ -4613,17 +4613,17 @@ export async function exportToFile(deps: DataCommandDeps): Promise<{ saved: bool
 export async function clearFromPalette(deps: DataCommandDeps): Promise<void> {
   const pick = await vscode.window.showQuickPick(
     [
-      { label: 'Clear conversation text of all sessions', kind: 'allContent' },
-      { label: 'Delete sessions before a date…', kind: 'beforeDay' },
-      { label: 'Delete sessions of a workspace…', kind: 'workspace' },
-      { label: 'Delete everything', kind: 'everything' },
+      { label: 'Clear conversation text of all sessions', scope: 'allContent' },
+      { label: 'Delete sessions before a date…', scope: 'beforeDay' },
+      { label: 'Delete sessions of a workspace…', scope: 'workspace' },
+      { label: 'Delete everything', scope: 'everything' },
     ] as const,
     { title: 'Copilot Insights: clear data' },
   );
   if (pick === undefined) return;
-  if (pick.kind === 'allContent' || pick.kind === 'everything') {
-    await confirmAndClear(deps, { kind: pick.kind });
-  } else if (pick.kind === 'beforeDay') {
+  if (pick.scope === 'allContent' || pick.scope === 'everything') {
+    await confirmAndClear(deps, { kind: pick.scope });
+  } else if (pick.scope === 'beforeDay') {
     const day = await vscode.window.showInputBox({
       prompt: 'Delete sessions started before this day (YYYY-MM-DD)',
       validateInput: (value) => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? undefined : 'Use YYYY-MM-DD'),
@@ -4728,13 +4728,13 @@ it('clears text or deletes the session through the extension, which asks for con
     onBack,
   );
   await user.click(await screen.findByRole('button', { name: 'Clear conversation text' }));
-  expect(calls.at(-1)).toEqual({
+  expect(calls.filter((call) => call.method === 'clearData').at(-1)).toEqual({
     method: 'clearData',
     params: { scope: { kind: 'sessionContent', id: 'fx-auto-1' } },
   });
   expect(onBack).not.toHaveBeenCalled();
   await user.click(screen.getByRole('button', { name: 'Delete session' }));
-  expect(calls.at(-1)).toEqual({
+  expect(calls.filter((call) => call.method === 'clearData').at(-1)).toEqual({
     method: 'clearData',
     params: { scope: { kind: 'session', id: 'fx-auto-1' } },
   });

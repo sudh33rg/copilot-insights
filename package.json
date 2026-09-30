@@ -43,6 +43,21 @@
         "command": "copilotInsights.rebuildIndex",
         "title": "Rebuild Session Index",
         "category": "Copilot Insights"
+      },
+      {
+        "command": "copilotInsights.clearData",
+        "title": "Clear Data\u2026",
+        "category": "Copilot Insights"
+      },
+      {
+        "command": "copilotInsights.exportData",
+        "title": "Export Index as JSON\u2026",
+        "category": "Copilot Insights"
+      },
+      {
+        "command": "copilotInsights.deleteLegacyData",
+        "title": "Delete Data From Previous Version\u2026",
+        "category": "Copilot Insights"
       }
     ],
     "viewsContainers": {

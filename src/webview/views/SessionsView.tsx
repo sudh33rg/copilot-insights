@@ -119,6 +119,13 @@ export function SessionsView({
           />{' '}
           Only sessions with failures
         </label>
+        <Button
+          onClick={() => {
+            void rpc.call('exportData', {});
+          }}
+        >
+          Export…
+        </Button>
       </div>
       {list.isPending && <p className="muted">Loading…</p>}
       {list.isError && <p role="alert">Could not load sessions: {list.error.message}</p>}

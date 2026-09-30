@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  clearScopeSchema,
   overviewSchema,
   sessionDetailSchema,
   sessionIdParams,
@@ -31,6 +32,11 @@ export const rpcSchemas = {
   getSession: { params: sessionIdParams, result: sessionDetailSchema.nullable() },
   getOverview: { params: z.object({}), result: overviewSchema },
   openDashboard: { params: z.object({}), result: z.object({ opened: z.boolean() }) },
+  clearData: {
+    params: z.object({ scope: clearScopeSchema }),
+    result: z.object({ confirmed: z.boolean(), sessions: z.number() }),
+  },
+  exportData: { params: z.object({}), result: z.object({ saved: z.boolean() }) },
 } as const;
 
 export type RpcMethod = keyof typeof rpcSchemas;

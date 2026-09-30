@@ -88,4 +88,13 @@ describe('SessionsView', () => {
     renderWithHost(<SessionsView onOpen={vi.fn()} debounceMs={0} />, {});
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load sessions: boom');
   });
+
+  it('exports through the extension', async () => {
+    const { calls } = renderWithHost(<SessionsView onOpen={vi.fn()} debounceMs={0} />, {
+      listSessions: { rows: [], total: 0 },
+      exportData: { saved: true },
+    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Export…' }));
+    expect(calls.map((call) => call.method)).toContain('exportData');
+  });
 });

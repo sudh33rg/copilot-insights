@@ -27,4 +27,12 @@ describe('protocol', () => {
     expect(rpcSchemas.listSessions.params.safeParse({ offset: 0, limit: 5000 }).success).toBe(false);
     expect(rpcSchemas.getSession.params.safeParse({ id: '' }).success).toBe(false);
   });
+
+  it('validates clearData scopes and rejects unknown kinds or malformed days', () => {
+    const params = rpcSchemas.clearData.params;
+    expect(params.safeParse({ scope: { kind: 'everything' } }).success).toBe(true);
+    expect(params.safeParse({ scope: { kind: 'session', id: 'abc' } }).success).toBe(true);
+    expect(params.safeParse({ scope: { kind: 'beforeDay', day: '2026-9-1' } }).success).toBe(false);
+    expect(params.safeParse({ scope: { kind: 'dropTables' } }).success).toBe(false);
+  });
 });
