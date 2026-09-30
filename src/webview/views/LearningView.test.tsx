@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Baselines } from '../../shared/dto';
+import type { Baselines, Leaderboard } from '../../shared/dto';
 import { missing } from '../test/dtoFixtures';
 import { renderWithHost } from '../test/fakeHost';
 import { LearningView } from './LearningView';
@@ -90,5 +90,88 @@ describe('LearningView — baselines', () => {
   it('reports a failed query', async () => {
     renderWithHost(<LearningView onOpenSession={() => undefined} />, {});
     expect((await screen.findAllByRole('alert'))[0]).toHaveTextContent('Could not load baselines: boom');
+  });
+});
+
+describe('LearningView — leaderboard', () => {
+  const measure = (value: number | null, source = 'rule') =>
+    value === null
+      ? { value, provenance: { kind: 'unavailable' as const, source: 'not enough data: 3 of 5 sessions' } }
+      : { value, provenance: { kind: 'derived' as const, source } };
+  const leaderboard: Leaderboard = {
+    groups: [
+      {
+        taskType: 'bugfix',
+        rows: [
+          {
+            model: 'gpt-5.6-luna',
+            sessions: 12,
+            successfulSessions: 10,
+            creditSessions: 9,
+            creditsPerSuccess: measure(1.25),
+            correctionsPerSession: measure(0.5),
+            editKeepRate: measure(0.8),
+            failureRate: measure(0.1),
+            ttftMs: measure(2100),
+          },
+          {
+            model: 'qwen3.5:35b',
+            sessions: 3,
+            successfulSessions: 2,
+            creditSessions: 0,
+            creditsPerSuccess: measure(null),
+            correctionsPerSession: measure(null),
+            editKeepRate: measure(null),
+            failureRate: measure(null),
+            ttftMs: measure(null),
+          },
+        ],
+      },
+    ],
+  };
+  const view = (results: Record<string, unknown> = {}) =>
+    renderWithHost(<LearningView onOpenSession={() => undefined} />, {
+      getBaselines: { rows: [], outliers: [] },
+      getLeaderboard: leaderboard,
+      ...results,
+    });
+
+  it('shows a table per task type with each metric, its sample size and provenance', async () => {
+    view();
+    const table = await screen.findByRole('table', { name: 'Best models for bugfix work' });
+    const luna = within(table).getByText('gpt-5.6-luna').closest('tr') as HTMLElement;
+    expect(within(luna).getByText('12')).toBeInTheDocument();
+    expect(within(luna).getByText('1.25')).toBeInTheDocument();
+    expect(within(luna).getByText('0.5')).toBeInTheDocument();
+    expect(within(luna).getByText('80%')).toBeInTheDocument();
+    expect(within(luna).getByText('10%')).toBeInTheDocument();
+    expect(within(luna).getByText('2.1 s')).toBeInTheDocument();
+    expect(within(luna).getAllByText('Derived').length).toBe(5);
+  });
+
+  it('shows placeholders, never numbers, for models with too few sessions', async () => {
+    view();
+    const table = await screen.findByRole('table', { name: 'Best models for bugfix work' });
+    const qwen = within(table).getByText('qwen3.5:35b').closest('tr') as HTMLElement;
+    expect(within(qwen).getAllByText('—')).toHaveLength(5);
+    expect(within(qwen).getAllByText('Unavailable')).toHaveLength(5);
+  });
+
+  it('explains an empty leaderboard', async () => {
+    view({ getLeaderboard: { groups: [] } });
+    expect(
+      await screen.findByText('No task type has 5 or more sessions on a model yet.'),
+    ).toBeInTheDocument();
+  });
+
+  it('reports a failed query', async () => {
+    renderWithHost(<LearningView onOpenSession={() => undefined} />, {
+      getBaselines: { rows: [], outliers: [] },
+    });
+    expect(
+      (await screen.findAllByRole('alert')).some((alert) =>
+        alert.textContent.includes('Could not load the leaderboard'),
+      ),
+    ).toBe(true);
   });
 });

@@ -5,6 +5,7 @@ import {
   commitCostRowSchema,
   failureAnalyticsSchema,
   githubUsageSchema,
+  leaderboardSchema,
   overviewSchema,
   sessionDetailSchema,
   sessionListSchema,
@@ -85,6 +86,11 @@ const ALLOWED = {
   survivalByModel: ['rows[].edits', 'rows[].sampleSize'],
   commitCosts: ['rows[].committedAt', 'rows[].sessions'],
   baselines: ['rows[].creditSessions', 'rows[].sessions'],
+  leaderboard: [
+    'groups[].rows[].creditSessions',
+    'groups[].rows[].sessions',
+    'groups[].rows[].successfulSessions',
+  ],
   failureAnalytics: [
     'byMode[].failed',
     'byMode[].turns',
@@ -105,6 +111,7 @@ describe('provenance is enforced on every DTO', () => {
     ['commit costs', z.object({ rows: z.array(commitCostRowSchema) }), ALLOWED.commitCosts],
     ['failure analytics', failureAnalyticsSchema, ALLOWED.failureAnalytics],
     ['baselines', baselinesSchema, ALLOWED.baselines],
+    ['leaderboard', leaderboardSchema, ALLOWED.leaderboard],
   ])('%s has no raw measurement numbers', (_name, schema, allowed) => {
     expect(unmeasured(schema)).toEqual([...allowed].sort());
   });

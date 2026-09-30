@@ -233,6 +233,23 @@ export const baselinesSchema = z.object({
 });
 export type Baselines = z.infer<typeof baselinesSchema>;
 
+export const leaderboardRowSchema = z.object({
+  model: z.string(),
+  sessions: z.number(),
+  successfulSessions: z.number(),
+  /** Successful Copilot sessions with exact credits behind `creditsPerSuccess`. */
+  creditSessions: z.number(),
+  creditsPerSuccess: measuredNumber,
+  correctionsPerSession: measuredNumber,
+  editKeepRate: measuredNumber,
+  failureRate: measuredNumber,
+  ttftMs: measuredNumber,
+});
+export const leaderboardSchema = z.object({
+  groups: z.array(z.object({ taskType: z.string(), rows: z.array(leaderboardRowSchema) })),
+});
+export type Leaderboard = z.infer<typeof leaderboardSchema>;
+
 export const sessionDetailSchema = z.object({
   id: z.string(),
   workspace: z.string(),

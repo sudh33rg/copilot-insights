@@ -138,6 +138,7 @@ export function activate(context: vscode.ExtensionContext): void {
     getCommitCosts: () => ({ rows: queries.getCommitCosts() }),
     getFailureAnalytics: () => queries.getFailureAnalytics(),
     getBaselines: () => queries.getBaselines(),
+    getLeaderboard: () => queries.getLeaderboard(),
     clearData: ({ scope }) => confirmAndClear(dataDeps, scope),
     exportData: () => exportToFile(dataDeps),
     getGithubUsage: ({ days }) => {

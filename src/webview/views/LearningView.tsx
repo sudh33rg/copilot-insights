@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import type { BaselineRowDto } from '../../shared/dto';
+import type { BaselineRowDto, Leaderboard } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { DataTable, type Column } from '../ui/DataTable';
-import { formatCredits, formatInt } from '../ui/format';
+import { formatCredits, formatDuration, formatInt, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
 
 const VERDICT_LABEL = { typical: 'Typical', high: 'Unusually high', low: 'Unusually low' } as const;
@@ -30,6 +30,7 @@ export function LearningView({ onOpenSession }: { onOpenSession: (id: string) =>
   return (
     <section aria-label="Learning">
       <Baselines onOpenSession={onOpenSession} />
+      <LeaderboardSection />
     </section>
   );
 }
@@ -88,6 +89,82 @@ function Baselines({ onOpenSession }: { onOpenSession: (id: string) => void }) {
             </>
           )}
         </>
+      )}
+    </section>
+  );
+}
+
+type LeaderRow = Leaderboard['groups'][number]['rows'][number];
+
+const percent = (value: number | string) => formatPercent(Number(value));
+const leaderColumns: readonly Column<LeaderRow>[] = [
+  { id: 'model', header: 'Model', cell: (row) => row.model },
+  { id: 'sessions', header: 'Sessions', align: 'end', cell: (row) => formatInt(row.sessions) },
+  {
+    id: 'credits',
+    header: 'Credits per success',
+    align: 'end',
+    cell: (row) => (
+      <Measure measure={row.creditsPerSuccess} format={(value) => formatCredits(Number(value))} />
+    ),
+  },
+  {
+    id: 'corrections',
+    header: 'Corrections per session',
+    align: 'end',
+    cell: (row) => (
+      <Measure
+        measure={row.correctionsPerSession}
+        format={(value) => String(Number(Number(value).toFixed(2)))}
+      />
+    ),
+  },
+  {
+    id: 'keep',
+    header: 'Edits kept',
+    align: 'end',
+    cell: (row) => <Measure measure={row.editKeepRate} format={percent} />,
+  },
+  {
+    id: 'failure',
+    header: 'Failure rate',
+    align: 'end',
+    cell: (row) => <Measure measure={row.failureRate} format={percent} />,
+  },
+  {
+    id: 'ttft',
+    header: 'First token',
+    align: 'end',
+    cell: (row) => <Measure measure={row.ttftMs} format={(value) => formatDuration(Number(value))} />,
+  },
+];
+
+/** Which models worked best for you, per task type; every metric needs five sessions behind it. */
+function LeaderboardSection() {
+  const rpc = useRpc();
+  const query = useQuery({ queryKey: ['leaderboard'], queryFn: () => rpc.call('getLeaderboard', {}) });
+  const groups = query.data?.groups;
+  return (
+    <section className="card" aria-label="Model leaderboard">
+      <h3>Model leaderboard</h3>
+      {query.isPending && <p className="muted">Loading…</p>}
+      {query.isError && <p role="alert">Could not load the leaderboard: {query.error.message}</p>}
+      {groups?.length === 0 && <p className="muted">No task type has 5 or more sessions on a model yet.</p>}
+      {groups?.map((group) => (
+        <DataTable
+          key={group.taskType}
+          caption={`Best models for ${group.taskType} work`}
+          columns={leaderColumns}
+          rows={group.rows}
+          rowKey={(row) => row.model}
+          empty=""
+        />
+      ))}
+      {groups !== undefined && groups.length > 0 && (
+        <p className="muted">
+          Success means no failed turns, no undone edits and no failed last test run. Metrics need at least
+          five sessions behind them; BYOK sessions have no Copilot credits.
+        </p>
       )}
     </section>
   );

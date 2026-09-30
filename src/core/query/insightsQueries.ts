@@ -1,5 +1,6 @@
 import type {
   Baselines,
+  Leaderboard,
   CommitCostRow,
   FailureAnalytics,
   Overview,
@@ -12,6 +13,7 @@ import type { Database } from '../storage/database';
 import { getBaselines, sessionBaseline } from './baselineQueries';
 import { getCommitCosts } from './commitCosts';
 import { getFailureAnalytics } from './failureAnalytics';
+import { leaderboardDto } from './learningQueries';
 import { getOverview } from './overview';
 import { SessionFactsStore } from './sessionFactsStore';
 import { getSessionDetail } from './sessionDetail';
@@ -44,6 +46,10 @@ export class InsightsQueries {
       analysis: this.analysis.forDetail(detail),
       baseline: sessionBaseline(this.facts.all(), id),
     };
+  }
+
+  getLeaderboard(): Leaderboard {
+    return leaderboardDto(this.facts.all());
   }
 
   getBaselines(): Baselines {

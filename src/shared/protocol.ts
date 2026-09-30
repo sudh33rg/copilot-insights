@@ -5,6 +5,7 @@ import {
   commitCostRowSchema,
   diagnosticsSchema,
   failureAnalyticsSchema,
+  leaderboardSchema,
   survivalByModelRowSchema,
   githubSyncSchema,
   githubUsageParams,
@@ -52,6 +53,7 @@ export const rpcSchemas = {
     result: z.object({ outcome: z.enum(['already-enabled', 'declined', 'enabled']) }),
   },
   getDiagnostics: { params: z.object({}), result: diagnosticsSchema },
+  getLeaderboard: { params: z.object({}), result: leaderboardSchema },
   getBaselines: { params: z.object({}), result: baselinesSchema },
   getFailureAnalytics: { params: z.object({}), result: failureAnalyticsSchema },
   getCommitCosts: {
