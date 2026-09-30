@@ -1,0 +1,191 @@
+import { useQuery } from '@tanstack/react-query';
+import type { Analysis, SessionDetail, TurnDetail } from '../../shared/dto';
+import { useRpc } from '../rpcContext';
+import { ProvenanceBadge } from '../ui/Badge';
+import { Button } from '../ui/Button';
+import { formatCredits, formatDateTime, formatDuration, formatInt } from '../ui/format';
+import { Measure } from '../ui/Measure';
+
+const STATE_LABEL: Record<TurnDetail['state'], string> = {
+  complete: 'Complete',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+  pending: 'In progress',
+  unknown: 'Unknown',
+};
+const HOST_LABEL: Record<TurnDetail['host'], string> = {
+  copilot: 'Copilot',
+  byok: 'BYOK / local',
+  unknown: 'Unknown host',
+};
+const NOT_STORED = 'Not stored at this capture level.';
+
+export function SessionDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const rpc = useRpc();
+  const query = useQuery({ queryKey: ['session', id], queryFn: () => rpc.call('getSession', { id }) });
+  return (
+    <section aria-label="Session">
+      <Button
+        onClick={() => {
+          onBack();
+        }}
+      >
+        ← Sessions
+      </Button>
+      {query.isPending && <p className="muted">Loading…</p>}
+      {query.isError && <p role="alert">Could not load the session: {query.error.message}</p>}
+      {query.data === null && <p className="muted">This session is no longer in the index.</p>}
+      {query.data && <Detail session={query.data} />}
+    </section>
+  );
+}
+
+function Detail({ session }: { session: SessionDetail }) {
+  return (
+    <>
+      <h2>{session.title ?? 'Untitled session'}</h2>
+      <p className="muted">
+        {session.workspace} · {formatDateTime(session.startedAt)} · active {formatDuration(session.activeMs)}{' '}
+        · capture level: {session.captureLevel}
+      </p>
+      <dl className="facts">
+        <dt>Input tokens</dt>
+        <dd>
+          <Measure measure={session.inputTokens} format={(value) => formatInt(Number(value))} />
+        </dd>
+        <dt>Output tokens</dt>
+        <dd>
+          <Measure measure={session.outputTokens} format={(value) => formatInt(Number(value))} />
+        </dd>
+        <dt>Credits</dt>
+        <dd>
+          <Measure measure={session.credits} format={(value) => formatCredits(Number(value))} />
+        </dd>
+      </dl>
+      {session.analysis && <AnalysisCard analysis={session.analysis} />}
+      <h3>Timeline</h3>
+      {session.turns.map((turn) => (
+        <TurnCard key={turn.index} turn={turn} />
+      ))}
+    </>
+  );
+}
+
+function AnalysisCard({ analysis }: { analysis: Analysis }) {
+  return (
+    <section className="card" aria-label="Analysis">
+      <h3>Analysis</h3>
+      <dl className="facts">
+        <dt>Intent</dt>
+        <dd>
+          <Measure measure={analysis.intent} />
+        </dd>
+        <dt>Outcome</dt>
+        <dd>
+          <Measure measure={analysis.outcome} />
+        </dd>
+        <dt>Areas touched</dt>
+        <dd>
+          <Measure
+            measure={{
+              value: analysis.areas.value?.join(', ') ?? null,
+              provenance: analysis.areas.provenance,
+            }}
+          />
+        </dd>
+        <dt>Complexity</dt>
+        <dd>
+          <Measure measure={analysis.complexity} />
+        </dd>
+        <dt>Terminal commands</dt>
+        <dd>
+          <Measure measure={analysis.commandCount} />
+        </dd>
+      </dl>
+      {analysis.findings.length > 0 && (
+        <ul className="findings">
+          {analysis.findings.map((finding) => (
+            <li key={finding.id}>
+              <strong>{finding.message}</strong> <ProvenanceBadge provenance={finding.provenance} />
+              <div className="muted">Evidence: {finding.evidence}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function TurnCard({ turn }: { turn: TurnDetail }) {
+  const extras = [
+    turn.reasoningMs > 0 ? `reasoning ${formatDuration(turn.reasoningMs)}` : null,
+    turn.toolRounds > 0 ? `${String(turn.toolRounds)} tool round${turn.toolRounds === 1 ? '' : 's'}` : null,
+    turn.compactions > 0
+      ? `${String(turn.compactions)} compaction${turn.compactions === 1 ? '' : 's'}`
+      : null,
+  ].filter((item): item is string => item !== null);
+  return (
+    <article className="turn" aria-label={`Turn ${String(turn.index)}`}>
+      <header>
+        <strong>Turn {turn.index}</strong>{' '}
+        <span className={`state state--${turn.state}`}>{STATE_LABEL[turn.state]}</span>
+        {turn.systemInitiated && <span className="tag">System-initiated</span>}
+        <div className="muted">
+          <span>{turn.routing.label}</span> · {HOST_LABEL[turn.host]}
+          {turn.startedAt !== null && ` · ${formatDateTime(turn.startedAt)}`}
+        </div>
+      </header>
+      <p className="label">Prompt</p>
+      {turn.userText === null ? (
+        <p className="muted">{NOT_STORED}</p>
+      ) : (
+        <pre className="text">{turn.userText}</pre>
+      )}
+      <p className="label">Response</p>
+      {turn.assistantText === null ? (
+        <p className="muted">{NOT_STORED}</p>
+      ) : (
+        <pre className="text">{turn.assistantText}</pre>
+      )}
+      <dl className="facts facts--row">
+        <dt>Input</dt>
+        <dd>
+          <Measure measure={turn.inputTokens} format={(value) => formatInt(Number(value))} />
+        </dd>
+        <dt>Output</dt>
+        <dd>
+          <Measure measure={turn.outputTokens} format={(value) => formatInt(Number(value))} />
+        </dd>
+        <dt>Credits</dt>
+        <dd>
+          <Measure measure={turn.credits} format={(value) => formatCredits(Number(value))} />
+        </dd>
+      </dl>
+      {extras.length > 0 && <p className="muted">{extras.join(' · ')}</p>}
+      {turn.toolCalls.length > 0 && (
+        <ul className="chips" aria-label="Tool calls">
+          {turn.toolCalls.map((call, index) => (
+            <li key={`${call.name}-${String(index)}`}>
+              {call.name}
+              {call.status === 'incomplete' ? ' (incomplete)' : ''}
+            </li>
+          ))}
+        </ul>
+      )}
+      {turn.fileEvents.length > 0 && (
+        <ul className="files" aria-label="File activity">
+          {turn.fileEvents.map((event, index) => (
+            <li key={`${event.path}-${String(index)}`}>
+              <code>{event.path}</code> <span className="muted">{event.action}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(turn.errorCode !== null || turn.errorMessage !== null) && (
+        <p className="error">
+          Error {turn.errorCode ?? ''} {turn.errorMessage ?? ''}
+        </p>
+      )}
+    </article>
+  );
+}

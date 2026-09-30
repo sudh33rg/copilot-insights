@@ -1,6 +1,8 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
+import { sessionDetail, sessionRow } from './test/dtoFixtures';
 import { renderWithHost } from './test/fakeHost';
 
 const renderApp = (results: Record<string, unknown>) => renderWithHost(<App view="dashboard" />, results);
@@ -44,5 +46,24 @@ describe('App', () => {
     const alerts = await screen.findAllByRole('alert');
     expect(alerts.length).toBeGreaterThan(0);
     expect(alerts[0]).toHaveTextContent('boom');
+  });
+
+  it('opens a session from the list and returns to it', async () => {
+    renderApp({
+      getIndexStatus: {
+        sessions: 1,
+        turns: 2,
+        lastSyncAt: null,
+        role: 'leader',
+        lastError: null,
+        captureLevel: 'full',
+      },
+      listSessions: { rows: [sessionRow()], total: 1 },
+      getSession: sessionDetail(),
+    });
+    await userEvent.click(await screen.findByText('Fix run timeout race'));
+    expect(await screen.findByRole('heading', { name: 'Fix run timeout race' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '← Sessions' }));
+    expect(await screen.findByRole('table', { name: 'Sessions' })).toBeInTheDocument();
   });
 });

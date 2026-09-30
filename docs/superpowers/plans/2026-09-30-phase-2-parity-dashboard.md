@@ -3300,7 +3300,7 @@ describe('SessionDetailView', () => {
     expect(within(first).getByText('1.126')).toBeInTheDocument();
     expect(within(first).getByText('read_file')).toBeInTheDocument();
     expect(within(first).getByText('/repo/src/execution/manager.ts')).toBeInTheDocument();
-    expect(within(first).getByText('4.2 s')).toBeInTheDocument();
+    expect(within(first).getByText(/reasoning 4\.2 s/)).toBeInTheDocument();
     expect(within(first).getByText(/1 compaction/)).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'Turn 2' })).toBeInTheDocument();
   });

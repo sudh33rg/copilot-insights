@@ -124,3 +124,86 @@ h1 {
 .state--pending {
   color: var(--vscode-charts-orange);
 }
+
+h2 {
+  margin: 12px 0 4px;
+  font-size: 1.15em;
+}
+h3 {
+  margin: 16px 0 6px;
+  font-size: 1em;
+}
+.card {
+  padding: 4px 12px 8px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-editorGroup-border, transparent));
+  border-radius: 4px;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 16px;
+  margin: 8px 0;
+}
+.facts dt {
+  color: var(--vscode-descriptionForeground);
+}
+.facts dd {
+  margin: 0;
+}
+.facts--row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+}
+.facts--row dd {
+  margin-right: 12px;
+}
+.turn {
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-left: 3px solid var(--vscode-focusBorder);
+  background: var(--vscode-editorWidget-background, transparent);
+}
+.label {
+  margin: 8px 0 2px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+  text-transform: uppercase;
+}
+.text {
+  max-height: 20em;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
+.tag {
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 0.8em;
+}
+.chips,
+.files,
+.findings {
+  padding: 0;
+  margin: 6px 0;
+  list-style: none;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chips li {
+  padding: 0 6px;
+  border: 1px solid var(--vscode-widget-border, currentColor);
+  border-radius: 3px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.85em;
+}
+.error {
+  color: var(--vscode-errorForeground);
+}
