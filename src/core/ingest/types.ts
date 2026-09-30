@@ -13,12 +13,20 @@ export interface ToolCall {
   args: Record<string, unknown> | null;
   origin: 'toolCallRound' | 'invocation';
   status: 'complete' | 'incomplete' | 'unknown';
+  /** Salted hash of the redacted, whitespace-collapsed command of a terminal tool call; null otherwise. */
+  commandHash: string | null;
 }
 
 export interface FileEvent {
   path: string;
   action: FileAction;
   source: string;
+}
+
+/** Salted fingerprints of the lines Copilot inserted into one file in one turn. Never the text itself. */
+export interface EditFingerprints {
+  path: string;
+  hashes: string[];
 }
 
 export interface Compaction {
@@ -61,6 +69,7 @@ export interface NormalizedTurn {
   reasoningMs: number;
   toolCalls: ToolCall[];
   fileEvents: FileEvent[];
+  editFingerprints: EditFingerprints[];
   compactions: Compaction[];
   toolRounds: number;
   toolInputRetries: number;

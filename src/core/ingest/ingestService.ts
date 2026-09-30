@@ -1,6 +1,8 @@
 import type { CaptureLevel } from '../privacy/captureLevel';
 import { CatalogStore } from '../storage/catalogStore';
+import { newSalt } from '../privacy/fingerprint';
 import { LlmCallStore } from '../storage/llmCallStore';
+import { ObservationStore } from '../storage/observationStore';
 import type { Database } from '../storage/database';
 import type { IngestStateStore } from '../storage/ingestStateStore';
 import type { SessionStore } from '../storage/sessionStore';
@@ -10,12 +12,13 @@ import type { FullScanOutput } from './scanAll';
 import type { ScanInput, ScanStats } from './scanner';
 
 /** Bump when parsing or normalization changes so every source file is re-parsed on the next sync. */
-export const INGEST_VERSION = 1;
+export const INGEST_VERSION = 2;
 
 export const META = {
   ingestVersion: 'ingest.version',
   lastSyncAt: 'ingest.lastSyncAt',
   lastChangeAt: 'ingest.lastChangeAt',
+  salt: 'privacy.salt',
 } as const;
 
 export interface IngestDeps {
@@ -43,10 +46,12 @@ export class IngestService {
 
   private readonly llmCalls: LlmCallStore;
   private readonly catalog: CatalogStore;
+  private readonly observations: ObservationStore;
 
   constructor(private readonly deps: IngestDeps) {
     this.llmCalls = new LlmCallStore(deps.database);
     this.catalog = new CatalogStore(deps.database);
+    this.observations = new ObservationStore(deps.database, () => deps.now?.() ?? Date.now());
   }
 
   /** Concurrent non-forced calls share one run; a forced call always runs after whatever is in flight. */
@@ -85,6 +90,16 @@ export class IngestService {
     return this.sync({ force: true });
   }
 
+  /** Random per install, created on first use, never leaves the machine; removed by "clear everything". */
+  private salt(): string {
+    const { state } = this.deps;
+    const existing = state.getMeta(META.salt);
+    if (existing !== null) return existing;
+    const created = newSalt();
+    state.setMeta(META.salt, created);
+    return created;
+  }
+
   private async run(force: boolean): Promise<SyncResult> {
     const { sessions, state, log } = this.deps;
     if (!this.deps.lock.tryAcquire()) {
@@ -101,6 +116,7 @@ export class IngestService {
       known: reparseAll ? {} : state.getFingerprints(),
       captureLevel: this.deps.captureLevel(),
       tombstones: state.getTombstones(),
+      salt: this.salt(),
     });
     const now = this.deps.now?.() ?? Date.now();
     const cutoff = retentionCutoff(this.deps.retentionDays(), localDay(now));
@@ -125,7 +141,10 @@ export class IngestService {
         this.catalog.upsertAll(catalog.models, catalog.seenAt);
         state.setFingerprint(catalog.file, catalog.fingerprint, null, now);
       }
-      if (cutoff !== null) purged = sessions.purgeBefore(cutoff);
+      if (cutoff !== null) {
+        purged = sessions.purgeBefore(cutoff);
+        this.observations.pruneBefore(Date.parse(cutoff));
+      }
       state.setMeta(META.ingestVersion, String(INGEST_VERSION));
       state.setMeta(META.lastSyncAt, String(now));
       if (written > 0 || purged > 0) state.setMeta(META.lastChangeAt, String(now));

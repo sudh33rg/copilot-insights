@@ -1,6 +1,8 @@
 import type { ClearScope } from '../../shared/dto';
+import { META } from '../ingest/ingestService';
 import type { Database } from '../storage/database';
 import { LlmCallStore } from '../storage/llmCallStore';
+import { ObservationStore } from '../storage/observationStore';
 import type { IngestStateStore } from '../storage/ingestStateStore';
 import type { SessionStore } from '../storage/sessionStore';
 
@@ -27,16 +29,24 @@ export class ClearService {
 
   clear(scope: ClearScope): { sessions: number } {
     const ids = this.idsFor(scope);
-    if (ids.length === 0) return { sessions: 0 };
+    // "Everything" also clears session-less state (terminal runs, the privacy salt), even with no sessions.
+    if (ids.length === 0 && scope.kind !== 'everything') return { sessions: 0 };
+    const observations = new ObservationStore(this.database, this.now);
     this.database.transaction(() => {
       if (deletesSessions(scope)) {
         this.state.addTombstones(ids, 'deleted', this.now());
         this.sessions.deleteSessions(ids);
         new LlmCallStore(this.database).deleteSessions(ids);
-        if (scope.kind === 'everything') this.database.db.exec('DELETE FROM github_daily_usage');
+        observations.deleteSessions(ids);
+        if (scope.kind === 'everything') {
+          this.database.db.exec('DELETE FROM github_daily_usage');
+          observations.deleteAll();
+          this.state.deleteMeta(META.salt);
+        }
       } else {
         this.state.addTombstones(ids, 'content-cleared', this.now());
         this.sessions.clearContent(ids);
+        observations.deleteSurvivalChecks(ids);
       }
     });
     return { sessions: ids.length };

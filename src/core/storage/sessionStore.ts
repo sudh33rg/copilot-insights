@@ -3,6 +3,7 @@ import type { NormalizedSession, NormalizedTurn } from '../ingest/types';
 import { SUMMARY_LIMITS, type CaptureLevel } from '../privacy/captureLevel';
 import { localDay } from '../time';
 import type { Database, SqlValue } from './database';
+import { OBSERVATION_SESSION_TABLES } from './observationStore';
 
 export interface SessionFilter {
   fromDay?: string;
@@ -114,8 +115,10 @@ const TOOL_COLUMNS = [
   'args',
   'origin',
   'status',
+  'command_hash',
 ] as const;
 const FILE_COLUMNS = ['session_id', 'turn_idx', 'seq', 'path', 'action', 'source'] as const;
+const FINGERPRINT_COLUMNS = ['session_id', 'turn_idx', 'path', 'hashes'] as const;
 
 type Row<C extends readonly string[]> = Record<C[number], SqlValue>;
 
@@ -129,6 +132,7 @@ export class SessionStore {
     insertTurn: StatementSync;
     insertTool: StatementSync;
     insertFile: StatementSync;
+    insertFingerprints: StatementSync;
   };
 
   constructor(private readonly database: Database) {
@@ -139,6 +143,7 @@ export class SessionStore {
       insertTurn: db.prepare(insertSql('turns', TURN_COLUMNS)),
       insertTool: db.prepare(insertSql('tool_calls', TOOL_COLUMNS)),
       insertFile: db.prepare(insertSql('file_events', FILE_COLUMNS)),
+      insertFingerprints: db.prepare(insertSql('edit_fingerprints', FINGERPRINT_COLUMNS)),
     };
   }
 
@@ -159,6 +164,7 @@ export class SessionStore {
             args: call.args === null ? null : JSON.stringify(call.args),
             origin: call.origin,
             status: call.status,
+            command_hash: call.commandHash,
           };
           this.statements.insertTool.run(row);
         }
@@ -172,6 +178,15 @@ export class SessionStore {
             source: event.source,
           };
           this.statements.insertFile.run(row);
+        }
+        for (const entry of turn.editFingerprints) {
+          const row: Row<typeof FINGERPRINT_COLUMNS> = {
+            session_id: session.id,
+            turn_idx: turn.index,
+            path: entry.path,
+            hashes: JSON.stringify(entry.hashes),
+          };
+          this.statements.insertFingerprints.run(row);
         }
       }
     });
@@ -263,7 +278,10 @@ export class SessionStore {
       db.prepare(
         `UPDATE turns SET user_text = NULL, assistant_text = NULL, error_message = NULL WHERE session_id IN (${IDS})`,
       ).run(params);
-      db.prepare(`UPDATE tool_calls SET args = NULL WHERE session_id IN (${IDS})`).run(params);
+      db.prepare(`UPDATE tool_calls SET args = NULL, command_hash = NULL WHERE session_id IN (${IDS})`).run(
+        params,
+      );
+      db.prepare(`DELETE FROM edit_fingerprints WHERE session_id IN (${IDS})`).run(params);
       db.prepare(`DELETE FROM session_analysis WHERE session_id IN (${IDS})`).run(params);
       db.prepare(`UPDATE sessions SET title = NULL, capture_level = 'metrics' WHERE id IN (${IDS})`).run(
         params,
@@ -312,6 +330,11 @@ export class SessionStore {
     db.prepare(
       'DELETE FROM debug_sessions WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)',
     ).run(params);
+    for (const table of OBSERVATION_SESSION_TABLES) {
+      db.prepare(`DELETE FROM ${table} WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)`).run(
+        params,
+      );
+    }
     return Number(db.prepare('DELETE FROM sessions WHERE day < :day').run(params).changes);
   }
 

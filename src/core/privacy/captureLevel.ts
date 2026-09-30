@@ -28,10 +28,14 @@ function captureTurn(turn: NormalizedTurn, level: CaptureLevel): NormalizedTurn 
     userText: captureText(turn.userText, level, SUMMARY_LIMITS.user),
     assistantText: captureText(turn.assistantText, level, SUMMARY_LIMITS.assistant),
     errorMessage: captureText(turn.errorMessage, level, SUMMARY_LIMITS.error),
+    // Content-derived fingerprints and command hashes exist only to answer "did this survive?" / "did the tests
+    // pass?"; at `metrics` nothing derived from content is kept.
+    editFingerprints: level === 'metrics' ? [] : turn.editFingerprints,
     toolCalls: turn.toolCalls.map((call) => ({
       ...call,
       args:
         level === 'full' && call.args !== null ? (redactDeep(call.args) as Record<string, unknown>) : null,
+      commandHash: level === 'metrics' ? null : call.commandHash,
     })),
   };
 }

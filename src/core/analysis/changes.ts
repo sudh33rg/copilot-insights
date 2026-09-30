@@ -1,4 +1,5 @@
 import type { TurnDetail } from '../../shared/dto';
+import { TERMINAL_TOOL } from '../ingest/toolNames';
 
 export interface ChangeSummary {
   changed: { path: string; action: 'edited' | 'created' | 'deleted' }[];
@@ -11,7 +12,6 @@ export interface ChangeSummary {
 }
 
 const CHANGE_RANK = { edited: 1, deleted: 2, created: 3 } as const;
-const TERMINAL_TOOL = /terminal|run_?command|execute_?command/i;
 
 export function summarizeChanges(turns: readonly TurnDetail[]): ChangeSummary {
   const strongest = new Map<string, 'edited' | 'created' | 'deleted'>();

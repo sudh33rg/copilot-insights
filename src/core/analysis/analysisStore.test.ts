@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadFixtureSession, seededStore } from '../../../test/fixtures/sessions';
 import { ANALYZER_VERSION } from './analyzeSession';
+import { ObservationStore } from '../storage/observationStore';
 import { AnalysisStore } from './analysisStore';
 
 const cachedRows = (database: ReturnType<typeof seededStore>['database']) =>
@@ -50,5 +51,21 @@ describe('AnalysisStore', () => {
     store.get('fx-auto-1');
     database.db.prepare("UPDATE session_analysis SET json = '{not json'").run();
     expect(store.get('fx-auto-1')?.intent.value).toBe('bugfix');
+  });
+
+  it('recomputes when live observations changed after the cached analysis', () => {
+    const { database } = seededStore();
+    const store = new AnalysisStore(database);
+    const observations = new ObservationStore(database);
+    const observedAt = () =>
+      (database.db.prepare('SELECT observed_at AS t FROM session_analysis').get() as { t: number }).t;
+    observations.touch(100);
+    store.get('fx-auto-1');
+    expect(observedAt()).toBe(100);
+    store.get('fx-auto-1');
+    expect(observedAt()).toBe(100);
+    observations.touch(200);
+    store.get('fx-auto-1');
+    expect(observedAt()).toBe(200);
   });
 });

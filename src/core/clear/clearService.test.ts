@@ -4,6 +4,7 @@ import { seededStore } from '../../../test/fixtures/sessions';
 import { resolveStorageRoots } from '../ingest/roots';
 import { scanChatSessions } from '../ingest/scanner';
 import { IngestStateStore } from '../storage/ingestStateStore';
+import { ObservationStore } from '../storage/observationStore';
 import { localDay } from '../time';
 import { ClearService } from './clearService';
 
@@ -101,5 +102,83 @@ describe('ClearService', () => {
     expect(calls()).toBe(4);
     clear.clear({ kind: 'session', id: 'fx-auto-1' });
     expect(calls()).toBe(0);
+  });
+
+  describe('live observations', () => {
+    const count = (database: ReturnType<typeof setup>['database'], table: string) =>
+      (database.db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
+
+    function observe(database: ReturnType<typeof setup>['database']) {
+      const observations = new ObservationStore(database);
+      for (const sessionId of ['fx-auto-1', 'fx-byok-1']) {
+        observations.saveSnapshot({
+          sessionId,
+          kind: 'start',
+          repoRoot: '/repo',
+          head: 'h',
+          takenAt: 1,
+          files: [],
+        });
+        observations.saveDiagnostics(sessionId, 'start', [{ path: '/repo/a.ts', errors: 1, warnings: 0 }]);
+        observations.saveSurvivalCheck({
+          sessionId,
+          turnIdx: 1,
+          path: 'p',
+          checkKind: '1h',
+          checkedAt: 1,
+          present: 1,
+          total: 1,
+        });
+        observations.replaceSessionCommits(sessionId, [
+          { hash: 'h', committedAt: 1, overlapFiles: 1, editedFiles: 1, linkedAt: 1 },
+        ]);
+      }
+      observations.addTerminalRun({
+        startedAt: null,
+        endedAt: 1,
+        exitCode: 0,
+        kind: 'test',
+        commandHash: 'x',
+      });
+      return observations;
+    }
+
+    it('removes one deleted session’s observations and keeps the others', () => {
+      const { clear, database } = setup();
+      observe(database);
+      clear.clear({ kind: 'session', id: 'fx-auto-1' });
+      for (const table of ['git_snapshots', 'diag_snapshots', 'survival_checks', 'session_commits']) {
+        expect(count(database, table)).toBe(1);
+      }
+      expect(count(database, 'terminal_runs')).toBe(1);
+    });
+
+    it('drops survival checks but keeps snapshots when only content is cleared', () => {
+      const { clear, database } = setup();
+      observe(database);
+      clear.clear({ kind: 'sessionContent', id: 'fx-auto-1' });
+      expect(count(database, 'survival_checks')).toBe(1);
+      expect(count(database, 'git_snapshots')).toBe(2);
+      expect(count(database, 'session_commits')).toBe(2);
+    });
+
+    it('empties terminal runs and forgets the privacy salt when everything is cleared', () => {
+      const { clear, database, state } = setup();
+      observe(database);
+      state.setMeta('privacy.salt', 'secret-salt');
+      clear.clear({ kind: 'everything' });
+      expect(count(database, 'terminal_runs')).toBe(0);
+      expect(state.getMeta('privacy.salt')).toBeNull();
+    });
+
+    it('clears terminal runs and the salt even when no sessions exist', () => {
+      const { clear, database, state } = setup();
+      clear.clear({ kind: 'everything' });
+      observe(database);
+      state.setMeta('privacy.salt', 'secret-salt');
+      clear.clear({ kind: 'everything' });
+      expect(count(database, 'terminal_runs')).toBe(0);
+      expect(state.getMeta('privacy.salt')).toBeNull();
+    });
   });
 });

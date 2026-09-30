@@ -48,6 +48,10 @@ export class IngestStateStore {
     return row?.value ?? null;
   }
 
+  deleteMeta(key: string): void {
+    this.database.db.prepare('DELETE FROM meta WHERE key = :key').run({ key });
+  }
+
   setMeta(key: string, value: string): void {
     this.database.db
       .prepare(

@@ -1,15 +1,20 @@
 import { analysisSchema, type Analysis, type SessionDetail } from '../../shared/dto';
 import type { Database } from '../storage/database';
 import { getSessionDetail } from '../query/sessionDetail';
+import { readLastChangeAt } from '../storage/observationStore';
 import { ANALYZER_VERSION, analyzeSession } from './analyzeSession';
 
 interface CacheRow {
   ingested_at: number;
   analyzer_version: number | null;
+  observed_at: number | null;
   json: string | null;
 }
 
-/** Caches analysis per session; valid while the analyzer version and the session's ingest time match. */
+/**
+ * Caches analysis per session; valid while the analyzer version and the session's ingest time match and no
+ * live observation (git, diagnostics, terminal, survival) changed since it was computed.
+ */
 export class AnalysisStore {
   constructor(private readonly database: Pick<Database, 'db'>) {}
 
@@ -33,12 +38,18 @@ export class AnalysisStore {
     if (ingestedAt !== null) {
       this.database.db
         .prepare(
-          `INSERT INTO session_analysis (session_id, analyzer_version, ingested_at, json)
-           VALUES (:id, :version, :ingestedAt, :json)
+          `INSERT INTO session_analysis (session_id, analyzer_version, ingested_at, observed_at, json)
+           VALUES (:id, :version, :ingestedAt, :observedAt, :json)
            ON CONFLICT(session_id) DO UPDATE SET analyzer_version = excluded.analyzer_version,
-             ingested_at = excluded.ingested_at, json = excluded.json`,
+             ingested_at = excluded.ingested_at, observed_at = excluded.observed_at, json = excluded.json`,
         )
-        .run({ id: detail.id, version: ANALYZER_VERSION, ingestedAt, json: JSON.stringify(analysis) });
+        .run({
+          id: detail.id,
+          version: ANALYZER_VERSION,
+          ingestedAt,
+          observedAt: readLastChangeAt(this.database),
+          json: JSON.stringify(analysis),
+        });
     }
     return analysis;
   }
@@ -52,12 +63,13 @@ export class AnalysisStore {
   private readCache(id: string): Analysis | 'missing-session' | null {
     const row = this.database.db
       .prepare(
-        `SELECT s.ingested_at, a.analyzer_version, a.json
+        `SELECT s.ingested_at, a.analyzer_version, a.observed_at, a.json
            FROM sessions s LEFT JOIN session_analysis a ON a.session_id = s.id WHERE s.id = :id`,
       )
       .get({ id }) as unknown as CacheRow | undefined;
     if (row === undefined) return 'missing-session';
     if (row.json === null || row.analyzer_version !== ANALYZER_VERSION) return null;
+    if ((row.observed_at ?? 0) < readLastChangeAt(this.database)) return null;
     try {
       const parsed = analysisSchema.safeParse(JSON.parse(row.json));
       return parsed.success ? parsed.data : null;

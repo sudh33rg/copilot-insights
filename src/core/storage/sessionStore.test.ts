@@ -7,6 +7,7 @@ import type { NormalizedSession } from '../ingest/types';
 import { applyCaptureLevel } from '../privacy/captureLevel';
 import { daysAgo, localDay } from '../time';
 import { Database } from './database';
+import { ObservationStore } from './observationStore';
 import { SessionStore } from './sessionStore';
 
 function fixture(): NormalizedSession {
@@ -146,5 +147,123 @@ describe('SessionStore', () => {
       .run();
     sessions.clearContent(['fx-auto-1']);
     expect(cached()).toBe(0);
+  });
+
+  describe('observations and fingerprints', () => {
+    const SECRET = 'SECRET-CODE-LINE-do-not-store-me';
+
+    function withFingerprints(level: 'full' | 'summaries' | 'metrics'): NormalizedSession {
+      const session = fixture();
+      const turn = session.turns[0];
+      if (turn === undefined) throw new Error('fixture has no turns');
+      const call = turn.toolCalls[0];
+      if (call === undefined) throw new Error('fixture turn has no tool calls');
+      const withPrints: NormalizedSession = {
+        ...session,
+        turns: [
+          {
+            ...turn,
+            editFingerprints: [{ path: '/repo/a.ts', hashes: ['0123456789abcdef'] }],
+            toolCalls: [{ ...call, commandHash: 'fedcba9876543210' }, ...turn.toolCalls.slice(1)],
+          },
+          ...session.turns.slice(1),
+        ],
+      };
+      return applyCaptureLevel(withPrints, level);
+    }
+
+    const rows = (database: Database, sql: string) => database.db.prepare(sql).all();
+
+    it('keeps live observations when a session is replaced by a rescan', () => {
+      const { database, sessions } = newStore();
+      sessions.replaceSession(fixture(), 'full', 1);
+      new ObservationStore(database).saveSnapshot({
+        sessionId: 'fx-auto-1',
+        kind: 'start',
+        repoRoot: '/repo',
+        head: 'abc',
+        takenAt: 5,
+        files: [],
+      });
+      sessions.replaceSession(fixture(), 'full', 2);
+      sessions.replaceSession(fixture(), 'full', 3);
+      expect(rows(database, 'SELECT * FROM git_snapshots')).toHaveLength(1);
+    });
+
+    it('stores fingerprints and command hashes at summaries level', () => {
+      const { database, sessions } = newStore();
+      sessions.replaceSession(withFingerprints('summaries'), 'summaries', 1);
+      expect(rows(database, 'SELECT * FROM edit_fingerprints')).toEqual([
+        expect.objectContaining({ path: '/repo/a.ts', hashes: '["0123456789abcdef"]' }),
+      ]);
+      expect(
+        rows(database, 'SELECT command_hash FROM tool_calls WHERE command_hash IS NOT NULL'),
+      ).toHaveLength(1);
+    });
+
+    it('keeps fingerprints when downgrading full content to summaries', () => {
+      const { database, sessions } = newStore();
+      sessions.replaceSession(withFingerprints('full'), 'full', 1);
+      sessions.downgradeStoredContent('summaries');
+      expect(rows(database, 'SELECT * FROM edit_fingerprints')).toHaveLength(1);
+    });
+
+    it('removes fingerprints and command hashes when downgrading to metrics', () => {
+      const { database, sessions } = newStore();
+      sessions.replaceSession(withFingerprints('full'), 'full', 1);
+      sessions.downgradeStoredContent('metrics');
+      expect(rows(database, 'SELECT * FROM edit_fingerprints')).toEqual([]);
+      expect(rows(database, 'SELECT command_hash FROM tool_calls WHERE command_hash IS NOT NULL')).toEqual(
+        [],
+      );
+    });
+
+    it('removes fingerprints and command hashes when content is cleared', () => {
+      const { database, sessions } = newStore();
+      sessions.replaceSession(withFingerprints('full'), 'full', 1);
+      sessions.clearContent(['fx-auto-1']);
+      expect(rows(database, 'SELECT * FROM edit_fingerprints')).toEqual([]);
+      expect(rows(database, 'SELECT command_hash FROM tool_calls WHERE command_hash IS NOT NULL')).toEqual(
+        [],
+      );
+    });
+
+    it('stores no fingerprints or command hashes for a metrics-level ingest', () => {
+      const { database, sessions } = newStore();
+      sessions.replaceSession(withFingerprints('metrics'), 'metrics', 1);
+      expect(rows(database, 'SELECT * FROM edit_fingerprints')).toEqual([]);
+      expect(rows(database, 'SELECT command_hash FROM tool_calls WHERE command_hash IS NOT NULL')).toEqual(
+        [],
+      );
+    });
+
+    it('never stores source text in the fingerprint or command-hash columns', () => {
+      const { database, sessions } = newStore();
+      const session = withFingerprints('summaries');
+      sessions.replaceSession(session, 'summaries', 1);
+      const dump = JSON.stringify([
+        rows(database, 'SELECT * FROM edit_fingerprints'),
+        rows(database, 'SELECT command_hash FROM tool_calls'),
+      ]);
+      expect(dump).not.toContain(SECRET);
+    });
+
+    it('removes live observations of purged sessions', () => {
+      const { database, sessions } = newStore();
+      const session = fixture();
+      sessions.replaceSession(session, 'full', 1);
+      const observations = new ObservationStore(database);
+      observations.saveSurvivalCheck({
+        sessionId: session.id,
+        turnIdx: 1,
+        path: '/repo/a.ts',
+        checkKind: '1h',
+        checkedAt: 1,
+        present: 1,
+        total: 1,
+      });
+      sessions.purgeBefore(daysAgo(localDay(session.startedAt), -1));
+      expect(rows(database, 'SELECT * FROM survival_checks')).toEqual([]);
+    });
   });
 });

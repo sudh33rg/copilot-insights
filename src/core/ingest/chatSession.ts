@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isRecord } from '../json';
+import { commandHash, lineFingerprints } from '../privacy/fingerprint';
 import {
   autoModePartSchema,
   markdownPartSchema,
@@ -21,11 +22,13 @@ import type {
   ModelHost,
   NormalizedSession,
   NormalizedTurn,
+  EditFingerprints,
   SelectionMode,
   SelectionSource,
   ToolCall,
   TurnState,
 } from './types';
+import { TERMINAL_TOOL } from './toolNames';
 
 // modelState.value, confirmed against result.errorDetails on real data.
 const TURN_STATES: Partial<Record<number, TurnState>> = {
@@ -91,6 +94,8 @@ const KNOWN_REQUEST_KEYS = new Set([
 export interface NormalizeContext {
   file: string;
   workspace: string;
+  /** Per-install salt. Without it no fingerprints or command hashes are produced. */
+  salt?: string;
 }
 
 export function normalizeChatSession(state: unknown, context: NormalizeContext): NormalizedSession | null {
@@ -106,7 +111,7 @@ export function normalizeChatSession(state: unknown, context: NormalizeContext):
       continue;
     }
     for (const key of Object.keys(parsed.data)) if (!KNOWN_REQUEST_KEYS.has(key)) unknownRequestKeys.add(key);
-    turns.push(normalizeTurn(parsed.data, turns.length + 1, unknownPartKinds));
+    turns.push(normalizeTurn(parsed.data, turns.length + 1, unknownPartKinds, context.salt));
   }
   if (turns.length === 0) return null;
 
@@ -133,7 +138,12 @@ export function normalizeChatSession(state: unknown, context: NormalizeContext):
   };
 }
 
-function normalizeTurn(request: ChatRequest, index: number, unknownPartKinds: Set<string>): NormalizedTurn {
+function normalizeTurn(
+  request: ChatRequest,
+  index: number,
+  unknownPartKinds: Set<string>,
+  salt: string | undefined,
+): NormalizedTurn {
   const parts = request.response ?? [];
   for (const part of parts) {
     if (isRecord(part) && typeof part.kind === 'string' && !KNOWN_PART_KINDS.has(part.kind))
@@ -146,7 +156,7 @@ function normalizeTurn(request: ChatRequest, index: number, unknownPartKinds: Se
   const endedAt =
     completedAt ?? (startedAt !== null && elapsedMs !== null ? startedAt + elapsedMs : startedAt);
   const rounds = parseRounds(meta?.toolCallRounds);
-  const toolCalls = collectToolCalls(rounds, parts);
+  const toolCalls = collectToolCalls(rounds, parts, salt);
   const reasoning = parsePartsOfKind(parts, 'thinking', thinkingPartSchema);
   const stateValue = request.modelState?.value;
   const errorDetails = request.result?.errorDetails;
@@ -176,6 +186,7 @@ function normalizeTurn(request: ChatRequest, index: number, unknownPartKinds: Se
     reasoningMs: reasoning.reduce((sum, block) => sum + (block.reasoningDurationMs ?? 0), 0),
     toolCalls,
     fileEvents: collectFileEvents(parts, toolCalls, request.editedFileEvents ?? []),
+    editFingerprints: salt === undefined ? [] : collectEditFingerprints(parts, salt),
     compactions: parseCompactions(meta?.summaries),
     toolRounds: rounds.length,
     toolInputRetries: rounds.reduce((sum, round) => sum + round.toolInputRetry, 0),
@@ -275,7 +286,21 @@ function parseArgs(raw: unknown): Record<string, unknown> | null {
   }
 }
 
-function collectToolCalls(rounds: readonly Round[], parts: readonly unknown[]): ToolCall[] {
+function commandHashOf(
+  name: string,
+  args: Record<string, unknown> | null,
+  salt: string | undefined,
+): string | null {
+  if (salt === undefined || !TERMINAL_TOOL.test(name)) return null;
+  const command = args?.command;
+  return typeof command === 'string' ? commandHash(salt, command) : null;
+}
+
+function collectToolCalls(
+  rounds: readonly Round[],
+  parts: readonly unknown[],
+  salt: string | undefined,
+): ToolCall[] {
   const fromRounds = rounds.flatMap((round) =>
     round.calls.map((call): ToolCall => ({
       callId: call.id,
@@ -283,6 +308,7 @@ function collectToolCalls(rounds: readonly Round[], parts: readonly unknown[]): 
       args: call.args,
       origin: 'toolCallRound',
       status: 'unknown',
+      commandHash: commandHashOf(call.name, call.args, salt),
     })),
   );
   if (fromRounds.length > 0) return fromRounds;
@@ -294,6 +320,7 @@ function collectToolCalls(rounds: readonly Round[], parts: readonly unknown[]): 
       name: invocation.toolId ?? 'tool',
       args: null,
       origin: 'invocation',
+      commandHash: null,
       status:
         invocation.isComplete === undefined ? 'unknown' : invocation.isComplete ? 'complete' : 'incomplete',
     }),
@@ -336,6 +363,28 @@ function collectFileEvents(
     if (action !== undefined) add(event.uri?.fsPath ?? event.uri?.path ?? null, action, 'editedFileEvents');
   }
   return events;
+}
+
+/** Fingerprints of inserted lines per edited file. The text is hashed here and never leaves this function. */
+function collectEditFingerprints(parts: readonly unknown[], salt: string): EditFingerprints[] {
+  const byPath = new Map<string, Set<string>>();
+  for (const part of parts) {
+    if (!isRecord(part) || part.kind !== 'textEditGroup') continue;
+    const edit = uriPartSchema.safeParse(part);
+    const path = edit.success ? (edit.data.uri?.fsPath ?? edit.data.uri?.path ?? null) : null;
+    if (path === null || path === '' || !Array.isArray(part.edits)) continue;
+    const texts: string[] = [];
+    for (const group of part.edits as unknown[]) {
+      if (!Array.isArray(group)) continue;
+      for (const entry of group as unknown[]) {
+        if (isRecord(entry) && typeof entry.text === 'string') texts.push(entry.text);
+      }
+    }
+    const hashes = byPath.get(path) ?? new Set<string>();
+    for (const hash of lineFingerprints(salt, texts.join('\n'))) hashes.add(hash);
+    if (hashes.size > 0) byPath.set(path, hashes);
+  }
+  return [...byPath].map(([path, hashes]) => ({ path, hashes: [...hashes] }));
 }
 
 function parseCompactions(raw: readonly unknown[] | undefined): Compaction[] {

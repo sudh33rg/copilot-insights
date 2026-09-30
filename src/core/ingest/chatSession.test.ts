@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '../../../test/fixtures/fixtures';
+import { commandHash, saltedHash } from '../privacy/fingerprint';
 import { modelHost, modelNameFromId, normalizeChatSession, toolFileAction } from './chatSession';
 import { replayMutationLog } from './mutationLog';
 
@@ -152,5 +153,51 @@ describe('model and tool helpers', () => {
     expect(toolFileAction('create_file')).toBe('created');
     expect(toolFileAction('replace_string_in_file')).toBe('edited');
     expect(toolFileAction('delete_file')).toBe('deleted');
+  });
+});
+
+function stateWith(parts: unknown[], toolCalls: unknown[] = []) {
+  const { state } = replayMutationLog(readFileSync(fixturePath('auto-agent-session.jsonl'), 'utf8'));
+  const clone = structuredClone(state) as {
+    requests: { response: unknown[]; result?: { metadata?: { toolCallRounds?: unknown[] } } }[];
+  };
+  const request = clone.requests[0];
+  if (request === undefined) throw new Error('fixture has no requests');
+  request.response.push(...parts);
+  if (toolCalls.length > 0) {
+    const result = (request.result ??= {});
+    result.metadata = { ...(result.metadata ?? {}), toolCallRounds: [{ id: 'r-extra', toolCalls }] };
+  }
+  return clone;
+}
+
+describe('content-derived fingerprints', () => {
+  const SECRET = 'SECRET-CODE-LINE-do-not-store-me';
+  it('stores salted line fingerprints of inserted text and no text', () => {
+    const state = stateWith([
+      { kind: 'textEditGroup', uri: { fsPath: '/repo/a.ts' }, edits: [[{ text: `${SECRET}\nshort\n` }]] },
+    ]);
+    const session = normalizeChatSession(state, { file: 'x.jsonl', workspace: 'w', salt: 'salt1' });
+    const prints = session?.turns[0]?.editFingerprints;
+    expect(prints).toEqual([{ path: '/repo/a.ts', hashes: [saltedHash('salt1', SECRET)] }]);
+    expect(JSON.stringify(session?.turns[0]?.editFingerprints)).not.toContain('SECRET');
+  });
+
+  it('hashes terminal tool-call commands after redaction', () => {
+    const state = stateWith(
+      [],
+      [{ id: 'c1', name: 'run_in_terminal', arguments: JSON.stringify({ command: 'pnpm   test' }) }],
+    );
+    const session = normalizeChatSession(state, { file: 'x.jsonl', workspace: 'w', salt: 'salt1' });
+    const call = session?.turns[0]?.toolCalls.find((c) => c.callId === 'c1');
+    expect(call?.commandHash).toBe(commandHash('salt1', 'pnpm test'));
+  });
+
+  it('produces no fingerprints or command hashes without a salt', () => {
+    const state = stateWith([
+      { kind: 'textEditGroup', uri: { fsPath: '/repo/a.ts' }, edits: [[{ text: 'x'.repeat(40) }]] },
+    ]);
+    const session = normalizeChatSession(state, { file: 'x.jsonl', workspace: 'w' });
+    expect(session?.turns[0]?.editFingerprints).toEqual([]);
   });
 });

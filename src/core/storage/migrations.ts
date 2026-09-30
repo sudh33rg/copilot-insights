@@ -166,4 +166,72 @@ export const MIGRATIONS: readonly string[] = [
     last_seen INTEGER NOT NULL
   );
   `,
+  `
+  ALTER TABLE tool_calls ADD COLUMN command_hash TEXT;
+  ALTER TABLE session_analysis ADD COLUMN observed_at INTEGER NOT NULL DEFAULT 0;
+
+  CREATE TABLE edit_fingerprints (
+    session_id TEXT NOT NULL,
+    turn_idx INTEGER NOT NULL,
+    path TEXT NOT NULL,
+    hashes TEXT NOT NULL,
+    PRIMARY KEY (session_id, turn_idx, path),
+    FOREIGN KEY (session_id, turn_idx) REFERENCES turns(session_id, idx) ON DELETE CASCADE
+  );
+
+  -- Live observations. No foreign key to sessions: a rescan deletes and re-inserts the session row.
+  CREATE TABLE git_snapshots (
+    session_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('start', 'latest')),
+    repo_root TEXT NOT NULL,
+    head TEXT,
+    taken_at INTEGER NOT NULL,
+    PRIMARY KEY (session_id, kind, repo_root)
+  );
+  CREATE TABLE git_snapshot_files (
+    session_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    path TEXT NOT NULL,
+    added INTEGER NOT NULL,
+    removed INTEGER NOT NULL,
+    PRIMARY KEY (session_id, kind, path)
+  );
+  CREATE TABLE diag_snapshots (
+    session_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('start', 'latest')),
+    path TEXT NOT NULL,
+    errors INTEGER NOT NULL,
+    warnings INTEGER NOT NULL,
+    PRIMARY KEY (session_id, kind, path)
+  );
+  CREATE TABLE terminal_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at INTEGER,
+    ended_at INTEGER NOT NULL,
+    exit_code INTEGER,
+    kind TEXT NOT NULL,
+    command_hash TEXT NOT NULL
+  );
+  CREATE INDEX idx_terminal_runs_ended ON terminal_runs(ended_at);
+  CREATE TABLE survival_checks (
+    session_id TEXT NOT NULL,
+    turn_idx INTEGER NOT NULL,
+    path TEXT NOT NULL,
+    check_kind TEXT NOT NULL CHECK (check_kind IN ('1h', '1d', 'commit')),
+    checked_at INTEGER NOT NULL,
+    present INTEGER NOT NULL,
+    total INTEGER NOT NULL,
+    PRIMARY KEY (session_id, turn_idx, path, check_kind)
+  );
+  CREATE TABLE session_commits (
+    session_id TEXT NOT NULL,
+    hash TEXT NOT NULL,
+    committed_at INTEGER NOT NULL,
+    overlap_files INTEGER NOT NULL,
+    edited_files INTEGER NOT NULL,
+    linked_at INTEGER NOT NULL,
+    PRIMARY KEY (session_id, hash)
+  );
+  CREATE INDEX idx_session_commits_hash ON session_commits(hash);
+  `,
 ];

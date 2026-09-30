@@ -8,6 +8,7 @@ import { SessionStore } from '../storage/sessionStore';
 import { IngestService, META } from './ingestService';
 import { resolveStorageRoots } from './roots';
 import { runScan } from './runScan';
+import type { ScanInput } from './scanner';
 
 function setup(options: { leader?: boolean; retentionDays?: number; now?: number } = {}) {
   const database = new Database(':memory:');
@@ -15,6 +16,7 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
   const state = new IngestStateStore(database);
   const { userDir } = createFixtureUserDir();
   let changes = 0;
+  const scanInputs: ScanInput[] = [];
   let captureLevel: CaptureLevel = 'full';
   const service = new IngestService({
     database,
@@ -22,7 +24,10 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
     state,
     lock: { tryAcquire: () => options.leader ?? true },
     resolveRoots: () => resolveStorageRoots({ userDirs: [userDir] }),
-    runScan: (input) => runScan(input),
+    runScan: (input) => {
+      scanInputs.push(input);
+      return runScan(input);
+    },
     captureLevel: () => captureLevel,
     retentionDays: () => options.retentionDays ?? 0,
     onChanged: () => {
@@ -36,6 +41,7 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
     service,
     sessions,
     state,
+    scanInputs,
     changes: () => changes,
     setCaptureLevel: (level: CaptureLevel) => {
       captureLevel = level;
@@ -50,6 +56,25 @@ describe('IngestService', () => {
     expect(sessions.counts()).toEqual({ sessions: 2, turns: 4 });
     expect(state.getMeta(META.lastSyncAt)).toBe('1790500000000');
     expect(changes()).toBe(1);
+  });
+
+  it('creates the privacy salt once and reuses it across syncs', async () => {
+    const { service, state } = setup();
+    expect(state.getMeta(META.salt)).toBeNull();
+    await service.sync();
+    const salt = state.getMeta(META.salt);
+    expect(salt).toMatch(/^[0-9a-f]{32}$/);
+    await service.sync({ force: true });
+    expect(state.getMeta(META.salt)).toBe(salt);
+  });
+
+  it('passes the stored salt to every scan', async () => {
+    const { service, state, scanInputs } = setup();
+    await service.sync();
+    await service.sync({ force: true });
+    const salt = state.getMeta(META.salt);
+    expect(salt).not.toBeNull();
+    expect(scanInputs.map((input) => input.salt)).toEqual([salt, salt]);
   });
 
   it('does nothing when files are unchanged', async () => {

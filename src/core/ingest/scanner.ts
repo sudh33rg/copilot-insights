@@ -20,6 +20,8 @@ export interface ScanInput {
   known: Record<string, string>;
   captureLevel: CaptureLevel;
   tombstones: Record<string, TombstoneKind>;
+  /** Per-install salt for content-derived fingerprints; omitted means none are produced. */
+  salt?: string;
 }
 
 export interface ScanResult {
@@ -87,7 +89,7 @@ export function scanChatSessions(input: ScanInput): ScanOutput {
     try {
       const { state, badLines } = loadChatSessionState(file);
       stats.badLines += badLines;
-      const session = normalizeChatSession(state, { file, workspace });
+      const session = normalizeChatSession(state, { file, workspace, salt: input.salt });
       if (session === null) {
         stats.empty++;
         results.push({
