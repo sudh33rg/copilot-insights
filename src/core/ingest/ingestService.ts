@@ -1,4 +1,5 @@
 import type { CaptureLevel } from '../privacy/captureLevel';
+import { CatalogStore } from '../storage/catalogStore';
 import { LlmCallStore } from '../storage/llmCallStore';
 import type { Database } from '../storage/database';
 import type { IngestStateStore } from '../storage/ingestStateStore';
@@ -41,9 +42,11 @@ export class IngestService {
   private lastSeenChange: string | null = null;
 
   private readonly llmCalls: LlmCallStore;
+  private readonly catalog: CatalogStore;
 
   constructor(private readonly deps: IngestDeps) {
     this.llmCalls = new LlmCallStore(deps.database);
+    this.catalog = new CatalogStore(deps.database);
   }
 
   /** Concurrent non-forced calls share one run; a forced call always runs after whatever is in flight. */
@@ -118,12 +121,20 @@ export class IngestService {
         }
         state.setFingerprint(debug.file, debug.fingerprint, debug.log?.sessionId ?? null, now);
       }
+      for (const catalog of output.catalogs.results) {
+        this.catalog.upsertAll(catalog.models, catalog.seenAt);
+        state.setFingerprint(catalog.file, catalog.fingerprint, null, now);
+      }
       if (cutoff !== null) purged = sessions.purgeBefore(cutoff);
       state.setMeta(META.ingestVersion, String(INGEST_VERSION));
       state.setMeta(META.lastSyncAt, String(now));
       if (written > 0 || purged > 0) state.setMeta(META.lastChangeAt, String(now));
     });
-    for (const error of [...output.stats.errors, ...output.debug.stats.errors].slice(0, 5))
+    for (const error of [
+      ...output.stats.errors,
+      ...output.debug.stats.errors,
+      ...output.catalogs.stats.errors,
+    ].slice(0, 5))
       log.warn(`Could not parse ${error.file}: ${error.message}`);
     if (written > 0 || purged > 0) {
       this.lastSeenChange = String(now);

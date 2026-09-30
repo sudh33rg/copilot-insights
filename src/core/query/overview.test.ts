@@ -75,4 +75,20 @@ describe('getOverview', () => {
     expect(overview.internal.sessionsWithLogs).toBe(1);
     expect(overview.internal.calls).toBe(1);
   });
+
+  it('adds the catalog tier to model rows, and says so when a model is not in any catalog', () => {
+    const overview = getOverview(seededStore().database, localDay(BYOK_START));
+    const luna = overview.byModel.find((row) => row.label === 'gpt-5.6-luna');
+    expect(luna?.tier).toEqual({
+      value: 'powerful',
+      provenance: { kind: 'exact', source: 'models.json: model_picker_category' },
+    });
+    const qwen = overview.byModel.find((row) => row.label === 'qwen3.5:35b');
+    expect(qwen?.tier?.value).toBeNull();
+    expect(qwen?.tier?.provenance).toEqual({
+      kind: 'unavailable',
+      source: 'model not present in any captured models.json',
+    });
+    expect(overview.byWorkspace.every((row) => row.tier === null)).toBe(true);
+  });
 });

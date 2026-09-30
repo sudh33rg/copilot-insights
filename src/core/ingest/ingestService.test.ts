@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createFixtureUserDir } from '../../../test/fixtures/fixtures';
 import type { CaptureLevel } from '../privacy/captureLevel';
+import { CatalogStore } from '../storage/catalogStore';
 import { Database } from '../storage/database';
 import { IngestStateStore } from '../storage/ingestStateStore';
 import { SessionStore } from '../storage/sessionStore';
@@ -126,5 +127,11 @@ describe('IngestService', () => {
     expect((database.db.prepare('SELECT count(*) AS n FROM debug_sessions').get() as { n: number }).n).toBe(
       0,
     );
+  });
+
+  it('captures the model catalog from models.json', async () => {
+    const { service, database } = setup();
+    await service.sync();
+    expect(new CatalogStore(database).stats().models).toBe(3);
   });
 });

@@ -1,6 +1,7 @@
 import type { BreakdownRow, Overview, PeriodTotals } from '../../shared/dto';
-import { derived, unavailable } from '../../shared/provenance';
+import { derived, exact, unavailable } from '../../shared/provenance';
 import { modelNameFromId } from '../ingest/chatSession';
+import { CatalogStore } from '../storage/catalogStore';
 import type { Database } from '../storage/database';
 import { getInternalUsage } from './internalUsage';
 import { SOURCES, summed } from './measure';
@@ -24,7 +25,7 @@ const SUMS = `count(DISTINCT t.session_id) AS sessions, count(*) AS turns,
   coalesce(sum(t.model_host <> 'byok'), 0) AS billable`;
 
 /** `today` is a local YYYY-MM-DD day; the month runs from the 1st of that day's month through `today`. */
-export function getOverview(database: Pick<Database, 'db'>, today: string): Overview {
+export function getOverview(database: Database, today: string): Overview {
   const monthStart = `${today.slice(0, 8)}01`;
   return {
     today: periodTotals(database, today, today),
@@ -65,14 +66,10 @@ function failureRate(database: Pick<Database, 'db'>, from: string, to: string) {
   return row.finished === 0 ? unavailable<number>(source) : derived(row.failed / row.finished, source);
 }
 
-function breakdown(
-  database: Pick<Database, 'db'>,
-  by: 'model' | 'workspace',
-  from: string,
-  to: string,
-): BreakdownRow[] {
+function breakdown(database: Database, by: 'model' | 'workspace', from: string, to: string): BreakdownRow[] {
   const keyExpr = by === 'model' ? "coalesce(t.resolved_model, t.requested_model, 'unknown')" : 's.workspace';
   const hostExpr = by === 'model' ? 't.model_host' : 'NULL';
+  const tiers = new CatalogStore(database).tiers();
   const rows = database.db
     .prepare(
       `SELECT ${keyExpr} AS group_key, ${hostExpr} AS host, ${SUMS}
@@ -91,6 +88,7 @@ function breakdown(
           : modelNameFromId(row.group_key)
         : row.group_key,
     host: row.host === 'copilot' || row.host === 'byok' ? row.host : row.host === null ? null : 'unknown',
+    tier: by === 'model' ? tierFor(tiers, row.group_key) : null,
     ...measures(row),
   }));
 }
@@ -107,4 +105,11 @@ function hostSplit(database: Pick<Database, 'db'>, from: string, to: string): Ov
     turns: row.turns,
     sessions: row.sessions,
   }));
+}
+
+function tierFor(tiers: ReturnType<CatalogStore['tiers']>, key: string): BreakdownRow['tier'] {
+  const found = key === 'unknown' ? undefined : tiers.get(modelNameFromId(key).toLowerCase());
+  return found?.pickerCategory != null
+    ? exact(found.pickerCategory, 'models.json: model_picker_category')
+    : unavailable('model not present in any captured models.json');
 }

@@ -148,4 +148,22 @@ export const MIGRATIONS: readonly string[] = [
     ingested_at INTEGER NOT NULL
   );
   `,
+  `
+  CREATE TABLE models (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    vendor TEXT,
+    family TEXT,
+    picker_category TEXT,
+    price_category TEXT,
+    max_context_tokens INTEGER,
+    max_output_tokens INTEGER,
+    input_price REAL,
+    output_price REAL,
+    cache_read_price REAL,
+    price_batch_size INTEGER,
+    first_seen INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL
+  );
+  `,
 ];

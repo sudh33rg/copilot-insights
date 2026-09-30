@@ -134,6 +134,10 @@ export function breakdownRow(overrides: Partial<BreakdownRow> = {}): BreakdownRo
     key: 'gpt-5.6-luna',
     label: 'gpt-5.6-luna',
     host: 'copilot',
+    tier: {
+      value: 'powerful',
+      provenance: { kind: 'exact' as const, source: 'models.json: model_picker_category' },
+    },
     sessions: 1,
     turns: 2,
     inputTokens: exactNumber(54000),
@@ -165,11 +169,17 @@ export function overview(overrides: Partial<Overview> = {}): Overview {
     failureRate: { value: 1 / 3, provenance: { kind: 'derived', source: 'turns.state' } },
     byModel: [
       breakdownRow(),
-      breakdownRow({ key: 'qwen3.5:35b', label: 'qwen3.5:35b', host: 'byok', credits: missing('BYOK') }),
+      breakdownRow({
+        key: 'qwen3.5:35b',
+        label: 'qwen3.5:35b',
+        host: 'byok',
+        tier: { value: null, provenance: { kind: 'unavailable' as const, source: 'model not in catalog' } },
+        credits: missing('BYOK'),
+      }),
     ],
     byWorkspace: [
-      breakdownRow({ key: 'alpha', label: 'alpha', host: null }),
-      breakdownRow({ key: 'beta', label: 'beta', host: null }),
+      breakdownRow({ key: 'alpha', label: 'alpha', host: null, tier: null }),
+      breakdownRow({ key: 'beta', label: 'beta', host: null, tier: null }),
     ],
     hostSplit: [
       { host: 'byok', turns: 2, sessions: 1 },

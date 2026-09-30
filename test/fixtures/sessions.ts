@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseDebugLog } from '../../src/core/debuglog/parseDebugLog';
+import { parseModelsJson } from '../../src/core/debuglog/parseModels';
 import { normalizeChatSession } from '../../src/core/ingest/chatSession';
 import { replayMutationLog } from '../../src/core/ingest/mutationLog';
 import type { NormalizedSession } from '../../src/core/ingest/types';
 import { applyCaptureLevel, type CaptureLevel } from '../../src/core/privacy/captureLevel';
 import { Database } from '../../src/core/storage/database';
+import { CatalogStore } from '../../src/core/storage/catalogStore';
 import { LlmCallStore } from '../../src/core/storage/llmCallStore';
 import { SessionStore } from '../../src/core/storage/sessionStore';
 import { DEBUG_LOG_FIXTURES, fixturePath } from './fixtures';
@@ -46,6 +48,10 @@ export function seededStore(level: CaptureLevel = 'full') {
   new LlmCallStore(database).replaceSession(
     parseDebugLog('fx-auto-1', readFileSync(join(DEBUG_LOG_FIXTURES, 'fx-auto-1', 'main.jsonl'), 'utf8')),
     'fixture',
+    1,
+  );
+  new CatalogStore(database).upsertAll(
+    parseModelsJson(readFileSync(join(DEBUG_LOG_FIXTURES, 'fx-auto-1', 'models.json'), 'utf8')),
     1,
   );
   return { database, sessions };

@@ -125,6 +125,7 @@ const usageColumns: Column<BreakdownRow>[] = [
 const modelColumns: Column<BreakdownRow>[] = [
   { id: 'model', header: 'Model', cell: (row) => row.label },
   { id: 'host', header: 'Host', cell: (row) => (row.host === null ? '' : HOST_LABEL[row.host]) },
+  { id: 'tier', header: 'Tier', cell: (row) => (row.tier === null ? '' : <Measure measure={row.tier} />) },
   ...usageColumns,
 ];
 const workspaceColumns: Column<BreakdownRow>[] = [

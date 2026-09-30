@@ -29,7 +29,8 @@ describe('OverviewView', () => {
     const models = await screen.findByRole('table', { name: 'Usage by model' });
     expect(within(models).getByText('gpt-5.6-luna')).toBeInTheDocument();
     expect(within(models).getByText('qwen3.5:35b')).toBeInTheDocument();
-    expect(within(models).getByText('Unavailable')).toBeInTheDocument();
+    // qwen has neither a Copilot credit figure nor a catalog tier.
+    expect(within(models).getAllByText('Unavailable')).toHaveLength(2);
     const workspaces = screen.getByRole('table', { name: 'Usage by workspace' });
     expect(within(workspaces).getByText('alpha')).toBeInTheDocument();
   });
@@ -74,5 +75,12 @@ describe('OverviewView', () => {
       }),
     });
     expect(await screen.findByText(/No agent debug logs found/)).toBeInTheDocument();
+  });
+
+  it('shows the catalog tier of each model', async () => {
+    renderWithHost(<OverviewView />, { getOverview: overview() });
+    const models = await screen.findByRole('table', { name: 'Usage by model' });
+    expect(within(models).getByText('powerful')).toBeInTheDocument();
+    expect(within(models).getByText('Tier')).toBeInTheDocument();
   });
 });

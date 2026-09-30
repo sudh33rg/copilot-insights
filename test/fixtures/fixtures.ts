@@ -27,6 +27,7 @@ export function createFixtureUserDir(): { userDir: string; globalStorageDir: str
   const debugDir = join(workspaceDir, 'GitHub.copilot-chat', 'debug-logs', 'fx-auto-1');
   mkdirSync(debugDir, { recursive: true });
   copyFileSync(join(DEBUG_LOG_FIXTURES, 'fx-auto-1', 'main.jsonl'), join(debugDir, 'main.jsonl'));
+  copyFileSync(join(DEBUG_LOG_FIXTURES, 'fx-auto-1', 'models.json'), join(debugDir, 'models.json'));
   const emptyWindowDir = join(userDir, 'globalStorage', 'emptyWindowChatSessions');
   mkdirSync(emptyWindowDir, { recursive: true });
   copyFileSync(fixturePath('byok-failed-session.jsonl'), join(emptyWindowDir, 'fx-byok-1.jsonl'));

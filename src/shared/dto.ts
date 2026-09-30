@@ -133,6 +133,7 @@ export const breakdownRowSchema = z.object({
   key: z.string(),
   label: z.string(),
   host: hostSchema.nullable(),
+  tier: measured(z.string()).nullable(),
   sessions: z.number(),
   turns: z.number(),
   inputTokens: measuredNumber,

@@ -1,0 +1,39 @@
+[
+  {
+    "id": "gpt-5.6-luna",
+    "name": "GPT-5.6 Luna",
+    "vendor": "OpenAI",
+    "version": "5.6",
+    "capabilities": {
+      "family": "gpt-5.6",
+      "limits": {
+        "max_context_window_tokens": 400000,
+        "max_output_tokens": 128000,
+        "max_prompt_tokens": 272000
+      }
+    },
+    "billing": {
+      "token_prices": {
+        "batch_size": 1000000,
+        "default": {
+          "input_price": 5,
+          "output_price": 30,
+          "cache_read_price": 0.5,
+          "max_prompt_tokens": 272000
+        }
+      }
+    },
+    "model_picker_category": "powerful",
+    "model_picker_price_category": "high",
+    "is_chat_default": false
+  },
+  {
+    "id": "gpt-4o-mini",
+    "name": "GPT-4o mini",
+    "vendor": "OpenAI",
+    "capabilities": { "family": "gpt-4o-mini", "limits": {} },
+    "model_picker_category": "lightweight"
+  },
+  { "name": "entry without an id" },
+  { "id": "weird", "name": 42, "capabilities": "oops", "billing": null, "model_picker_category": ["x"] }
+]
