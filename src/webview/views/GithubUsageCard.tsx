@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRpc } from '../rpcContext';
 import { Button } from '../ui/Button';
 import { DataTable } from '../ui/DataTable';
-import { formatCredits, formatDateTime } from '../ui/format';
+import { formatCredits, formatDateTime, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
+
+const credits = (value: number | string) => formatCredits(Number(value));
 
 export function GithubUsageCard() {
   const rpc = useRpc();
@@ -32,7 +34,8 @@ export function GithubUsageCard() {
       <h3>GitHub billed credits</h3>
       <p className="muted">
         Account-wide usage from GitHub billing, covering all devices and clients. It is not attributed to
-        individual sessions.
+        individual sessions. Unexplained credits are billed minus local: they come from other machines,
+        Copilot CLI, github.com or other clients.
       </p>
       {usage.data && usage.data.days.length > 0 ? (
         <DataTable
@@ -40,12 +43,30 @@ export function GithubUsageCard() {
           columns={[
             { id: 'day', header: 'Day', cell: (row) => row.day },
             {
-              id: 'credits',
-              header: 'Credits',
+              id: 'billed',
+              header: 'GitHub billed',
+              align: 'end',
+              cell: (row) => <Measure measure={row.billed} format={credits} />,
+            },
+            {
+              id: 'local',
+              header: 'Local (this machine)',
+              align: 'end',
+              cell: (row) => <Measure measure={row.local} format={credits} />,
+            },
+            {
+              id: 'coverage',
+              header: 'Coverage',
               align: 'end',
               cell: (row) => (
-                <Measure measure={row.credits} format={(value) => formatCredits(Number(value))} />
+                <Measure measure={row.coverage} format={(value) => formatPercent(Number(value))} />
               ),
+            },
+            {
+              id: 'unexplained',
+              header: 'Unexplained',
+              align: 'end',
+              cell: (row) => <Measure measure={row.unexplained} format={credits} />,
             },
           ]}
           rows={usage.data.days}

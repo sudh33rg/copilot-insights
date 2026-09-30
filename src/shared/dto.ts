@@ -180,8 +180,15 @@ export type ClearScope = z.infer<typeof clearScopeSchema>;
 
 // ---- GitHub billed usage ----
 export const githubUsageParams = z.object({ days: z.number().int().min(1).max(62) });
+export const coverageDaySchema = z.object({
+  day: z.string(),
+  billed: measuredNumber,
+  local: measuredNumber,
+  coverage: measuredNumber,
+  unexplained: measuredNumber,
+});
 export const githubUsageSchema = z.object({
-  days: z.array(z.object({ day: z.string(), credits: measuredNumber })),
+  days: z.array(coverageDaySchema),
   lastSyncedAt: z.number().nullable(),
   account: z.string().nullable(),
 });

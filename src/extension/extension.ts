@@ -10,12 +10,12 @@ import { IngestService } from '../core/ingest/ingestService';
 import { resolveStorageRoots, userDirsFromGlobalStorage } from '../core/ingest/roots';
 import { runScan } from '../core/ingest/runScan';
 import { WriterLock } from '../core/ingest/writerLock';
+import { getCoverage } from '../core/query/coverage';
 import { InsightsQueries } from '../core/query/insightsQueries';
 import { Database } from '../core/storage/database';
 import { IngestStateStore } from '../core/storage/ingestStateStore';
 import { SessionStore } from '../core/storage/sessionStore';
 import { daysAgo, localDay } from '../core/time';
-import { exact } from '../shared/provenance';
 import { readConfig } from './config';
 import { runEnableDebugLogging } from './telemetry';
 import { githubSession } from './githubAuth';
@@ -113,10 +113,7 @@ export function activate(context: vscode.ExtensionContext): void {
     getGithubUsage: ({ days }) => {
       const today = localDay();
       return {
-        days: github.list(daysAgo(today, days - 1), today).map((row) => ({
-          day: row.day,
-          credits: exact(row.credits, 'GitHub billing API: ai_credit/usage (account-wide, all devices)'),
-        })),
+        days: getCoverage(database, github.list(daysAgo(today, days - 1), today)),
         lastSyncedAt: github.lastSyncedAt(),
         account: github.account(),
       };
