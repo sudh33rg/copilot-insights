@@ -1,0 +1,104 @@
+/** Append-only. Never edit a migration that has shipped; add a new one. Index + 1 = PRAGMA user_version. */
+export const MIGRATIONS: readonly string[] = [
+  `
+  CREATE TABLE sessions (
+    id TEXT PRIMARY KEY,
+    source_file TEXT NOT NULL,
+    workspace TEXT NOT NULL,
+    title TEXT,
+    location TEXT,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER NOT NULL,
+    active_ms INTEGER NOT NULL,
+    day TEXT NOT NULL,
+    capture_level TEXT NOT NULL,
+    unknown_part_kinds TEXT NOT NULL DEFAULT '[]',
+    unknown_request_keys TEXT NOT NULL DEFAULT '[]',
+    invalid_requests INTEGER NOT NULL DEFAULT 0,
+    ingested_at INTEGER NOT NULL
+  );
+  CREATE INDEX idx_sessions_day ON sessions(day);
+  CREATE INDEX idx_sessions_workspace ON sessions(workspace);
+
+  CREATE TABLE turns (
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    request_id TEXT,
+    response_id TEXT,
+    started_at INTEGER,
+    ended_at INTEGER,
+    elapsed_ms INTEGER,
+    day TEXT,
+    state TEXT NOT NULL,
+    system_initiated INTEGER NOT NULL,
+    hidden INTEGER NOT NULL,
+    mode TEXT,
+    user_text TEXT,
+    assistant_text TEXT,
+    requested_model TEXT,
+    resolved_model TEXT,
+    resolved_model_source TEXT NOT NULL,
+    selection_mode TEXT NOT NULL,
+    selection_source TEXT NOT NULL,
+    model_host TEXT NOT NULL,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    credits REAL,
+    prompt_composition TEXT NOT NULL DEFAULT '[]',
+    reasoning_blocks INTEGER NOT NULL DEFAULT 0,
+    reasoning_ms INTEGER NOT NULL DEFAULT 0,
+    tool_rounds INTEGER NOT NULL DEFAULT 0,
+    tool_input_retries INTEGER NOT NULL DEFAULT 0,
+    max_tool_calls_exceeded INTEGER NOT NULL DEFAULT 0,
+    compactions TEXT NOT NULL DEFAULT '[]',
+    error_code TEXT,
+    error_message TEXT,
+    PRIMARY KEY (session_id, idx)
+  );
+  CREATE INDEX idx_turns_day ON turns(day);
+  CREATE INDEX idx_turns_response ON turns(response_id);
+
+  CREATE TABLE tool_calls (
+    session_id TEXT NOT NULL,
+    turn_idx INTEGER NOT NULL,
+    seq INTEGER NOT NULL,
+    call_id TEXT,
+    name TEXT NOT NULL,
+    args TEXT,
+    origin TEXT NOT NULL,
+    status TEXT NOT NULL,
+    PRIMARY KEY (session_id, turn_idx, seq),
+    FOREIGN KEY (session_id, turn_idx) REFERENCES turns(session_id, idx) ON DELETE CASCADE
+  );
+
+  CREATE TABLE file_events (
+    session_id TEXT NOT NULL,
+    turn_idx INTEGER NOT NULL,
+    seq INTEGER NOT NULL,
+    path TEXT NOT NULL,
+    action TEXT NOT NULL,
+    source TEXT NOT NULL,
+    PRIMARY KEY (session_id, turn_idx, seq),
+    FOREIGN KEY (session_id, turn_idx) REFERENCES turns(session_id, idx) ON DELETE CASCADE
+  );
+  CREATE INDEX idx_file_events_path ON file_events(path);
+
+  CREATE TABLE tombstones (
+    session_id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('deleted', 'content-cleared')),
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE scan_state (
+    file TEXT PRIMARY KEY,
+    fingerprint TEXT NOT NULL,
+    session_id TEXT,
+    scanned_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
+];
