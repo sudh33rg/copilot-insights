@@ -48,6 +48,7 @@ export function turnDetail(overrides: Partial<TurnDetail> = {}): TurnDetail {
     assistantText: 'I moved the timer start after the lock is acquired.',
     routing: { kind: 'auto', label: 'Auto → gpt-5.6-luna' },
     model: 'gpt-5.6-luna',
+    modelId: 'gpt-5.6-luna',
     host: 'copilot',
     inputTokens: exactNumber(24000, 'chatSessions.promptTokens'),
     outputTokens: exactNumber(1700, 'chatSessions.completionTokens'),
@@ -57,7 +58,10 @@ export function turnDetail(overrides: Partial<TurnDetail> = {}): TurnDetail {
     nanoAiu: exactNumber(1126141000, 'agent debug log'),
     reasoningMs: exactNumber(4200),
     toolRounds: exactNumber(2),
+    toolInputRetries: exactNumber(0),
     compactions: exactNumber(1),
+    contextTokensBefore: missing('test'),
+    promptComposition: [],
     toolCalls: [
       { name: 'read_file', status: 'complete' },
       { name: 'replace_string_in_file', status: 'complete' },
@@ -100,6 +104,7 @@ export function sessionDetail(overrides: Partial<SessionDetail> = {}): SessionDe
       warningsDelta: missing(),
       commits: [],
     },
+    efficiency: { drivers: [] },
     analysis: {
       intent: {
         value: 'bugfix',

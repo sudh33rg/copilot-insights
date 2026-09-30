@@ -82,21 +82,21 @@ folders hold `tools_N.json` (`{content: "<JSON string of [{type,name,description
 
 ## File Structure
 
-| File                                                                              | Responsibility                                                              |
-| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `src/shared/dto.ts` (modify)                                                      | `TurnDetail` extras, `efficiencySchema`, `failureAnalyticsSchema`           |
-| `src/core/efficiency/types.ts`                                                    | `EfficiencyInput`, `Finding`, `CostDriver` shared types                     |
-| `src/core/efficiency/costDrivers.ts` (+test)                                      | 5.1 evidence list from exact data                                           |
-| `src/core/efficiency/contextBloat.ts` (+test)                                     | 5.2 unused tool definitions, system-prompt cost                             |
-| `src/core/efficiency/freshSession.ts` (+test)                                     | 5.3 restart counterfactual                                                  |
-| `src/core/efficiency/priceCounterfactual.ts` (+test)                              | 5.4 list-price ratios                                                       |
-| `src/core/efficiency/modelFindings.ts` (+test)                                    | 5.5 oversized / undersized / over-routing / high reasoning                  |
-| `src/core/analysis/findings.ts` (modify, +test)                                   | 5.6 prompt findings v2                                                      |
-| `src/core/efficiency/score.ts` (+test)                                            | 5.8 components → band                                                       |
-| `src/core/query/sessionEfficiency.ts` (+test)                                     | assemble `SessionDetail.efficiency` from the pieces                         |
-| `src/core/query/failureAnalytics.ts` (+test)                                      | 5.7                                                                         |
-| `src/core/debuglog/*`, `src/core/storage/llmCallStore.ts` (modify)                | 5.2 read tool/system-prompt file sizes                                      |
-| `src/webview/views/EfficiencyCard.tsx`, `FailureAnalyticsCard.tsx` (+tests)       | UI                                                                          |
+| File                                                                        | Responsibility                                                    |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `src/shared/dto.ts` (modify)                                                | `TurnDetail` extras, `efficiencySchema`, `failureAnalyticsSchema` |
+| `src/core/efficiency/types.ts`                                              | `EfficiencyInput`, `Finding`, `CostDriver` shared types           |
+| `src/core/efficiency/costDrivers.ts` (+test)                                | 5.1 evidence list from exact data                                 |
+| `src/core/efficiency/contextBloat.ts` (+test)                               | 5.2 unused tool definitions, system-prompt cost                   |
+| `src/core/efficiency/freshSession.ts` (+test)                               | 5.3 restart counterfactual                                        |
+| `src/core/efficiency/priceCounterfactual.ts` (+test)                        | 5.4 list-price ratios                                             |
+| `src/core/efficiency/modelFindings.ts` (+test)                              | 5.5 oversized / undersized / over-routing / high reasoning        |
+| `src/core/analysis/findings.ts` (modify, +test)                             | 5.6 prompt findings v2                                            |
+| `src/core/efficiency/score.ts` (+test)                                      | 5.8 components → band                                             |
+| `src/core/query/sessionEfficiency.ts` (+test)                               | assemble `SessionDetail.efficiency` from the pieces               |
+| `src/core/query/failureAnalytics.ts` (+test)                                | 5.7                                                               |
+| `src/core/debuglog/*`, `src/core/storage/llmCallStore.ts` (modify)          | 5.2 read tool/system-prompt file sizes                            |
+| `src/webview/views/EfficiencyCard.tsx`, `FailureAnalyticsCard.tsx` (+tests) | UI                                                                |
 
 ---
 
@@ -189,7 +189,7 @@ Rules (each returns nothing when its evidence is missing; `userTurns` = non-syst
 
 - [ ] **Step 6: UI.** `EfficiencyCard.tsx` (`<section className="card" aria-label="Efficiency">`, heading
       `Why it cost what it did`, `<ul className="findings">` of drivers: `<strong>{title}</strong>
-      <ProvenanceBadge/>` and `<div className="muted">{evidence}</div>`; when `drivers.length === 0` show
+<ProvenanceBadge/>` and `<div className="muted">{evidence}</div>`; when `drivers.length === 0` show
       `No cost drivers stood out for this session.`). Render it in `SessionDetailView` after `OutcomeCard`. Test
       with fixtures: lists titles/evidence/badges; empty state text; evidence rendered as plain text.
 
@@ -240,7 +240,7 @@ Rules (all `inferred`, source `characters ÷ 4 as a token estimate; sent on ever
 
 - `unused-tools` — `toolDefs` present, ≥ 5 defined tools and ≥ 50 % never called in the session:
   evidence `31 of 47 tool definitions were never called; about 9,400 tokens of definitions were sent with each of
-  11 requests (≈ 103,400 tokens)`; message
+11 requests (≈ 103,400 tokens)`; message
   `Tools you do not use still cost tokens on every request. Disabling unused tools or MCP servers may reduce cost.`
 - `system-prompt` — `systemPromptChars` ≥ 20,000: evidence
   `the system prompt is 46,352 characters (about 11,600 tokens) and was sent with each of 11 requests`;
@@ -304,11 +304,13 @@ git commit -m "feat(efficiency): measure tool-definition and system-prompt cost 
 
 ```ts
 export interface FreshSessionEstimate {
-  restartAtTurn: number;       // turn index where a fresh session would have started
-  tokensSaved: number;         // estimated input tokens not sent
-  shareOfInput: number;        // tokensSaved ÷ total input tokens of the session (0–1)
+  restartAtTurn: number; // turn index where a fresh session would have started
+  tokensSaved: number; // estimated input tokens not sent
+  shareOfInput: number; // tokensSaved ÷ total input tokens of the session (0–1)
 }
-export function freshSessionEstimate(turns: readonly { index: number; inputTokens: number | null; systemInitiated: boolean }[]): FreshSessionEstimate | null;
+export function freshSessionEstimate(
+  turns: readonly { index: number; inputTokens: number | null; systemInitiated: boolean }[],
+): FreshSessionEstimate | null;
 ```
 
 Model (state it in the provenance source): the first user turn's input tokens approximate the fixed baseline
@@ -330,7 +332,7 @@ positive saving. Ignores cache discounts (stated).
       system-initiated turns are never chosen as `k`.
 - [ ] **Step 2: Run → FAIL. Step 3: Implement. Step 4: DTO + `getSessionEfficiency` wiring + provenance
       `ALLOWED` entry. Step 5: UI** — a line under the drivers: `Restarting in a fresh session at turn 4 would
-      have saved an estimated 120,000 input tokens (63% of this session's input).` with the Inferred badge and a
+have saved an estimated 120,000 input tokens (63% of this session's input).` with the Inferred badge and a
       muted note `Estimate, not part of the exact totals above.`; test that the note and badge render and that no
       line renders for `null`.
 - [ ] **Step 6:** `pnpm format && pnpm verify` → PASS. **Step 7: Commit**
@@ -471,8 +473,8 @@ git commit -m "feat(efficiency): add evidence-based model-selection findings"
 
 1. `underspecified-start` — first user prompt text present, **no** file reference (regex
    `/[\w./-]+\.[a-z]{1,5}\b|`[^`]+`|#file:/i`) and **no** acceptance cue (`/\b(should|must|expect|so that|when|until|passes?|returns?)\b/i`),
-   and the session needed ≥ 3 user turns. Evidence `opening prompt names no file and states no success condition; the session took 5 user turns`.
-   Replaces `vague-first-prompt` when both would fire (keep `vague-first-prompt` only when this one does not).
+and the session needed ≥ 3 user turns. Evidence `opening prompt names no file and states no success condition; the session took 5 user turns`.
+Replaces `vague-first-prompt`when both would fire (keep`vague-first-prompt` only when this one does not).
 2. `late-constraints` — the first prompt has no constraint word and a later user prompt (turn index ≥ 3 among user
    turns) contains one of `/\b(must|only|never|don'?t|do not|without|make sure|ensure|instead of)\b/i`.
    Evidence `constraints first appeared on turn 4 ("only", "without")` (the matched words, lowercased, max 3).
@@ -485,11 +487,11 @@ All v2 findings are `inferred`; system-initiated turns are excluded everywhere (
 rules are skipped when no prompt text is stored; `drift` uses file events only.
 
 - [ ] **Step 1: Failing tests** (positive and negative per rule, in `findings.test.ts` using `makeTurn`):
-  underspecified start with/without a file reference and with/without acceptance cue, and with only 2 turns (no
-  finding); `vague-first-prompt` does not double-fire; late constraints positive (turn 4) and negative (constraint
-  already in the first prompt, constraint on turn 2); drift positive (early `src/execution/a.ts`,
-  `src/execution/b.ts`; late `docs/x.md`, `scripts/y.ts`, 6 events total) and negative (shared directory, fewer than
-  6 events); all three skipped with `userText: null` except `drift`; system-initiated corrections never counted.
+      underspecified start with/without a file reference and with/without acceptance cue, and with only 2 turns (no
+      finding); `vague-first-prompt` does not double-fire; late constraints positive (turn 4) and negative (constraint
+      already in the first prompt, constraint on turn 2); drift positive (early `src/execution/a.ts`,
+      `src/execution/b.ts`; late `docs/x.md`, `scripts/y.ts`, 6 events total) and negative (shared directory, fewer than
+      6 events); all three skipped with `userText: null` except `drift`; system-initiated corrections never counted.
 - [ ] **Step 2: Run → FAIL. Step 3: Implement. Step 4:** update `analyzeSession.test.ts` expectations that change
       (recompute, do not loosen); bump `ANALYZER_VERSION`.
 - [ ] **Step 5:** `pnpm format && pnpm verify` → PASS. **Step 6: Commit**
@@ -519,8 +521,8 @@ git commit -m "feat(analysis): add underspecified-start, late-constraint and dri
 export const failureRowSchema = z.object({
   key: z.string(),
   label: z.string(),
-  turns: z.number(),          // user-initiated, finished turns in the group (index fact)
-  failed: z.number(),         // of those, how many failed (index fact)
+  turns: z.number(), // user-initiated, finished turns in the group (index fact)
+  failed: z.number(), // of those, how many failed (index fact)
   failureRate: measuredNumber,
   toolInputRetries: measuredNumber,
   maxToolCallsExceeded: measuredNumber,
@@ -577,9 +579,17 @@ git commit -m "feat(analytics): add failure analytics by model, provider and mod
 - Produces:
 
 ```ts
-export interface ScoreComponent { id: string; label: string; value: number; evidence: string; provenance: Provenance } // value 0–1, higher is better
+export interface ScoreComponent {
+  id: string;
+  label: string;
+  value: number;
+  evidence: string;
+  provenance: Provenance;
+} // value 0–1, higher is better
 export function efficiencyScore(input: {
-  turns: readonly TurnDetail[]; outcomes: Outcomes; findings: readonly Finding[];
+  turns: readonly TurnDetail[];
+  outcomes: Outcomes;
+  findings: readonly Finding[];
 }): { band: 'good' | 'fair' | 'needs-work'; components: ScoreComponent[] } | null;
 ```
 
@@ -606,7 +616,7 @@ components. DTO: `efficiency.score: z.object({ band: measured(z.enum(['good','fa
 - [ ] **Step 2: Run → FAIL. Step 3: Implement + wire. Step 4: UI:** the card shows
       `Efficiency: Good|Fair|Needs work` with the badge and a `<dl>` of components (label → percent `Measure`,
       evidence muted); `null` → line `Not enough evidence for an efficiency score (needs at least three measured
-      components).` Tests for each state and that no bare number headline is rendered.
+components).` Tests for each state and that no bare number headline is rendered.
 - [ ] **Step 5: Docs:** README `What you get` (Efficiency: cost drivers, context advice, counterfactuals labelled
       inferred, model findings, failure analytics, transparent score) and Privacy (tool names and sizes only, no
       prompt file content); CHANGELOG `0.7.0`; ROADMAP Phase 5 marked done with D-P5-1…5 and the limits (debug
@@ -635,7 +645,7 @@ git commit -m "feat(efficiency): add transparent efficiency score; document; rel
   were not re-read while writing the plan; behaviour to implement is fully specified.
 - **Type consistency:** `Finding`/`CostDriver` from Task 5.1 `types.ts` are reused by 5.2, 5.5, 5.8;
   `ModelPrice` from 5.4 is reused by 5.5; `getSessionEfficiency` changes signature in 5.2 (`database, turns,
-  sessionId`) and again in 5.5 (`database, detail`) — the later task updates the earlier call sites and tests.
+sessionId`) and again in 5.5 (`database, detail`) — the later task updates the earlier call sites and tests.
 - **Known risks:** (1) debug-log file names are read relative to the log directory — keep the basename-only
   guard; (2) `estimateComplexity` inputs are available from `summarizeChanges` + turns (as `analyzeSession` does);
   (3) catalog price columns are nullable — treat null as "no price".

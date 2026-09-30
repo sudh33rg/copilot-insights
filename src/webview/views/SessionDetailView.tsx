@@ -5,6 +5,7 @@ import { ProvenanceBadge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { formatCredits, formatDateTime, formatDuration, formatInt } from '../ui/format';
 import { Measure } from '../ui/Measure';
+import { EfficiencyCard } from './EfficiencyCard';
 import { OutcomeCard } from './OutcomeCard';
 
 const STATE_LABEL: Record<TurnDetail['state'], string> = {
@@ -98,6 +99,7 @@ function Detail({ session }: { session: SessionDetail }) {
       )}
       {session.analysis && <AnalysisCard analysis={session.analysis} />}
       <OutcomeCard outcomes={session.outcomes} />
+      <EfficiencyCard efficiency={session.efficiency} />
       <h3>Timeline</h3>
       {session.turns.map((turn) => (
         <TurnCard key={turn.index} turn={turn} />

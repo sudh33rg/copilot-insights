@@ -84,4 +84,53 @@ describe('getSessionDetail', () => {
       provenance: { kind: 'unavailable', source: 'agent debug log has no request for this turn' },
     });
   });
+
+  describe('efficiency evidence per turn', () => {
+    it('exposes the model id, prompt composition, tool retries and the largest pre-compaction context', () => {
+      const { database } = seededStore();
+      database.db
+        .prepare(
+          `UPDATE turns SET prompt_composition = :composition, tool_input_retries = 2, compactions = :compactions
+            WHERE session_id = 'fx-auto-1' AND idx = 1`,
+        )
+        .run({
+          composition: JSON.stringify([
+            { category: 'tools', label: 'Tool definitions', percent: 34 },
+            { category: 'odd', label: 'No percent', percent: null },
+          ]),
+          compactions: JSON.stringify([
+            { contextLengthBefore: 60000, model: null, durationMs: 1, outcome: null },
+            { contextLengthBefore: 91000, model: null, durationMs: 1, outcome: null },
+          ]),
+        });
+      const first = getSessionDetail(database, 'fx-auto-1')?.turns[0];
+      expect(first?.modelId).toBe('gpt-5.6-luna');
+      expect(first?.promptComposition).toEqual([
+        {
+          category: 'tools',
+          label: 'Tool definitions',
+          share: { value: 0.34, provenance: { kind: 'exact', source: 'chatSessions promptTokenDetails' } },
+        },
+      ]);
+      expect(first?.toolInputRetries).toEqual({
+        value: 2,
+        provenance: { kind: 'exact', source: 'chatSessions toolCallRounds' },
+      });
+      expect(first?.contextTokensBefore.value).toBe(91000);
+      expect(first?.contextTokensBefore.provenance.kind).toBe('exact');
+    });
+
+    it('marks context before compaction unavailable when the turn never compacted', () => {
+      const second = getSessionDetail(seededStore().database, 'fx-auto-1')?.turns[1];
+      expect(second?.contextTokensBefore.value).toBeNull();
+      expect(second?.contextTokensBefore.provenance.kind).toBe('unavailable');
+      expect(second?.promptComposition).toEqual([]);
+    });
+
+    it('attaches cost drivers to the session', () => {
+      const detail = getSessionDetail(seededStore().database, 'fx-auto-1');
+      expect(Array.isArray(detail?.efficiency.drivers)).toBe(true);
+      expect(detail?.efficiency.drivers.every((driver) => driver.evidence.trim() !== '')).toBe(true);
+    });
+  });
 });

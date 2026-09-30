@@ -2,9 +2,11 @@ import type { SessionDetail, TurnDetail } from '../../shared/dto';
 import { modelNameFromId } from '../ingest/chatSession';
 import { isCaptureLevel } from '../privacy/captureLevel';
 import type { Database } from '../storage/database';
-import { exact, unavailable } from '../../shared/provenance';
+import { exact, unavailable, type Measured } from '../../shared/provenance';
+import { isRecord } from '../json';
 import { groupBy, known, SOURCES, summed, toTurnState } from './measure';
 import { routingFor } from './routing';
+import { getSessionEfficiency } from './sessionEfficiency';
 import { getSessionOutcomes } from './sessionOutcomes';
 
 interface SessionHeader {
@@ -38,6 +40,8 @@ interface TurnRow {
   reasoning_blocks: number;
   tool_rounds: number;
   compactions: string;
+  tool_input_retries: number;
+  prompt_composition: string;
   error_code: string | null;
   error_message: string | null;
 }
@@ -54,7 +58,8 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     .prepare(
       `SELECT idx, response_id, started_at, state, system_initiated, mode, user_text, assistant_text, requested_model,
               resolved_model, selection_mode, model_host, prompt_tokens, completion_tokens, credits,
-              reasoning_ms, reasoning_blocks, tool_rounds, compactions, error_code, error_message
+              reasoning_ms, reasoning_blocks, tool_rounds, tool_input_retries, compactions, prompt_composition,
+              error_code, error_message
          FROM turns WHERE session_id = :id ORDER BY idx`,
     )
     .all({ id }) as unknown as TurnRow[];
@@ -101,6 +106,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       assistantText: row.assistant_text,
       routing: routingFor([{ mode: row.selection_mode, model }]),
       model: model === null ? null : modelNameFromId(model),
+      modelId: model,
       host: row.model_host === 'copilot' || row.model_host === 'byok' ? row.model_host : 'unknown',
       inputTokens: known(row.prompt_tokens, SOURCES.inputTokens),
       outputTokens: known(row.completion_tokens, SOURCES.outputTokens),
@@ -113,7 +119,10 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
           ? exact(row.reasoning_ms, SOURCES.reasoning)
           : unavailable(`${SOURCES.reasoning}: no reasoning recorded for this turn`),
       toolRounds: exact(row.tool_rounds, SOURCES.toolRounds),
+      toolInputRetries: exact(row.tool_input_retries, SOURCES.toolRounds),
       compactions: exact(countJsonArray(row.compactions), SOURCES.compactions),
+      contextTokensBefore: largestContextBefore(row.compactions),
+      promptComposition: parseComposition(row.prompt_composition),
       toolCalls: (tools.get(row.idx) ?? []).map((call) => ({ name: call.name, status: call.status })),
       fileEvents: (files.get(row.idx) ?? []).map((file) => ({ path: file.path, action: file.action })),
       errorCode: row.error_code,
@@ -148,6 +157,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     ),
     analysis: null,
     outcomes: getSessionOutcomes(database, id),
+    efficiency: getSessionEfficiency(turns),
     debug:
       callRows.length === 0
         ? null
@@ -162,6 +172,39 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
           },
     turns,
   };
+}
+
+function parseJsonArray(text: string): unknown[] {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The largest context size before any of a turn's compactions, or unavailable when it never compacted. */
+function largestContextBefore(json: string): Measured<number> {
+  const sizes = parseJsonArray(json).flatMap((entry) =>
+    isRecord(entry) && typeof entry.contextLengthBefore === 'number' ? [entry.contextLengthBefore] : [],
+  );
+  return sizes.length === 0
+    ? unavailable(`${SOURCES.compactions}: this turn did not compact`)
+    : exact(Math.max(...sizes), SOURCES.compactions);
+}
+
+function parseComposition(json: string): TurnDetail['promptComposition'] {
+  return parseJsonArray(json).flatMap((entry) => {
+    if (!isRecord(entry) || typeof entry.category !== 'string' || typeof entry.percent !== 'number')
+      return [];
+    return [
+      {
+        category: entry.category,
+        label: typeof entry.label === 'string' ? entry.label : '',
+        share: exact(entry.percent / 100, 'chatSessions promptTokenDetails'),
+      },
+    ];
+  });
 }
 
 function countJsonArray(text: string): number {

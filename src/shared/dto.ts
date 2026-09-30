@@ -83,6 +83,8 @@ export const turnDetailSchema = z.object({
   assistantText: z.string().nullable(),
   routing: routingSchema,
   model: z.string().nullable(),
+  /** The catalog id behind `model` (for price lookups); null when unknown. */
+  modelId: z.string().nullable(),
   host: hostSchema,
   inputTokens: measuredNumber,
   outputTokens: measuredNumber,
@@ -92,7 +94,12 @@ export const turnDetailSchema = z.object({
   nanoAiu: measuredNumber,
   reasoningMs: measuredNumber,
   toolRounds: measuredNumber,
+  toolInputRetries: measuredNumber,
   compactions: measuredNumber,
+  /** Largest context size before one of this turn's compactions. */
+  contextTokensBefore: measuredNumber,
+  /** Share (0–1) of the prompt each category took, as Copilot reported it. */
+  promptComposition: z.array(z.object({ category: z.string(), label: z.string(), share: measuredNumber })),
   toolCalls: z.array(z.object({ name: z.string(), status: z.string() })),
   fileEvents: z.array(z.object({ path: z.string(), action: z.string() })),
   errorCode: z.string().nullable(),
@@ -141,6 +148,19 @@ export const outcomesSchema = z.object({
 });
 export type Outcomes = z.infer<typeof outcomesSchema>;
 
+export const costDriverSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  evidence: z.string(),
+  provenance: provenanceSchema,
+});
+
+/** Why the session cost what it did and how to do better; estimates are `inferred` and never summed into totals. */
+export const efficiencySchema = z.object({
+  drivers: z.array(costDriverSchema),
+});
+export type Efficiency = z.infer<typeof efficiencySchema>;
+
 export const sessionDetailSchema = z.object({
   id: z.string(),
   workspace: z.string(),
@@ -155,6 +175,7 @@ export const sessionDetailSchema = z.object({
   credits: measuredNumber,
   analysis: analysisSchema.nullable(),
   outcomes: outcomesSchema,
+  efficiency: efficiencySchema,
   debug: z.object({ calls: z.number(), internalCalls: z.number(), unmatchedCalls: z.number() }).nullable(),
   turns: z.array(turnDetailSchema),
 });
