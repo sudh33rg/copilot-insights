@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
-import { overview, sessionDetail, sessionRow } from './test/dtoFixtures';
+import { diagnostics, overview, sessionDetail, sessionRow } from './test/dtoFixtures';
 import { renderWithHost } from './test/fakeHost';
 
 const status = (overrides: Record<string, unknown> = {}) => ({
@@ -76,5 +76,11 @@ describe('App', () => {
     renderWithHost(<App view="sidebar" />, { getOverview: overview(), getIndexStatus: status() });
     expect(await screen.findByRole('button', { name: 'Open dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Copilot Insights' })).toBeInTheDocument();
+  });
+
+  it('opens the diagnostics tab', async () => {
+    renderDashboard({ getIndexStatus: status(), getDiagnostics: diagnostics() });
+    await userEvent.click(await screen.findByRole('button', { name: 'Diagnostics' }));
+    expect(await screen.findByRole('region', { name: 'Environment' })).toBeInTheDocument();
   });
 });

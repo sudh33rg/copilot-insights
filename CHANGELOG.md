@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 — exact telemetry & trust
+
+- Opt-in exact telemetry from Copilot's agent debug log: cached tokens, first-token latency and Copilot's usage
+  figure (nano-AIU) per turn, joined by response id. Only numbers and identifiers are read; prompt text in the
+  logs is never stored, logged or displayed. Enabling is a command behind a confirmation dialog.
+- Copilot's internal utility requests (titles, summaries, …) are classified from Copilot's own request names and
+  shown as a lower bound; unclassified names are listed in Diagnostics instead of being guessed.
+- Model catalog captured from `models.json`; model tiers in the Overview come from the catalog.
+- Provenance is now enforced: every measurement in every DTO is a measured value (a test fails otherwise) and
+  partial sums show `≥`.
+- Credit coverage per day: local exact credits vs GitHub-billed credits, coverage %, unexplained remainder.
+- Diagnostics tab: versions, scan status, schema drift, unclassified request names, catalog size.
+
 ## 0.4.0 — parity dashboard
 
 - Overview, Sessions and Session detail views (React) on the real ingested data, with provenance badges on every

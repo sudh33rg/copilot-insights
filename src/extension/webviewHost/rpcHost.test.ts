@@ -74,6 +74,15 @@ const handlers: RpcHandlers = {
   getGithubUsage: () => ({ days: [], lastSyncedAt: null, account: null }),
   syncGithubUsage: () => ({ signedIn: false, synced: 0, unavailable: false, errors: [] }),
   enableDebugLogging: () => ({ outcome: 'declined' as const }),
+  getDiagnostics: () => ({
+    versions: { vscode: '1', copilotChat: null, extension: '0' },
+    debugLogging: false,
+    scan: { role: 'idle' as const, lastSyncAt: null, lastError: null, parseErrors: 0, badLines: 0 },
+    index: { sessions: 0, turns: 0, invalidRequests: 0 },
+    drift: { unknownPartKinds: [], unknownRequestKeys: [] },
+    debugLog: { sessionsWithLogs: 0, llmCalls: 0, unknownDebugNames: [], copilotVersionsSeen: [] },
+    catalog: { models: 0, lastSeenAt: null },
+  }),
   openDashboard: () => ({ opened: true }),
 };
 

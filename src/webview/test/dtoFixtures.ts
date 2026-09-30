@@ -1,5 +1,6 @@
 import type {
   BreakdownRow,
+  Diagnostics,
   MeasuredNumber,
   Overview,
   SessionDetail,
@@ -239,3 +240,14 @@ export function overview(overrides: Partial<Overview> = {}): Overview {
     ...overrides,
   };
 }
+
+export const diagnostics = (overrides: Partial<Diagnostics> = {}): Diagnostics => ({
+  versions: { vscode: '1.139.1', copilotChat: '0.67.0', extension: '0.5.0' },
+  debugLogging: true,
+  scan: { role: 'leader', lastSyncAt: 1790000000000, lastError: null, parseErrors: 0, badLines: 1 },
+  index: { sessions: 71, turns: 312, invalidRequests: 0 },
+  drift: { unknownPartKinds: [], unknownRequestKeys: [] },
+  debugLog: { sessionsWithLogs: 81, llmCalls: 9, unknownDebugNames: [], copilotVersionsSeen: ['0.67.0'] },
+  catalog: { models: 55, lastSeenAt: 1790000000000 },
+  ...overrides,
+});

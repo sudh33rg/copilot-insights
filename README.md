@@ -4,8 +4,8 @@ A local VS Code extension that observes your native GitHub Copilot Chat sessions
 what it cost, and how to get better results next time. You keep using Copilot Chat normally; no chat
 participant, proxy, server, or AI provider is involved.
 
-> Status: **0.4.0**. Dashboard, session detail, analysis, clear/export and opt-in GitHub usage sync are back on
-> top of exact ingestion. Exact telemetry, outcome and efficiency intelligence follow — see `docs/ROADMAP.md`.
+> Status: **0.5.0**. Exact telemetry (opt-in), enforced provenance, credit reconciliation and diagnostics are in.
+> Outcome and efficiency intelligence follow — see `docs/ROADMAP.md`.
 
 ## What you get
 
@@ -16,6 +16,16 @@ participant, proxy, server, or AI provider is involved.
 - **Session detail** — the full timeline: prompt, response (always shown as plain text), model, tokens, credits,
   reasoning time, compactions, tool calls, file activity and errors, plus a deterministic analysis: intent,
   outcome sentence, areas touched, complexity, and prompt findings with their evidence.
+- **Exact telemetry (opt-in)** — with Copilot's agent debug log on, each turn shows cached tokens, first-token
+  latency and Copilot's own usage figure (nano-AIU), and the Overview accounts for the utility requests Copilot
+  makes itself (titles, summaries, …) as a lower bound. Turn it on with _Enable Exact Telemetry…_. Copilot writes
+  your prompts to those log files on this machine; Copilot Insights reads numbers and identifiers only and never
+  stores or shows that text.
+- **Credit reconciliation** — after a GitHub sync, per day: GitHub-billed credits vs credits recorded locally,
+  coverage %, and the unexplained remainder (other machines, Copilot CLI, github.com, other clients).
+- **Model tiers** — each model's tier comes from Copilot's own model catalog, not from name matching.
+- **Diagnostics** — versions, scan status, schema drift (fields this version does not understand), unclassified
+  request names, and catalog size.
 - **Provenance on every number** — `Exact` (recorded by Copilot), `Derived` (computed from exact data; partial sums
   are lower bounds), `Inferred` (heuristic), `Unavailable` (never shown as zero). Hover a badge for its source.
 - **Clear and export** — delete or clear one session, or by date/workspace/everything; export the index as JSON.
@@ -24,7 +34,7 @@ participant, proxy, server, or AI provider is involved.
   billing only). They are shown account-wide, never attributed to sessions.
 
 Commands (Command Palette, category _Copilot Insights_): Open Dashboard, Refresh Copilot Sessions, Rebuild Session
-Index, Clear Data…, Export Index as JSON…, Sync GitHub Usage, Delete Data From Previous Version….
+Index, Clear Data…, Export Index as JSON…, Sync GitHub Usage, Enable Exact Telemetry…, Delete Data From Previous Version….
 
 ## What it reads
 

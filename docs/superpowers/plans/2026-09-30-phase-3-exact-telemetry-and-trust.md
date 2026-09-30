@@ -2528,7 +2528,8 @@ const scan = { role: 'leader' as const, lastSyncAt: 123, lastError: null, parseE
 describe('getDiagnostics', () => {
   it('reports index size, scan status and debug-log / catalog facts', () => {
     const diagnostics = getDiagnostics(seededStore().database, scan);
-    expect(diagnostics.index).toEqual({ sessions: 2, turns: 4, invalidRequests: 0 });
+    // The synthetic fixtures deliberately include one invalid request and an unknown request key (`futureField`).
+    expect(diagnostics.index).toEqual({ sessions: 2, turns: 4, invalidRequests: 1 });
     expect(diagnostics.scan).toEqual(scan);
     expect(diagnostics.debugLog).toEqual({
       sessionsWithLogs: 1,
@@ -2546,7 +2547,10 @@ describe('getDiagnostics', () => {
        WHERE id = 'fx-auto-1';
       UPDATE sessions SET unknown_part_kinds = '["alpha"]', invalid_requests = 1 WHERE id = 'fx-byok-1';`);
     const { drift, index } = getDiagnostics(database, scan);
-    expect(drift).toEqual({ unknownPartKinds: ['alpha', 'zebra'], unknownRequestKeys: ['newKey'] });
+    expect(drift).toEqual({
+      unknownPartKinds: ['alpha', 'zebra'],
+      unknownRequestKeys: ['futureField', 'newKey'],
+    });
     expect(index.invalidRequests).toBe(3);
   });
 
@@ -2775,7 +2779,7 @@ describe('DiagnosticsView', () => {
     expect(within(drift).getByText('newPart')).toBeInTheDocument();
     expect(within(drift).getByText('newKey')).toBeInTheDocument();
     expect(within(drift).getByText(/3 invalid request/)).toBeInTheDocument();
-    expect(screen.getByText('mystery-thing')).toBeInTheDocument();
+    expect(screen.getByText(/mystery-thing × 2/)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Last scan failed: disk full');
   });
 

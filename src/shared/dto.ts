@@ -200,3 +200,26 @@ export const githubSyncSchema = z.object({
   errors: z.array(z.string()),
 });
 export type GithubSync = z.infer<typeof githubSyncSchema>;
+
+// ---- diagnostics ----
+export const diagnosticsSchema = z.object({
+  versions: z.object({ vscode: z.string(), copilotChat: z.string().nullable(), extension: z.string() }),
+  debugLogging: z.boolean(),
+  scan: z.object({
+    role: z.enum(['leader', 'follower', 'idle']),
+    lastSyncAt: z.number().nullable(),
+    lastError: z.string().nullable(),
+    parseErrors: z.number(),
+    badLines: z.number(),
+  }),
+  index: z.object({ sessions: z.number(), turns: z.number(), invalidRequests: z.number() }),
+  drift: z.object({ unknownPartKinds: z.array(z.string()), unknownRequestKeys: z.array(z.string()) }),
+  debugLog: z.object({
+    sessionsWithLogs: z.number(),
+    llmCalls: z.number(),
+    unknownDebugNames: z.array(z.object({ name: z.string(), count: z.number() })),
+    copilotVersionsSeen: z.array(z.string()),
+  }),
+  catalog: z.object({ models: z.number(), lastSeenAt: z.number().nullable() }),
+});
+export type Diagnostics = z.infer<typeof diagnosticsSchema>;

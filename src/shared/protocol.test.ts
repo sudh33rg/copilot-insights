@@ -41,4 +41,9 @@ describe('protocol', () => {
     expect(rpcSchemas.enableDebugLogging.params.safeParse({}).success).toBe(true);
     expect(rpcSchemas.enableDebugLogging.result.safeParse({ outcome: 'sure' }).success).toBe(false);
   });
+
+  it('declares getDiagnostics', () => {
+    expect(isRpcMethod('getDiagnostics')).toBe(true);
+    expect(rpcSchemas.getDiagnostics.params.safeParse({}).success).toBe(true);
+  });
 });

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   clearScopeSchema,
+  diagnosticsSchema,
   githubSyncSchema,
   githubUsageParams,
   githubUsageSchema,
@@ -46,6 +47,7 @@ export const rpcSchemas = {
     params: z.object({}),
     result: z.object({ outcome: z.enum(['already-enabled', 'declined', 'enabled']) }),
   },
+  getDiagnostics: { params: z.object({}), result: diagnosticsSchema },
 } as const;
 
 export type RpcMethod = keyof typeof rpcSchemas;

@@ -6,7 +6,7 @@ import { GithubClient } from '../core/github/client';
 import { syncGithubUsage } from '../core/github/usage';
 import { GithubUsageStore } from '../core/github/usageStore';
 import { indexStatus } from '../core/ingest/indexStatus';
-import { IngestService } from '../core/ingest/ingestService';
+import { IngestService, META } from '../core/ingest/ingestService';
 import { resolveStorageRoots, userDirsFromGlobalStorage } from '../core/ingest/roots';
 import { runScan } from '../core/ingest/runScan';
 import { WriterLock } from '../core/ingest/writerLock';
@@ -16,8 +16,9 @@ import { Database } from '../core/storage/database';
 import { IngestStateStore } from '../core/storage/ingestStateStore';
 import { SessionStore } from '../core/storage/sessionStore';
 import { daysAgo, localDay } from '../core/time';
+import { getDiagnostics } from '../core/query/diagnostics';
 import { readConfig } from './config';
-import { runEnableDebugLogging } from './telemetry';
+import { readDebugLoggingEnabled, runEnableDebugLogging } from './telemetry';
 import { githubSession } from './githubAuth';
 import {
   clearFromPalette,
@@ -120,6 +121,29 @@ export function activate(context: vscode.ExtensionContext): void {
     },
     syncGithubUsage: syncGithub,
     enableDebugLogging: async () => ({ outcome: await runEnableDebugLogging() }),
+    getDiagnostics: () => {
+      const last = service.lastResult;
+      const stats = last?.role === 'leader' ? last : null;
+      return {
+        versions: {
+          vscode: vscode.version,
+          copilotChat:
+            ((
+              vscode.extensions.getExtension('GitHub.copilot-chat')?.packageJSON as
+                { version?: unknown } | undefined
+            )?.version as string | undefined) ?? null,
+          extension: version,
+        },
+        debugLogging: readDebugLoggingEnabled(),
+        ...getDiagnostics(database, {
+          role: last?.role ?? 'idle',
+          lastSyncAt: Number(state.getMeta(META.lastSyncAt)) || null,
+          lastError: service.lastError,
+          parseErrors: stats?.errors.length ?? 0,
+          badLines: stats?.badLines ?? 0,
+        }),
+      };
+    },
     openDashboard: () => {
       dashboard.show();
       return { opened: true };
