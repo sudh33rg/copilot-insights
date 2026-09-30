@@ -92,6 +92,29 @@ Other observed request keys (ignored for now): `responseId`, `contentReferences`
 `toolInvocationSerialized.toolCallId` (0 of 6,672 matched). Treat `toolCallRounds` as the tool-call list when
 present, and invocation parts only as file evidence.
 
+### What Copilot Insights derives from `textEditGroup` and terminal tool calls
+
+`textEditGroup.edits` is a list of edit groups, each a list of `{text, range}`; only `text` is read, and only to
+hash it: every line of the inserted text with at least 20 non-space characters is reduced to
+`SHA-256(salt \0 line)` truncated to 16 hex characters (at most 200 per edit, per file, per turn). The salt is
+random per install (`meta` key `privacy.salt`). The text itself is never stored. Terminal tool calls
+(`run_in_terminal`-style names) contribute a salted hash of the secret-redacted, whitespace-collapsed
+`arguments.command`, used to match them to commands VS Code observed. Both are dropped at capture level `metrics`.
+
+### Live observation tables (written by the extension host, not parsed from Copilot files)
+
+| Table                                  | Holds                                                                                                |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `git_snapshots`, `git_snapshot_files`  | HEAD and per-file added/removed line counts of the working tree, first and latest observation        |
+| `diag_snapshots`, `diag_snapshot_meta` | error/warning counts per file at first and latest observation (`meta` marks an empty snapshot)       |
+| `terminal_runs`                        | end/start time, exit code, kind (test/build/lint/other) and salted command hash                      |
+| `survival_checks`                      | per edit (session, turn, file): how many fingerprinted lines were present at +1h / +1d / next commit |
+| `session_commits`                      | commits that touched files a session edited, with overlap counts                                     |
+
+Rule: **no text — only counts, paths, hashes, exit codes and timestamps.** These tables have no foreign key to
+`sessions` (a rescan replaces the session row), so clear, retention and capture-level changes delete them
+explicitly.
+
 ## Debug log (`debug-logs/<sessionId>/main.jsonl`)
 
 Span events: `{v?, ts, dur, sid, type, name, spanId, parentSpanId?, status, attrs}`.

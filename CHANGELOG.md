@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0 — outcome intelligence
+
+- "Did the session work?" — a new Outcome card per session: lines changed, whether Copilot's edits were kept,
+  undone or modified, whether the inserted lines are still in the files an hour / a day / one commit later,
+  terminal and test exit codes, the change in VS Code error/warning counts for the edited files, and the commits
+  the session led to with their cost.
+- Deterministic task type (bug fix, feature, refactor, tests, docs, explanation, debugging, config) and an outcome
+  sentence built only from evidence, for example "Bug fix: changed 4 files (2 edited, 2 created; +120 −30 lines),
+  added 2 test files, tests passed on the last run — in execution, persistence." Clauses without evidence are
+  left out, and the sentence is never stronger than how its task type was decided.
+- Overview: edit survival by model, and commits with credits per commit (each session's own Copilot credits split
+  evenly over the commits it links to — never GitHub's daily or account credits).
+- Live evidence (git, diagnostics, terminal) is only collected while VS Code is open with this extension; when it
+  was not, the value is shown as unavailable, never as zero.
+- Privacy: to check whether inserted lines survive without keeping code, salted SHA-256 fingerprints of the
+  inserted lines (and of terminal commands, after secret redaction) are stored. The salt is random per install and
+  never leaves the machine. They are dropped at capture level `metrics`, when content is cleared, and on
+  "clear everything". No prompt, code or command text is stored for this.
+- Existing indexes are re-parsed once to add the new evidence.
+
 ## 0.5.0 — exact telemetry & trust
 
 - Opt-in exact telemetry from Copilot's agent debug log: cached tokens, first-token latency and Copilot's usage

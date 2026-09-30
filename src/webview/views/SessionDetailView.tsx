@@ -5,6 +5,7 @@ import { ProvenanceBadge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { formatCredits, formatDateTime, formatDuration, formatInt } from '../ui/format';
 import { Measure } from '../ui/Measure';
+import { OutcomeCard } from './OutcomeCard';
 
 const STATE_LABEL: Record<TurnDetail['state'], string> = {
   complete: 'Complete',
@@ -96,6 +97,7 @@ function Detail({ session }: { session: SessionDetail }) {
         </p>
       )}
       {session.analysis && <AnalysisCard analysis={session.analysis} />}
+      <OutcomeCard outcomes={session.outcomes} />
       <h3>Timeline</h3>
       {session.turns.map((turn) => (
         <TurnCard key={turn.index} turn={turn} />
@@ -112,6 +114,10 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
         <dt>Intent</dt>
         <dd>
           <Measure measure={analysis.intent} />
+        </dd>
+        <dt>Task type</dt>
+        <dd>
+          <Measure measure={analysis.taskType} />
         </dd>
         <dt>Outcome</dt>
         <dd>

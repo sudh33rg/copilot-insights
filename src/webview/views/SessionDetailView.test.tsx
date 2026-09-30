@@ -14,12 +14,39 @@ describe('SessionDetailView', () => {
     expect(await screen.findByRole('heading', { name: 'Fix run timeout race' })).toBeInTheDocument();
     expect(screen.getByText(/alpha/)).toBeInTheDocument();
     const analysis = screen.getByRole('region', { name: 'Analysis' });
-    expect(within(analysis).getByText('bugfix')).toBeInTheDocument();
+    // Intent comes from the prompt's keywords; the task type repeats it here because the prompt decided it.
+    expect(within(analysis).getAllByText('bugfix')).toHaveLength(2);
+    expect(within(analysis).getByText('Task type')).toBeInTheDocument();
     expect(within(analysis).getByText(/Bug fix: changed 2 files/)).toBeInTheDocument();
     expect(within(analysis).getAllByText('Inferred').length).toBeGreaterThan(0);
     expect(within(analysis).getAllByText('Derived').length).toBeGreaterThan(0);
     expect(within(analysis).getByText('Long sessions carry a growing context.')).toBeInTheDocument();
     expect(within(analysis).getByText(/12 user turns/)).toBeInTheDocument();
+  });
+
+  it('shows the outcome card after the analysis, using what was observed', async () => {
+    const detail = sessionDetail();
+    view({
+      getSession: {
+        ...detail,
+        outcomes: {
+          ...detail.outcomes,
+          editsKept: { value: 4, provenance: { kind: 'exact', source: 'chatSessions.editedFileEvents' } },
+        },
+      },
+    });
+    const outcome = await screen.findByRole('region', { name: 'Outcome' });
+    expect(within(outcome).getByText('Edits kept', { selector: 'dt' }).nextElementSibling).toHaveTextContent(
+      '4',
+    );
+    const analysis = screen.getByRole('region', { name: 'Analysis' });
+    expect(analysis.compareDocumentPosition(outcome) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('explains missing outcome evidence instead of showing zeros', async () => {
+    view({ getSession: sessionDetail() });
+    const outcome = await screen.findByRole('region', { name: 'Outcome' });
+    expect(within(outcome).getByText(/collected only while VS Code is open/)).toBeInTheDocument();
   });
 
   it('renders a timeline of turns with model, tokens, credits, tools and files', async () => {

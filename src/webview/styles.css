@@ -187,6 +187,7 @@ h3 {
 }
 .chips,
 .files,
+.commits,
 .findings {
   padding: 0;
   margin: 6px 0;

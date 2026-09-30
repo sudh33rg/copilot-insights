@@ -83,4 +83,87 @@ describe('OverviewView', () => {
     expect(within(models).getByText('powerful')).toBeInTheDocument();
     expect(within(models).getByText('Tier')).toBeInTheDocument();
   });
+
+  describe('outcome evidence', () => {
+    const derivedNumber = (value: number, source = 'test') => ({
+      value,
+      provenance: { kind: 'derived' as const, source },
+    });
+    const survival = {
+      rows: [
+        {
+          model: 'gpt-5.6-luna',
+          edits: 8,
+          keepRate: derivedNumber(0.75),
+          laterSurvival: derivedNumber(0.9),
+          sampleSize: 5,
+        },
+        {
+          model: 'qwen3.5:35b',
+          edits: 2,
+          keepRate: derivedNumber(0.5),
+          laterSurvival: missing('no check yet'),
+          sampleSize: 0,
+        },
+      ],
+    };
+    const commits = {
+      rows: [
+        {
+          hash: 'abc1234def5678abc1234def5678abc1234def56',
+          committedAt: 1790000000000,
+          sessions: 2,
+          credits: derivedNumber(3.5),
+        },
+      ],
+    };
+
+    it('shows keep rate and later survival per model, with provenance', async () => {
+      renderWithHost(<OverviewView />, {
+        getOverview: overview(),
+        getSurvivalByModel: survival,
+        getCommitCosts: commits,
+      });
+      const table = await screen.findByRole('table', { name: 'Edit survival by model' });
+      expect(within(table).getByText('gpt-5.6-luna')).toBeInTheDocument();
+      expect(within(table).getByText('75%')).toBeInTheDocument();
+      expect(within(table).getByText('90%')).toBeInTheDocument();
+      expect(within(table).getByText('8')).toBeInTheDocument();
+      // A model with no survival check yet shows as unavailable, never as 0%.
+      expect(within(table).getByText('Unavailable')).toBeInTheDocument();
+      expect(within(table).queryByText('0%')).toBeNull();
+    });
+
+    it('lists commits by short hash with their credits and linked sessions', async () => {
+      renderWithHost(<OverviewView />, {
+        getOverview: overview(),
+        getSurvivalByModel: survival,
+        getCommitCosts: commits,
+      });
+      const table = await screen.findByRole('table', { name: 'Commits and their credits' });
+      expect(within(table).getByText('abc1234')).toBeInTheDocument();
+      expect(within(table).getByText('3.5')).toBeInTheDocument();
+      expect(within(table).getByText('2')).toBeInTheDocument();
+      expect(within(table).queryByText(/abc1234def/)).toBeNull();
+    });
+
+    it('explains empty states', async () => {
+      renderWithHost(<OverviewView />, {
+        getOverview: overview(),
+        getSurvivalByModel: { rows: [] },
+        getCommitCosts: { rows: [] },
+      });
+      expect(
+        await screen.findByText(/No Copilot keep\/undo events or survival checks yet/),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/No commits have been linked to a session yet/)).toBeInTheDocument();
+    });
+
+    it('still shows the overview when the outcome queries fail', async () => {
+      renderWithHost(<OverviewView />, { getOverview: overview() });
+      expect(await screen.findByRole('region', { name: 'Today' })).toBeInTheDocument();
+      expect(await screen.findByText(/Could not load edit survival/)).toBeInTheDocument();
+      expect(screen.getByText(/Could not load commit costs/)).toBeInTheDocument();
+    });
+  });
 });

@@ -21,6 +21,11 @@ participant, proxy, server, or AI provider is involved.
   makes itself (titles, summaries, …) as a lower bound. Turn it on with _Enable Exact Telemetry…_. Copilot writes
   your prompts to those log files on this machine; Copilot Insights reads numbers and identifiers only and never
   stores or shows that text.
+- **Outcomes** — per session: lines changed, Copilot edits kept / undone / modified, whether inserted lines
+  are still present an hour, a day and one commit later, terminal and test exit codes, the change in editor error
+  and warning counts, and the commits the session led to with the credits that cost. The Overview adds edit
+  survival per model and credits per commit. Git, terminal and diagnostics evidence exists only while VS Code is
+  open with this extension; otherwise it shows as unavailable, never as zero.
 - **Credit reconciliation** — after a GitHub sync, per day: GitHub-billed credits vs credits recorded locally,
   coverage %, and the unexplained remainder (other machines, Copilot CLI, github.com, other clients).
 - **Model tiers** — each model's tier comes from Copilot's own model catalog, not from name matching.
@@ -59,6 +64,16 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 - The only network access is the GitHub REST API (`api.github.com`) when you click _Sync now_; the token is sent
   nowhere else. No AI provider is ever called.
 - Tool arguments are never shown in the dashboard or exported.
+- To tell whether Copilot's inserted lines survive, Copilot Insights stores **salted fingerprints** (truncated
+  SHA-256 of each inserted line of at least 20 characters, at most 200 per edit) and a salted hash of each
+  terminal command after secret redaction. They cannot be turned back into text, the random per-install salt
+  never leaves your machine, and no code or command text is stored. They are not kept at capture level `metrics`,
+  and _Clear conversation text_, lowering the level to `metrics`, and _Clear everything_ remove them (clearing
+  everything also forgets the salt).
+- Git, terminal exit-code and diagnostics evidence comes from VS Code's built-in git extension, terminal shell
+  integration and diagnostics, and is only recorded while VS Code is open with this extension. Only counts, file
+  paths, commit hashes, exit codes, timestamps and salted hashes are stored — never diffs, messages or command
+  text. Clearing a session removes its observations; retention prunes them with the session.
 
 ## Settings
 

@@ -140,6 +140,16 @@ Goal: everything the prototype promised, working on real data, in a maintainable
 
 ## Phase 4 — Outcome intelligence
 
+> **Done — shipped in 0.6.0.** Design decisions made while planning (see
+> `docs/superpowers/plans/2026-09-30-phase-4-outcome-intelligence.md`): D-P4-1 live-only evidence is `unavailable`
+> when VS Code was not observing, never zero; D-P4-2 line counts are `derived` (working-tree diff growth between the
+> first and latest observation; tracked files only; a HEAD change makes them unavailable); D-P4-3 later survival
+> uses salted fingerprints of inserted lines, dropped at `metrics`/clear; D-P4-4 cost per commit splits a session's
+> own Copilot credits evenly across its linked commits; D-P4-5 no new network calls, no AI calls, no CLI spawning
+> (git only through the built-in `vscode.git` API). Known limits: a window may snapshot repositories unrelated to a
+> session's workspace (the session's workspace path is not stored), and untracked new files are not counted in lines
+> changed.
+
 | Task                                 | Deliverable                                                                                                                                                                                                               | Acceptance                                          |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | 4.1 Git snapshots                    | via the built-in `vscode.git` API: HEAD and diff numstat when a session's first/last turn is observed live; lines added/removed per session                                                                               | extension-glue tests with a temp repo (integration) |

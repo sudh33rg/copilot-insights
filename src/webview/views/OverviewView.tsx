@@ -5,6 +5,7 @@ import { DataTable, type Column } from '../ui/DataTable';
 import { formatCredits, formatInt, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
 import { GithubUsageCard } from './GithubUsageCard';
+import { CommitsCard, EditSurvivalCard } from './OutcomeOverview';
 
 const HOST_LABEL = { copilot: 'Copilot', byok: 'BYOK / local', unknown: 'Unknown' } as const;
 const int = (value: number | string) => formatInt(Number(value));
@@ -67,6 +68,8 @@ function OverviewBody({ overview }: { overview: Overview }) {
           />
         </>
       )}
+      <EditSurvivalCard />
+      <CommitsCard />
       <InternalCard internal={overview.internal} />
       <GithubUsageCard />
     </>
