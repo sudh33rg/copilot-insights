@@ -101,4 +101,12 @@ export const MIGRATIONS: readonly string[] = [
     value TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE session_analysis (
+    session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+    analyzer_version INTEGER NOT NULL,
+    ingested_at INTEGER NOT NULL,
+    json TEXT NOT NULL
+  );
+  `,
 ];

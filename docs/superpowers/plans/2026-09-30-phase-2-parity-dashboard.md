@@ -2429,9 +2429,8 @@ export function analyzeSession(input: Pick<SessionDetail, 'turns'>): Analysis {
   const { turns } = input;
   const userTurns = turns.filter((turn) => !turn.systemInitiated);
   const changes = summarizeChanges(turns);
-  const firstPrompt = userTurns.find(
-    (turn) => turn.userText !== null && turn.userText.trim() !== '',
-  )?.userText;
+  const firstPrompt =
+    userTurns.find((turn) => turn.userText !== null && turn.userText.trim() !== '')?.userText ?? undefined;
   const intent =
     firstPrompt === undefined
       ? unavailable<string>('no prompt text stored at this capture level')

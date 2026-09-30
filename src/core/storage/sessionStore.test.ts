@@ -126,4 +126,25 @@ describe('SessionStore', () => {
     }).toThrow('boom');
     expect(sessions.counts()).toEqual({ sessions: 0, turns: 0 });
   });
+
+  it('drops cached analysis when content is cleared or downgraded', () => {
+    const { database, sessions } = newStore();
+    const cached = () =>
+      (database.db.prepare('SELECT count(*) AS n FROM session_analysis').get() as { n: number }).n;
+    sessions.replaceSession(fixture(), 'full', 1);
+    database.db
+      .prepare(
+        "INSERT INTO session_analysis (session_id, analyzer_version, ingested_at, json) VALUES ('fx-auto-1', 1, 1, '{}')",
+      )
+      .run();
+    sessions.downgradeStoredContent('summaries');
+    expect(cached()).toBe(0);
+    database.db
+      .prepare(
+        "INSERT INTO session_analysis (session_id, analyzer_version, ingested_at, json) VALUES ('fx-auto-1', 1, 1, '{}')",
+      )
+      .run();
+    sessions.clearContent(['fx-auto-1']);
+    expect(cached()).toBe(0);
+  });
 });

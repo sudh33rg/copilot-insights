@@ -39,4 +39,12 @@ describe('Database', () => {
     }).toThrow('boom');
     expect(database.db.prepare('SELECT count(*) AS n FROM meta').get()).toEqual({ n: 0 });
   });
+
+  it('creates the analysis cache table', () => {
+    const database = new Database(':memory:');
+    const tables = (
+      database.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]
+    ).map((row) => row.name);
+    expect(tables).toContain('session_analysis');
+  });
 });

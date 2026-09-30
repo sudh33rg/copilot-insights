@@ -264,6 +264,7 @@ export class SessionStore {
         `UPDATE turns SET user_text = NULL, assistant_text = NULL, error_message = NULL WHERE session_id IN (${IDS})`,
       ).run(params);
       db.prepare(`UPDATE tool_calls SET args = NULL WHERE session_id IN (${IDS})`).run(params);
+      db.prepare(`DELETE FROM session_analysis WHERE session_id IN (${IDS})`).run(params);
       db.prepare(`UPDATE sessions SET title = NULL, capture_level = 'metrics' WHERE id IN (${IDS})`).run(
         params,
       );
@@ -294,6 +295,7 @@ export class SessionStore {
         `UPDATE turns SET ${cut('user_text', SUMMARY_LIMITS.user)}, ${cut('assistant_text', SUMMARY_LIMITS.assistant)}, ${cut('error_message', SUMMARY_LIMITS.error)} WHERE session_id IN (${full})`,
       );
       db.exec(`UPDATE tool_calls SET args = NULL WHERE session_id IN (${full})`);
+      db.exec(`DELETE FROM session_analysis WHERE session_id IN (${full})`);
       db.exec(
         `UPDATE sessions SET ${cut('title', SUMMARY_LIMITS.title)}, capture_level = 'summaries' WHERE capture_level = 'full'`,
       );
