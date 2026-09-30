@@ -67,4 +67,42 @@ describe('getSessionEfficiency via getSessionDetail', () => {
       expect(getSessionEfficiency(database, growing.slice(0, 3), 'fx-auto-1').freshSession).toBeNull();
     });
   });
+
+  describe('price alternatives', () => {
+    const addModel = (
+      database: ReturnType<typeof seededStore>['database'],
+      id: string,
+      input: number,
+      output: number,
+      cache: number | null = null,
+    ) =>
+      database.db
+        .prepare(
+          `INSERT INTO models (id, name, input_price, output_price, cache_read_price, price_batch_size, first_seen, last_seen)
+           VALUES (:id, :name, :input, :output, :cache, 1000000, 1, 1)`,
+        )
+        .run({ id, name: id.toUpperCase(), input, output, cache });
+
+    it('lists cheaper catalog models with the list-price ratio of this session’s exact tokens', () => {
+      const { database } = seededStore();
+      addModel(database, 'budget-model', 0.5, 3, 0.05);
+      addModel(database, 'pricey-model', 50, 300, 5);
+      const alternatives = getSessionDetail(database, 'fx-auto-1')?.efficiency.priceAlternatives ?? [];
+      expect(alternatives.map((row) => row.model)).toEqual(['budget-model']);
+      expect(alternatives[0]?.name).toBe('BUDGET-MODEL');
+      expect(alternatives[0]?.relativeCost.value).toBeGreaterThan(0);
+      expect(alternatives[0]?.relativeCost.value).toBeLessThan(1);
+      expect(alternatives[0]?.relativeCost.provenance).toEqual({
+        kind: 'derived',
+        source:
+          'catalog list prices applied to this session’s exact tokens; relative to the list cost of the models actually used, not a credit figure',
+      });
+    });
+
+    it('has none when the session’s model has no price, or there is no catalog', () => {
+      const { database } = seededStore();
+      database.db.exec('DELETE FROM models');
+      expect(getSessionDetail(database, 'fx-auto-1')?.efficiency.priceAlternatives).toEqual([]);
+    });
+  });
 });

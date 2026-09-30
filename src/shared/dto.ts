@@ -176,6 +176,10 @@ export const efficiencySchema = z.object({
       shareOfInput: measuredNumber,
     })
     .nullable(),
+  /** The same exact tokens priced on cheaper catalog models; a list-price ratio, not a credit figure. */
+  priceAlternatives: z.array(
+    z.object({ model: z.string(), name: z.string().nullable(), relativeCost: measuredNumber }),
+  ),
 });
 export type Efficiency = z.infer<typeof efficiencySchema>;
 

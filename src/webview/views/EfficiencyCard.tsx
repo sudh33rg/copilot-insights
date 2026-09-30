@@ -1,6 +1,8 @@
 import type { Efficiency } from '../../shared/dto';
 import { ProvenanceBadge } from '../ui/Badge';
+import { DataTable, type Column } from '../ui/DataTable';
 import { formatInt, formatPercent } from '../ui/format';
+import { Measure } from '../ui/Measure';
 
 /** Why a session cost what it did, from evidence; estimates are labelled and kept apart from exact numbers. */
 export function EfficiencyCard({ efficiency }: { efficiency: Efficiency }) {
@@ -26,6 +28,18 @@ export function EfficiencyCard({ efficiency }: { efficiency: Efficiency }) {
           <ProvenanceBadge provenance={efficiency.freshSession?.tokensSaved.provenance ?? UNKNOWN} />
           <span className="muted"> Estimate, not part of the exact totals above.</span>
         </p>
+      )}
+      {efficiency.priceAlternatives.length > 0 && (
+        <>
+          <DataTable
+            caption="Same tokens on other models (list-price index)"
+            columns={priceColumns}
+            rows={efficiency.priceAlternatives}
+            rowKey={(row) => row.model}
+            empty=""
+          />
+          <p className="muted">Relative list cost of this session’s exact tokens; not a credit figure.</p>
+        </>
       )}
       {efficiency.findings.length > 0 && (
         <>
@@ -54,3 +68,18 @@ function freshSessionSentence(estimate: Efficiency['freshSession']): string | nu
       : ` (${formatPercent(estimate.shareOfInput.value)} of this session’s input)`;
   return `Restarting in a fresh session at turn ${String(estimate.restartAtTurn)} would have saved an estimated ${formatInt(estimate.tokensSaved.value)} input tokens${share}.`;
 }
+
+const priceColumns: readonly Column<Efficiency['priceAlternatives'][number]>[] = [
+  { id: 'model', header: 'Model', cell: (row) => row.name ?? row.model },
+  {
+    id: 'cost',
+    header: 'List cost vs. what ran',
+    align: 'end',
+    cell: (row) => (
+      <Measure
+        measure={row.relativeCost}
+        format={(value) => `${String(Number(Number(value).toFixed(2)))}×`}
+      />
+    ),
+  },
+];

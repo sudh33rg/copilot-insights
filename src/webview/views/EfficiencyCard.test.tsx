@@ -7,6 +7,7 @@ const efficiency = (overrides: Partial<Efficiency> = {}): Efficiency => ({
   drivers: [],
   findings: [],
   freshSession: null,
+  priceAlternatives: [],
   ...overrides,
 });
 
@@ -118,5 +119,36 @@ describe('EfficiencyCard', () => {
   it('shows no fresh-session line when there is no estimate', () => {
     render(<EfficiencyCard efficiency={efficiency()} />);
     expect(screen.queryByText(/fresh session/)).toBeNull();
+  });
+
+  it('shows the same tokens on cheaper models as a list-price index, not as credits', () => {
+    const derivedRatio = (value: number) => ({
+      value,
+      provenance: { kind: 'derived' as const, source: 'catalog list prices' },
+    });
+    render(
+      <EfficiencyCard
+        efficiency={efficiency({
+          priceAlternatives: [
+            { model: 'budget-model', name: 'Budget Model', relativeCost: derivedRatio(0.104) },
+            { model: 'tiny', name: null, relativeCost: derivedRatio(0.02) },
+          ],
+        })}
+      />,
+    );
+    const table = screen.getByRole('table', { name: 'Same tokens on other models (list-price index)' });
+    expect(within(table).getByText('Budget Model')).toBeInTheDocument();
+    expect(within(table).getByText('0.1×')).toBeInTheDocument();
+    expect(within(table).getByText('tiny')).toBeInTheDocument();
+    expect(within(table).getByText('0.02×')).toBeInTheDocument();
+    expect(within(table).getAllByText('Derived')).toHaveLength(2);
+    expect(
+      screen.getByText('Relative list cost of this session’s exact tokens; not a credit figure.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows no price table when there is nothing cheaper to compare', () => {
+    render(<EfficiencyCard efficiency={efficiency()} />);
+    expect(screen.queryByRole('table')).toBeNull();
   });
 });

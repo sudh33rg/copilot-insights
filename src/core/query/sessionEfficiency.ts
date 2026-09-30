@@ -1,9 +1,11 @@
 import type { Efficiency, TurnDetail } from '../../shared/dto';
-import { inferred } from '../../shared/provenance';
+import { derived, inferred } from '../../shared/provenance';
 import { contextBloat } from '../efficiency/contextBloat';
 import { costDrivers } from '../efficiency/costDrivers';
 import { freshSessionEstimate } from '../efficiency/freshSession';
+import { priceCounterfactual } from '../efficiency/priceCounterfactual';
 import type { Database } from '../storage/database';
+import { readModelPrices } from './modelPrices';
 
 /** Everything that explains a session's cost and how to do better; see docs/superpowers/plans (Phase 5). */
 export function getSessionEfficiency(
@@ -15,7 +17,30 @@ export function getSessionEfficiency(
     drivers: costDrivers(turns),
     findings: [...contextFindings(database, turns, sessionId)],
     freshSession: freshSession(turns),
+    priceAlternatives: priceAlternatives(database, turns),
   };
+}
+
+const PRICE_SOURCE =
+  'catalog list prices applied to this session’s exact tokens; relative to the list cost of the models actually used, not a credit figure';
+
+function priceAlternatives(
+  database: Pick<Database, 'db'>,
+  turns: readonly TurnDetail[],
+): Efficiency['priceAlternatives'] {
+  return priceCounterfactual({
+    turns: turns.map((turn) => ({
+      modelId: turn.modelId,
+      inputTokens: turn.inputTokens.value,
+      outputTokens: turn.outputTokens.value,
+      cachedTokens: turn.cachedTokens.value,
+    })),
+    prices: readModelPrices(database),
+  }).map((row) => ({
+    model: row.model,
+    name: row.name,
+    relativeCost: derived(row.relativeCost, PRICE_SOURCE),
+  }));
 }
 
 const FRESH_SOURCE =
