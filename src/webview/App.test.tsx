@@ -8,6 +8,7 @@ const renderApp = (results: Record<string, unknown>) => renderWithHost(<App view
 describe('App', () => {
   it('shows how much has been indexed', async () => {
     renderApp({
+      listSessions: { rows: [], total: 0 },
       getIndexStatus: {
         sessions: 2,
         turns: 5,
@@ -24,6 +25,7 @@ describe('App', () => {
 
   it('explains follower windows and scan errors', async () => {
     renderApp({
+      listSessions: { rows: [], total: 0 },
       getIndexStatus: {
         sessions: 0,
         turns: 0,
@@ -39,6 +41,8 @@ describe('App', () => {
 
   it('shows an error when the extension fails', async () => {
     renderApp({});
-    expect(await screen.findByRole('alert')).toHaveTextContent('boom');
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts.length).toBeGreaterThan(0);
+    expect(alerts[0]).toHaveTextContent('boom');
   });
 });

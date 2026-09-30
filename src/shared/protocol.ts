@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import {
+  overviewSchema,
+  sessionDetailSchema,
+  sessionIdParams,
+  sessionListParams,
+  sessionListSchema,
+} from './dto';
 
 export const indexStatusSchema = z.object({
   sessions: z.number(),
@@ -20,6 +27,10 @@ export const rpcSchemas = {
     params: z.object({}),
     result: indexStatusSchema,
   },
+  listSessions: { params: sessionListParams, result: sessionListSchema },
+  getSession: { params: sessionIdParams, result: sessionDetailSchema.nullable() },
+  getOverview: { params: z.object({}), result: overviewSchema },
+  openDashboard: { params: z.object({}), result: z.object({ opened: z.boolean() }) },
 } as const;
 
 export type RpcMethod = keyof typeof rpcSchemas;

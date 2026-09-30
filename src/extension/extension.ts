@@ -6,9 +6,11 @@ import { IngestService } from '../core/ingest/ingestService';
 import { resolveStorageRoots, userDirsFromGlobalStorage } from '../core/ingest/roots';
 import { runScan } from '../core/ingest/runScan';
 import { WriterLock } from '../core/ingest/writerLock';
+import { InsightsQueries } from '../core/query/insightsQueries';
 import { Database } from '../core/storage/database';
 import { IngestStateStore } from '../core/storage/ingestStateStore';
 import { SessionStore } from '../core/storage/sessionStore';
+import { localDay } from '../core/time';
 import { readConfig } from './config';
 import { IngestController } from './ingestController';
 import { DashboardPanel } from './webviewHost/dashboardPanel';
@@ -25,6 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const database = new Database(join(storageDir, 'insights.db'));
   const sessions = new SessionStore(database);
   const state = new IngestStateStore(database);
+  const queries = new InsightsQueries(database);
   const lock = new WriterLock(storageDir);
   const dataChanged = new vscode.EventEmitter<void>();
 
@@ -56,9 +59,17 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   const controller = new IngestController(service, context.storageUri, log);
 
+  // `dashboard` is created after the handlers; the closure reads it lazily.
   const handlers: RpcHandlers = {
     ping: () => ({ version, now: Date.now() }),
     getIndexStatus: () => indexStatus(service, sessions, state, readConfig().captureLevel),
+    listSessions: (params) => queries.listSessions(params),
+    getSession: ({ id }) => queries.getSession(id),
+    getOverview: () => queries.getOverview(localDay()),
+    openDashboard: () => {
+      dashboard.show();
+      return { opened: true };
+    },
   };
   const dashboard = new DashboardPanel(context.extensionUri, handlers, log);
   const sidebar = new SidebarProvider(context.extensionUri, handlers, log);

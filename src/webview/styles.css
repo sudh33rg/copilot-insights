@@ -102,3 +102,25 @@ h1 {
 .badge--unavailable {
   color: var(--vscode-descriptionForeground);
 }
+
+.toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin: 8px 0;
+}
+.toolbar input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  font: inherit;
+}
+.state--failed {
+  color: var(--vscode-errorForeground);
+}
+.state--pending {
+  color: var(--vscode-charts-orange);
+}

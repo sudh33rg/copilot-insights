@@ -2783,7 +2783,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { SessionListParams } from '../../shared/dto';
-import { exactNumber, missing, sessionRow } from '../test/dtoFixtures';
+import { missing, sessionRow } from '../test/dtoFixtures';
 import { renderWithHost } from '../test/fakeHost';
 import { SessionsView } from './SessionsView';
 

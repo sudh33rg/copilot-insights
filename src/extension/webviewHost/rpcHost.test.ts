@@ -39,6 +39,22 @@ const handlers: RpcHandlers = {
     lastError: null,
     captureLevel: 'summaries',
   }),
+  listSessions: () => ({ rows: [], total: 0 }),
+  getSession: () => null,
+  getOverview: () => {
+    const none = { value: null, provenance: { kind: 'unavailable' as const, source: 'test' } };
+    const period = {
+      from: '2026-09-01',
+      to: '2026-09-30',
+      sessions: 0,
+      turns: 0,
+      inputTokens: none,
+      outputTokens: none,
+      credits: none,
+    };
+    return { today: period, month: period, failureRate: none, byModel: [], byWorkspace: [], hostSplit: [] };
+  },
+  openDashboard: () => ({ opened: true }),
 };
 
 describe('RpcHost', () => {

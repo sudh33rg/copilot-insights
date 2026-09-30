@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRpcMethod, webviewToHost } from './protocol';
+import { isRpcMethod, rpcSchemas, webviewToHost } from './protocol';
 
 describe('protocol', () => {
   it('accepts well-formed RPC requests and the ready signal', () => {
@@ -17,5 +17,14 @@ describe('protocol', () => {
     expect(isRpcMethod('ping')).toBe(true);
     expect(isRpcMethod('toString')).toBe(false);
     expect(isRpcMethod('__proto__')).toBe(false);
+  });
+
+  it('declares the Phase 2 methods and validates their params', () => {
+    for (const method of ['listSessions', 'getSession', 'getOverview', 'openDashboard']) {
+      expect(isRpcMethod(method)).toBe(true);
+    }
+    expect(rpcSchemas.listSessions.params.safeParse({ offset: 0, limit: 50 }).success).toBe(true);
+    expect(rpcSchemas.listSessions.params.safeParse({ offset: 0, limit: 5000 }).success).toBe(false);
+    expect(rpcSchemas.getSession.params.safeParse({ id: '' }).success).toBe(false);
   });
 });
