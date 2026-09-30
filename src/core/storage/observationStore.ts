@@ -344,6 +344,12 @@ export class ObservationStore extends ObservationReader {
     });
   }
 
+  /** Drops the only command-derived data kept outside sessions; the runs themselves (exit codes, timing) stay. */
+  clearCommandHashes(): void {
+    this.database.db.exec("UPDATE terminal_runs SET command_hash = ''");
+    this.touch(this.now());
+  }
+
   pruneBefore(ms: number): void {
     this.database.db.prepare('DELETE FROM terminal_runs WHERE ended_at < :ms').run({ ms });
     this.touch(this.now());

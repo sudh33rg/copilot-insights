@@ -23,11 +23,8 @@ export const META = {
 
 /** Random per install, created on first use, never leaves the machine; removed by "clear everything". */
 export function getOrCreateSalt(state: IngestStateStore): string {
-  const existing = state.getMeta(META.salt);
-  if (existing !== null) return existing;
-  const created = newSalt();
-  state.setMeta(META.salt, created);
-  return created;
+  // Several windows can start at once; the first writer's salt wins and everyone reads that one.
+  return state.getMeta(META.salt) ?? state.setMetaIfAbsent(META.salt, newSalt());
 }
 
 export interface IngestDeps {
@@ -94,6 +91,7 @@ export class IngestService {
     if (this.deps.lock.tryAcquire()) {
       this.deps.database.transaction(() => {
         this.deps.sessions.downgradeStoredContent(level);
+        if (level === 'metrics') this.observations.clearCommandHashes();
       });
     }
     return this.sync({ force: true });

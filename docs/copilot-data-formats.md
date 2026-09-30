@@ -111,6 +111,9 @@ random per install (`meta` key `privacy.salt`). The text itself is never stored.
 | `survival_checks`                      | per edit (session, turn, file): how many fingerprinted lines were present at +1h / +1d / next commit |
 | `session_commits`                      | commits that touched files a session edited, with overlap counts                                     |
 
+At capture level `metrics` a terminal run keeps only its exit code and timing (no kind, empty hash); lowering the
+level to `metrics` or clearing all conversation text blanks the hashes already stored.
+
 Rule: **no text — only counts, paths, hashes, exit codes and timestamps.** These tables have no foreign key to
 `sessions` (a rescan replaces the session row), so clear, retention and capture-level changes delete them
 explicitly.

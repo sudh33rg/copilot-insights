@@ -162,6 +162,16 @@ describe('ClearService', () => {
       expect(count(database, 'session_commits')).toBe(2);
     });
 
+    it('blanks terminal command hashes when all conversation content is cleared', () => {
+      const { clear, database } = setup();
+      observe(database);
+      clear.clear({ kind: 'allContent' });
+      expect(
+        database.db.prepare("SELECT count(*) AS n FROM terminal_runs WHERE command_hash <> ''").get(),
+      ).toEqual({ n: 0 });
+      expect(count(database, 'terminal_runs')).toBe(1);
+    });
+
     it('empties terminal runs and forgets the privacy salt when everything is cleared', () => {
       const { clear, database, state } = setup();
       observe(database);

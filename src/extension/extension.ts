@@ -181,7 +181,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     dataChanged,
-    registerTerminalObserver(observations, () => getOrCreateSalt(state)),
+    registerTerminalObserver(
+      observations,
+      () => getOrCreateSalt(state),
+      () => readConfig().captureLevel,
+    ),
     dashboard,
     sidebar,
     dataChanged.event(() => {

@@ -47,6 +47,7 @@ export class ClearService {
         this.state.addTombstones(ids, 'content-cleared', this.now());
         this.sessions.clearContent(ids);
         observations.deleteSurvivalChecks(ids);
+        if (scope.kind === 'allContent') observations.clearCommandHashes();
       }
     });
     return { sessions: ids.length };

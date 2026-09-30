@@ -48,6 +48,14 @@ export class IngestStateStore {
     return row?.value ?? null;
   }
 
+  /** Stores `value` only if `key` has none yet and returns whichever value is now stored. */
+  setMetaIfAbsent(key: string, value: string): string {
+    this.database.db
+      .prepare('INSERT INTO meta (key, value) VALUES (:key, :value) ON CONFLICT(key) DO NOTHING')
+      .run({ key, value });
+    return this.getMeta(key) ?? value;
+  }
+
   deleteMeta(key: string): void {
     this.database.db.prepare('DELETE FROM meta WHERE key = :key').run({ key });
   }

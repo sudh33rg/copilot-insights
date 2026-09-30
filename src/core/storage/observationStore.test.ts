@@ -162,6 +162,15 @@ describe('ObservationStore', () => {
     expect(count(database, 'git_snapshot_files')).toBe(0);
   });
 
+  it('clearCommandHashes blanks every stored command hash but keeps the runs', () => {
+    const { store } = newStore();
+    store.addTerminalRun({ startedAt: null, endedAt: 5, exitCode: 1, kind: 'test', commandHash: 'abc' });
+    store.clearCommandHashes();
+    expect(store.terminalRunsBetween(0, 10)).toEqual([
+      { startedAt: null, endedAt: 5, exitCode: 1, kind: 'test', commandHash: '' },
+    ]);
+  });
+
   it('pruneBefore drops terminal runs older than the cutoff', () => {
     const { store } = newStore();
     const run = (endedAt: number) => ({

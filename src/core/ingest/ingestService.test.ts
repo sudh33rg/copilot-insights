@@ -68,6 +68,20 @@ describe('IngestService', () => {
     expect(state.getMeta(META.salt)).toBe(salt);
   });
 
+  it('blanks stored terminal command hashes when the capture level drops to metrics', async () => {
+    const { database, service } = setup();
+    await service.sync();
+    database.db
+      .prepare(
+        "INSERT INTO terminal_runs (started_at, ended_at, exit_code, kind, command_hash) VALUES (1, 2, 0, 'test', 'abc')",
+      )
+      .run();
+    await service.changeCaptureLevel('summaries');
+    expect(database.db.prepare('SELECT command_hash AS h FROM terminal_runs').get()).toEqual({ h: 'abc' });
+    await service.changeCaptureLevel('metrics');
+    expect(database.db.prepare('SELECT command_hash AS h FROM terminal_runs').get()).toEqual({ h: '' });
+  });
+
   it('getOrCreateSalt is stable once created', () => {
     const { state } = setup();
     const first = getOrCreateSalt(state);

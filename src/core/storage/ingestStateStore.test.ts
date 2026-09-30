@@ -21,6 +21,13 @@ describe('IngestStateStore', () => {
     expect(state.getTombstones()).toEqual({ a: 'deleted', b: 'content-cleared' });
   });
 
+  it('creates a meta value only when none exists, so concurrent windows agree on it', () => {
+    const state = newState();
+    expect(state.setMetaIfAbsent('salt', 'first')).toBe('first');
+    expect(state.setMetaIfAbsent('salt', 'second')).toBe('first');
+    expect(state.getMeta('salt')).toBe('first');
+  });
+
   it('stores meta values', () => {
     const state = newState();
     expect(state.getMeta('x')).toBeNull();
