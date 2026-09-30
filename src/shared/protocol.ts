@@ -3,6 +3,7 @@ import {
   clearScopeSchema,
   commitCostRowSchema,
   diagnosticsSchema,
+  failureAnalyticsSchema,
   survivalByModelRowSchema,
   githubSyncSchema,
   githubUsageParams,
@@ -50,6 +51,7 @@ export const rpcSchemas = {
     result: z.object({ outcome: z.enum(['already-enabled', 'declined', 'enabled']) }),
   },
   getDiagnostics: { params: z.object({}), result: diagnosticsSchema },
+  getFailureAnalytics: { params: z.object({}), result: failureAnalyticsSchema },
   getCommitCosts: {
     params: z.object({}),
     result: z.object({ rows: z.array(commitCostRowSchema) }),

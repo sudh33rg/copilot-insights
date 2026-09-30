@@ -214,6 +214,25 @@ export const survivalByModelRowSchema = z.object({
 });
 export type SurvivalByModelRow = z.infer<typeof survivalByModelRowSchema>;
 
+export const failureRowSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  /** User-initiated, finished turns in the group (a count of rows in this index). */
+  turns: z.number(),
+  failed: z.number(),
+  failureRate: measuredNumber,
+  toolInputRetries: measuredNumber,
+  maxToolCallsExceeded: measuredNumber,
+});
+export type FailureRow = z.infer<typeof failureRowSchema>;
+
+export const failureAnalyticsSchema = z.object({
+  byModel: z.array(failureRowSchema),
+  byProvider: z.array(failureRowSchema),
+  byMode: z.array(failureRowSchema),
+});
+export type FailureAnalytics = z.infer<typeof failureAnalyticsSchema>;
+
 // ---- overview ----
 export const periodTotalsSchema = z.object({
   from: z.string(),

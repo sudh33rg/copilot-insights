@@ -136,6 +136,7 @@ export function activate(context: vscode.ExtensionContext): void {
     getOverview: () => queries.getOverview(localDay()),
     getSurvivalByModel: () => ({ rows: queries.getSurvivalByModel() }),
     getCommitCosts: () => ({ rows: queries.getCommitCosts() }),
+    getFailureAnalytics: () => queries.getFailureAnalytics(),
     clearData: ({ scope }) => confirmAndClear(dataDeps, scope),
     exportData: () => exportToFile(dataDeps),
     getGithubUsage: ({ days }) => {

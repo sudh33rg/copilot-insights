@@ -4,6 +4,7 @@ import { useRpc } from '../rpcContext';
 import { DataTable, type Column } from '../ui/DataTable';
 import { formatCredits, formatInt, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
+import { FailureAnalyticsCard } from './FailureAnalyticsCard';
 import { GithubUsageCard } from './GithubUsageCard';
 import { CommitsCard, EditSurvivalCard } from './OutcomeOverview';
 
@@ -70,6 +71,7 @@ function OverviewBody({ overview }: { overview: Overview }) {
       )}
       <EditSurvivalCard />
       <CommitsCard />
+      <FailureAnalyticsCard />
       <InternalCard internal={overview.internal} />
       <GithubUsageCard />
     </>

@@ -43,6 +43,7 @@ const handlers: RpcHandlers = {
   getSession: () => null,
   getSurvivalByModel: () => ({ rows: [] }),
   getCommitCosts: () => ({ rows: [] }),
+  getFailureAnalytics: () => ({ byModel: [], byProvider: [], byMode: [] }),
   getOverview: () => {
     const none = { value: null, provenance: { kind: 'unavailable' as const, source: 'test' } };
     const period = {

@@ -1,5 +1,6 @@
 import type {
   CommitCostRow,
+  FailureAnalytics,
   Overview,
   SessionDetail,
   SessionList,
@@ -8,6 +9,7 @@ import type {
 import { AnalysisStore } from '../analysis/analysisStore';
 import type { Database } from '../storage/database';
 import { getCommitCosts } from './commitCosts';
+import { getFailureAnalytics } from './failureAnalytics';
 import { getOverview } from './overview';
 import { getSessionDetail } from './sessionDetail';
 import { listSessions, type SessionListQuery } from './sessionList';
@@ -36,6 +38,10 @@ export class InsightsQueries {
 
   getOverview(today: string): Overview {
     return getOverview(this.database, today);
+  }
+
+  getFailureAnalytics(): FailureAnalytics {
+    return getFailureAnalytics(this.database);
   }
 
   getCommitCosts(): CommitCostRow[] {
