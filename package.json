@@ -32,6 +32,17 @@
         "title": "Open Dashboard",
         "category": "Copilot Insights",
         "icon": "$(graph)"
+      },
+      {
+        "command": "copilotInsights.refreshSessions",
+        "title": "Refresh Copilot Sessions",
+        "category": "Copilot Insights",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "copilotInsights.rebuildIndex",
+        "title": "Rebuild Session Index",
+        "category": "Copilot Insights"
       }
     ],
     "viewsContainers": {
@@ -58,8 +69,60 @@
           "command": "copilotInsights.openDashboard",
           "when": "view == copilotInsights.sidebar",
           "group": "navigation@1"
+        },
+        {
+          "command": "copilotInsights.refreshSessions",
+          "when": "view == copilotInsights.sidebar",
+          "group": "navigation@2"
         }
       ]
+    },
+    "configuration": {
+      "title": "Copilot Insights",
+      "properties": {
+        "copilotInsights.captureLevel": {
+          "type": "string",
+          "enum": [
+            "metrics",
+            "summaries",
+            "full"
+          ],
+          "default": "summaries",
+          "enumDescriptions": [
+            "Store telemetry only: tokens, credits, models, timings, tools and file paths. No conversation text.",
+            "Also store short, secret-redacted summaries of prompts and responses.",
+            "Store complete prompts, responses and tool arguments locally, with secrets redacted."
+          ],
+          "markdownDescription": "How much conversation content Copilot Insights keeps in its local index. Lowering the level also scrubs content that is already stored."
+        },
+        "copilotInsights.retentionDays": {
+          "type": "number",
+          "enum": [
+            0,
+            7,
+            30,
+            90,
+            365
+          ],
+          "default": 30,
+          "markdownDescription": "Days of session history to keep. `0` keeps everything."
+        },
+        "copilotInsights.nativeRefreshSeconds": {
+          "type": "number",
+          "minimum": 15,
+          "maximum": 600,
+          "default": 60,
+          "markdownDescription": "How often to look for new or changed Copilot chat sessions. Sessions in the current workspace also refresh when their files change."
+        },
+        "copilotInsights.nativeStorageRoots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Extra `workspaceStorage` folders to scan, for example another VS Code build's `User/workspaceStorage`."
+        }
+      }
     }
   },
   "scripts": {

@@ -29,7 +29,17 @@ function fakeWebview() {
 }
 
 // Every RPC method needs a handler here; add one when protocol.ts gains a method.
-const handlers: RpcHandlers = { ping: () => ({ version: '1.2.3', now: 7 }) };
+const handlers: RpcHandlers = {
+  ping: () => ({ version: '1.2.3', now: 7 }),
+  getIndexStatus: () => ({
+    sessions: 0,
+    turns: 0,
+    lastSyncAt: null,
+    role: 'idle',
+    lastError: null,
+    captureLevel: 'summaries',
+  }),
+};
 
 describe('RpcHost', () => {
   it('answers a valid request', async () => {

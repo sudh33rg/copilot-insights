@@ -1,10 +1,24 @@
 import { z } from 'zod';
 
+export const indexStatusSchema = z.object({
+  sessions: z.number(),
+  turns: z.number(),
+  lastSyncAt: z.number().nullable(),
+  role: z.enum(['leader', 'follower', 'idle']),
+  lastError: z.string().nullable(),
+  captureLevel: z.enum(['metrics', 'summaries', 'full']),
+});
+export type IndexStatus = z.infer<typeof indexStatusSchema>;
+
 /** Every RPC method the webview may call. Params are validated in the extension before dispatch. */
 export const rpcSchemas = {
   ping: {
     params: z.object({}),
     result: z.object({ version: z.string(), now: z.number() }),
+  },
+  getIndexStatus: {
+    params: z.object({}),
+    result: indexStatusSchema,
   },
 } as const;
 
