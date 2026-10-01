@@ -20,6 +20,17 @@ const ids = (database: ReturnType<typeof setup>['database']) =>
   (database.db.prepare('SELECT id FROM sessions ORDER BY id').all() as { id: string }[]).map((row) => row.id);
 
 describe('ClearService', () => {
+  it('clears and tombstones debug-only sessions so telemetry cannot return on rescan', () => {
+    const { clear, database, state } = setup();
+    database.db.exec(
+      "UPDATE llm_calls SET session_id = 'orphan'; UPDATE debug_sessions SET session_id = 'orphan'",
+    );
+    clear.clear({ kind: 'everything' });
+    expect(database.db.prepare('SELECT count(*) AS n FROM llm_calls').get()).toEqual({ n: 0 });
+    expect(database.db.prepare('SELECT count(*) AS n FROM debug_sessions').get()).toEqual({ n: 0 });
+    expect(state.getTombstones().orphan).toBe('deleted');
+  });
+
   it('counts without changing anything', () => {
     const { clear, database } = setup();
     expect(clear.count({ kind: 'everything' })).toBe(2);

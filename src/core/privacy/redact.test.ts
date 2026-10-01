@@ -27,6 +27,22 @@ describe('redactSecrets', () => {
     );
   });
 
+  it('redacts structured credentials even without a recognizable token format', () => {
+    expect(
+      redactDeep({ password: 'short', api_key: 'custom-value', nested: { accessToken: 'opaque', count: 3 } }),
+    ).toEqual({
+      password: '[REDACTED:secret]',
+      api_key: '[REDACTED:secret]',
+      nested: { accessToken: '[REDACTED:secret]', count: 3 },
+    });
+  });
+
+  it('does not preserve uninspected objects beyond the recursion limit', () => {
+    let value: unknown = { value: 'sk-abcdefghijklmnopqrstuvwx' };
+    for (let i = 0; i < 40; i++) value = { nested: value };
+    expect(JSON.stringify(redactDeep(value))).not.toContain('sk-abcdefghijklmnopqrstuvwx');
+  });
+
   it('redacts nested values', () => {
     expect(redactDeep({ a: ['sk-abcdefghijklmnopqrstuvwx', 3], b: { c: 'ok' } })).toEqual({
       a: ['[REDACTED:api-key]', 3],

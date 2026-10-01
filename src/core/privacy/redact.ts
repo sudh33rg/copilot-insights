@@ -8,6 +8,9 @@ const PATTERNS: readonly (readonly [name: string, pattern: RegExp])[] = [
 ];
 
 // `password = "…"`, `apiKey: '…'`, etc. Over-redaction is acceptable; leaking is not.
+const SECRET_KEY =
+  /^(?:api[_-]?key|secret|token|password|passwd|client[_-]?secret|access[_-]?token|refresh[_-]?token|authorization)$/i;
+
 const ASSIGNMENT =
   /\b((?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)["']?\s*[:=]\s*["']?)([^\s"'`]{8,})/gi;
 
@@ -21,7 +24,13 @@ export function redactSecrets(text: string): string {
 
 export function redactDeep(value: unknown, depth = 0): unknown {
   if (typeof value === 'string') return redactSecrets(value);
-  if (typeof value !== 'object' || value === null || depth > 32) return value;
+  if (typeof value !== 'object' || value === null) return value;
+  if (depth > 32) return '[REDACTED:depth-limit]';
   if (Array.isArray(value)) return value.map((item: unknown) => redactDeep(item, depth + 1));
-  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, redactDeep(item, depth + 1)]));
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      SECRET_KEY.test(key) && item !== null ? '[REDACTED:secret]' : redactDeep(item, depth + 1),
+    ]),
+  );
 }

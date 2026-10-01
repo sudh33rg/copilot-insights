@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createFixtureUserDir } from '../../../test/fixtures/fixtures';
 import type { CaptureLevel } from '../privacy/captureLevel';
 import { CatalogStore } from '../storage/catalogStore';
@@ -8,6 +8,8 @@ import { SessionStore } from '../storage/sessionStore';
 import { IngestService, META, getOrCreateSalt } from './ingestService';
 import { resolveStorageRoots } from './roots';
 import { runScan } from './runScan';
+import { ClearService } from '../clear/clearService';
+import type { FullScanOutput } from './scanAll';
 import type { ScanInput } from './scanner';
 
 function setup(options: { leader?: boolean; retentionDays?: number; now?: number } = {}) {
@@ -15,6 +17,7 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
   const sessions = new SessionStore(database);
   const state = new IngestStateStore(database);
   const { userDir } = createFixtureUserDir();
+  const scan = vi.fn((input: ScanInput) => runScan(input));
   let changes = 0;
   const scanInputs: ScanInput[] = [];
   let captureLevel: CaptureLevel = 'full';
@@ -26,7 +29,7 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
     resolveRoots: () => resolveStorageRoots({ userDirs: [userDir] }),
     runScan: (input) => {
       scanInputs.push(input);
-      return runScan(input);
+      return scan(input);
     },
     captureLevel: () => captureLevel,
     retentionDays: () => options.retentionDays ?? 0,
@@ -38,6 +41,7 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
   });
   return {
     database,
+    scan,
     service,
     sessions,
     state,
@@ -50,6 +54,31 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
 }
 
 describe('IngestService', () => {
+  it('does not restore content or deleted sessions when a scan finishes after a clear', async () => {
+    const { service, scan, database, sessions, state } = setup();
+    await service.sync();
+    let finish!: (output: FullScanOutput) => void;
+    let scanned!: FullScanOutput;
+    scan.mockImplementationOnce(async (input) => {
+      scanned = await runScan(input);
+      return new Promise<FullScanOutput>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const pending = service.sync({ force: true });
+    await vi.waitFor(() => {
+      expect(finish).toBeDefined();
+    });
+    const clear = new ClearService(database, sessions, state);
+    clear.clear({ kind: 'session', id: 'fx-auto-1' });
+    clear.clear({ kind: 'sessionContent', id: 'fx-byok-1' });
+    finish(scanned);
+    await pending;
+    expect(sessions.getSession('fx-auto-1')).toBeNull();
+    expect(sessions.getSession('fx-byok-1')?.turns[0]?.userText).toBeNull();
+    expect(database.db.prepare('SELECT count(*) AS n FROM llm_calls').get()).toEqual({ n: 0 });
+  });
+
   it('indexes sessions on the first sync and notifies once', async () => {
     const { service, sessions, state, changes } = setup();
     expect(await service.sync()).toMatchObject({ role: 'leader', parsed: 2, empty: 1, purged: 0 });

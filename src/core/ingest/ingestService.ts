@@ -1,4 +1,4 @@
-import type { CaptureLevel } from '../privacy/captureLevel';
+import { applyCaptureLevel, type CaptureLevel } from '../privacy/captureLevel';
 import { CatalogStore } from '../storage/catalogStore';
 import { newSalt } from '../privacy/fingerprint';
 import { LlmCallStore } from '../storage/llmCallStore';
@@ -12,7 +12,7 @@ import type { FullScanOutput } from './scanAll';
 import type { ScanInput, ScanStats } from './scanner';
 
 /** Bump when parsing or normalization changes so every source file is re-parsed on the next sync. */
-export const INGEST_VERSION = 4;
+export const INGEST_VERSION = 5;
 
 export const META = {
   ingestVersion: 'ingest.version',
@@ -120,14 +120,28 @@ export class IngestService {
     let written = 0;
     let purged = 0;
     this.deps.database.transaction(() => {
+      // Clears and privacy changes can happen while the worker is reading. Recheck before writing.
+      const tombstones = state.getTombstones();
+      const level = this.deps.captureLevel();
+      sessions.downgradeStoredContent(level);
+      if (level === 'metrics') this.observations.clearCommandHashes();
       for (const result of output.results) {
+        const id = result.session?.id;
+        if (id !== undefined && tombstones[id] === 'deleted') continue;
         if (result.session !== null) {
-          sessions.replaceSession(result.session, result.captureLevel, now);
+          const captureLevel =
+            tombstones[result.session.id] === 'content-cleared' || level === 'metrics'
+              ? 'metrics'
+              : result.captureLevel === 'full' && level === 'summaries'
+                ? 'summaries'
+                : result.captureLevel;
+          sessions.replaceSession(applyCaptureLevel(result.session, captureLevel), captureLevel, now);
           written++;
         }
         state.setFingerprint(result.file, result.fingerprint, result.session?.id ?? null, now);
       }
       for (const debug of output.debug.results) {
+        if (debug.log !== null && tombstones[debug.log.sessionId] === 'deleted') continue;
         if (debug.log !== null) {
           this.llmCalls.replaceSession(debug.log, debug.file, now);
           written++;

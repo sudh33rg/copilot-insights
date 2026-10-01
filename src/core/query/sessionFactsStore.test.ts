@@ -4,6 +4,15 @@ import { ObservationStore } from '../storage/observationStore';
 import { SessionFactsStore } from './sessionFactsStore';
 
 describe('SessionFactsStore', () => {
+  it('rebuilds after content is cleared even if the latest observation timestamp is unchanged', () => {
+    const { database, sessions } = seededStore();
+    new ObservationStore(database).touchSession('fx-byok-1', 999999);
+    const store = new SessionFactsStore(database);
+    expect(store.all().find((fact) => fact.id === 'fx-auto-1')?.opening).not.toBeNull();
+    sessions.clearContent(['fx-auto-1']);
+    expect(store.all().find((fact) => fact.id === 'fx-auto-1')?.opening).toBeNull();
+  });
+
   it('collects facts for every session, task types included', () => {
     const { database } = seededStore();
     const facts = new SessionFactsStore(database).all();

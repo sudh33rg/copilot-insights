@@ -30,7 +30,7 @@ export class SessionFactsStore {
         ? []
         : [sessionFactsFromDetail({ ...detail, analysis: this.analysis.forDetail(detail) })];
     });
-    this.cached = { key, facts };
+    this.cached = { key: this.versionKey(), facts };
     return facts;
   }
 
@@ -42,6 +42,9 @@ export class SessionFactsStore {
     const observed = db
       .prepare('SELECT coalesce(max(changed_at), 0) AS changed FROM observation_changes')
       .get() as unknown as { changed: number };
-    return `${String(sessions.n)}|${String(sessions.ingested)}|${String(observed.changed)}|${String(ANALYZER_VERSION)}`;
+    // total_changes sees local clears/debug updates; data_version sees writes by other VS Code windows.
+    const revision = db.prepare('SELECT total_changes() AS changes').get() as { changes: number };
+    const external = db.prepare('PRAGMA data_version').get() as { data_version: number };
+    return `${String(revision.changes)}|${String(external.data_version)}|${String(sessions.n)}|${String(sessions.ingested)}|${String(observed.changed)}|${String(ANALYZER_VERSION)}`;
   }
 }

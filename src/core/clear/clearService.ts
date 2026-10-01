@@ -34,9 +34,27 @@ export class ClearService {
     const observations = new ObservationStore(this.database, this.now);
     this.database.transaction(() => {
       if (deletesSessions(scope)) {
-        this.state.addTombstones(ids, 'deleted', this.now());
+        const deletedIds =
+          scope.kind === 'everything'
+            ? [
+                ...new Set([
+                  ...ids,
+                  ...(
+                    this.database.db
+                      .prepare(
+                        `SELECT session_id FROM debug_sessions
+                UNION SELECT session_id FROM llm_calls
+                UNION SELECT session_id FROM llm_tool_defs
+                UNION SELECT session_id FROM llm_prompt_files`,
+                      )
+                      .all() as unknown as { session_id: string }[]
+                  ).map((row) => row.session_id),
+                ]),
+              ]
+            : ids;
+        this.state.addTombstones(deletedIds, 'deleted', this.now());
         this.sessions.deleteSessions(ids);
-        new LlmCallStore(this.database).deleteSessions(ids);
+        new LlmCallStore(this.database).deleteSessions(deletedIds);
         observations.deleteSessions(ids);
         if (scope.kind === 'everything') {
           this.database.db.exec('DELETE FROM github_daily_usage');
