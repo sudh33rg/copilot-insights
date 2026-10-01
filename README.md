@@ -68,15 +68,14 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 ## Privacy
 
 - Everything stays on your machine in `insights.db` inside the extension's global storage.
-- `copilotInsights.captureLevel` (default `summaries`): `metrics` keeps no conversation text at all;
-  `summaries` keeps short redacted summaries; `full` keeps complete text. Lowering the level scrubs what is
-  already stored.
+- Full prompts, responses and tool arguments are always captured locally, with secrets redacted.
+  There is no capture-level setting.
 - Secrets (GitHub/AWS/Slack tokens, API keys, JWTs, private keys, `password=` assignments) are redacted before
   anything is stored.
 - Copilot's own files and GitHub-side data are never modified or deleted.
 - The only network access is the GitHub REST API (`api.github.com`) when you click _Sync now_; the token is sent
   nowhere else. No AI provider is ever called.
-- Tool arguments are never shown in the dashboard or exported.
+- Redacted tool arguments are shown in the session explorer and omitted from portable JSON exports.
 - To tell whether Copilot's inserted lines survive, Copilot Insights stores **salted fingerprints** (truncated
   SHA-256 of each inserted line of at least 20 characters, at most 200 per edit) and a salted hash of each
   terminal command after secret redaction. They cannot be turned back into text, the random per-install salt
@@ -93,15 +92,14 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 
 ## Settings
 
-| Setting                                  | Default     | Meaning                                 |
-| ---------------------------------------- | ----------- | --------------------------------------- |
-| `copilotInsights.captureLevel`           | `summaries` | `metrics`, `summaries`, or `full`       |
-| `copilotInsights.retentionDays`          | `30`        | Days of history to keep (`0` = forever) |
-| `copilotInsights.nativeRefreshSeconds`   | `60`        | Background scan interval (15–600)       |
-| `copilotInsights.nativeStorageRoots`     | `[]`        | Extra `workspaceStorage` folders        |
-| `copilotInsights.monthlyCreditBudget`    | `0`         | Monthly credit budget (`0` = off)       |
-| `copilotInsights.workspaceCreditBudgets` | `{}`        | Per-workspace monthly budgets           |
-| `copilotInsights.liveNudge`              | `false`     | Status bar item for the active session  |
+| Setting                                  | Default | Meaning                                 |
+| ---------------------------------------- | ------- | --------------------------------------- |
+| `copilotInsights.retentionDays`          | `30`    | Days of history to keep (`0` = forever) |
+| `copilotInsights.nativeRefreshSeconds`   | `60`    | Background scan interval (15–600)       |
+| `copilotInsights.nativeStorageRoots`     | `[]`    | Extra `workspaceStorage` folders        |
+| `copilotInsights.monthlyCreditBudget`    | `0`     | Monthly credit budget (`0` = off)       |
+| `copilotInsights.workspaceCreditBudgets` | `{}`    | Per-workspace monthly budgets           |
+| `copilotInsights.liveNudge`              | `false` | Status bar item for the active session  |
 
 ## Exploring sessions
 
@@ -109,10 +107,10 @@ The session explorer groups each turn into prompt, response, usage/timing, tool 
 activity. Search turns by text, model, tool or path, filter failures, and use turn navigation to jump
 through a long conversation. Session history also supports exact workspace and date filters.
 
-For complete redacted prompts, responses and tool arguments, set `copilotInsights.captureLevel` to
-`full` in VS Code settings. The default `summaries` level shows shortened text; `metrics` stores no
-conversation text. Attached file paths are labeled separately from tool activity. File contents and tool
-outputs are not retained, and JSON exports omit tool arguments.
+Complete redacted prompts, responses and tool arguments are always captured. No setting is required.
+Attached file paths are labeled separately from tool activity. File contents and tool outputs are not
+retained, and JSON exports omit tool arguments. Existing summary indexes are automatically upgraded
+on the next scan when their source files still exist; explicit content clearing remains respected.
 
 The dashboard and charts follow the active VS Code theme. See [UI research](docs/UI_RESEARCH.md) for the
 open-source references, implemented screens and data requirements for further functionality.

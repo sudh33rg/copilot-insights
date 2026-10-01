@@ -1,4 +1,4 @@
-import type { SessionDetail, TurnDetail } from '../../shared/dto';
+import type { TurnDetail } from '../../shared/dto';
 import { ProvenanceBadge } from '../ui/Badge';
 import { formatCredits, formatDateTime, formatDuration, formatInt, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
@@ -13,13 +13,7 @@ const STATE_LABEL = {
 const HOST_LABEL = { copilot: 'Copilot', byok: 'BYOK / local', unknown: 'Unknown host' } as const;
 const int = (value: number | string) => formatInt(Number(value));
 
-export function TurnTrace({
-  turn,
-  captureLevel,
-}: {
-  turn: TurnDetail;
-  captureLevel: SessionDetail['captureLevel'];
-}) {
+export function TurnTrace({ turn }: { turn: TurnDetail }) {
   const extras = [
     turn.reasoningMs.value !== null ? `reasoning ${formatDuration(turn.reasoningMs.value)}` : null,
     turn.toolRounds.value !== null
@@ -155,11 +149,7 @@ export function TurnTrace({
                     </p>
                     <p className="label">Arguments</p>
                     {call.args == null ? (
-                      <p className="muted">
-                        {captureLevel === 'full'
-                          ? 'Arguments were not recorded for this call.'
-                          : 'Tool arguments require Full capture.'}
-                      </p>
+                      <p className="muted">Arguments were not recorded for this call.</p>
                     ) : (
                       <pre className="text code-text">{call.args}</pre>
                     )}
@@ -206,7 +196,7 @@ function TextPanel({ label, text }: { label: string; text: string | null }) {
     <section className={`text-panel text-panel--${label.toLowerCase()}`} aria-label={label}>
       <p className="label">{label}</p>
       {text === null ? (
-        <p className="muted">Not stored at this capture level.</p>
+        <p className="muted">No recorded text. It may have been cleared or absent from the source.</p>
       ) : (
         <pre className="text">{text}</pre>
       )}

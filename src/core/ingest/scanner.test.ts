@@ -11,7 +11,6 @@ function setup(overrides: Partial<ScanInput> = {}) {
   const input: ScanInput = {
     roots: resolveStorageRoots({ userDirs: [userDir] }),
     known: {},
-    captureLevel: 'full',
     tombstones: {},
     ...overrides,
   };
@@ -55,16 +54,33 @@ describe('scanner', () => {
     expect(byok?.session?.turns.every((turn) => turn.userText === null)).toBe(true);
   });
 
-  it('redacts secrets and applies the capture level', () => {
+  it('always captures complete redacted conversation text and tool arguments', () => {
     const { input } = setup();
-    expect(JSON.stringify(scanChatSessions(input).results)).not.toContain('ghp_');
-    const summaries = scanChatSessions({ ...input, captureLevel: 'summaries' });
-    expect(
-      summaries.results
-        .flatMap((r) => r.session?.turns ?? [])
-        .flatMap((t) => t.toolCalls)
-        .every((c) => c.args === null),
-    ).toBe(true);
+    const legacyInput = { ...input, captureLevel: 'metrics' };
+    const results = scanChatSessions(legacyInput).results;
+    expect(JSON.stringify(results)).not.toContain('ghp_');
+    const session = results.find((result) => result.session?.id === 'fx-auto-1');
+    expect(session?.captureLevel).toBe('full');
+    expect(session?.session?.turns[0]?.userText).toContain('Fix the timeout race');
+    expect(session?.session?.turns[0]?.toolCalls[0]?.args).toMatchObject({
+      filePath: '/repo/src/execution/manager.ts',
+    });
+  });
+
+  it('never truncates long prompt or response text', () => {
+    const { userDir, input } = setup();
+    const prompt = 'Explain this code in detail. '.repeat(100).trim();
+    const response = 'Here is the complete explanation. '.repeat(100).trim();
+    appendFileSync(
+      join(userDir, 'workspaceStorage', 'ws1', 'chatSessions', 'fx-auto-1.jsonl'),
+      '\n' +
+        JSON.stringify({ kind: 1, k: ['requests', 0, 'message', 'text'], v: prompt }) +
+        '\n' +
+        JSON.stringify({ kind: 1, k: ['requests', 0, 'response'], v: [{ value: response }] }),
+    );
+    const session = scanChatSessions(input).results.find((result) => result.session?.id === 'fx-auto-1');
+    expect(session?.session?.turns[0]?.userText).toBe(prompt);
+    expect(session?.session?.turns[0]?.assistantText).toBe(response);
   });
 
   it('parses a file that Copilot is still writing (truncated last line)', () => {

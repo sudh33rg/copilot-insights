@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createFixtureUserDir } from '../../../test/fixtures/fixtures';
-import type { CaptureLevel } from '../privacy/captureLevel';
 import { CatalogStore } from '../storage/catalogStore';
 import { Database } from '../storage/database';
 import { IngestStateStore } from '../storage/ingestStateStore';
@@ -20,7 +19,6 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
   const scan = vi.fn((input: ScanInput) => runScan(input));
   let changes = 0;
   const scanInputs: ScanInput[] = [];
-  let captureLevel: CaptureLevel = 'full';
   const service = new IngestService({
     database,
     sessions,
@@ -31,7 +29,6 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
       scanInputs.push(input);
       return scan(input);
     },
-    captureLevel: () => captureLevel,
     retentionDays: () => options.retentionDays ?? 0,
     onChanged: () => {
       changes++;
@@ -47,9 +44,6 @@ function setup(options: { leader?: boolean; retentionDays?: number; now?: number
     state,
     scanInputs,
     changes: () => changes,
-    setCaptureLevel: (level: CaptureLevel) => {
-      captureLevel = level;
-    },
   };
 }
 
@@ -95,20 +89,6 @@ describe('IngestService', () => {
     expect(salt).toMatch(/^[0-9a-f]{32}$/);
     await service.sync({ force: true });
     expect(state.getMeta(META.salt)).toBe(salt);
-  });
-
-  it('blanks stored terminal command hashes when the capture level drops to metrics', async () => {
-    const { database, service } = setup();
-    await service.sync();
-    database.db
-      .prepare(
-        "INSERT INTO terminal_runs (started_at, ended_at, exit_code, kind, command_hash) VALUES (1, 2, 0, 'test', 'abc')",
-      )
-      .run();
-    await service.changeCaptureLevel('summaries');
-    expect(database.db.prepare('SELECT command_hash AS h FROM terminal_runs').get()).toEqual({ h: 'abc' });
-    await service.changeCaptureLevel('metrics');
-    expect(database.db.prepare('SELECT command_hash AS h FROM terminal_runs').get()).toEqual({ h: '' });
   });
 
   it('getOrCreateSalt is stable once created', () => {
@@ -177,14 +157,16 @@ describe('IngestService', () => {
     expect(sessions.getSession('fx-auto-1')).toBeNull();
   });
 
-  it('scrubs stored content when the capture level is lowered', async () => {
-    const { service, sessions, setCaptureLevel } = setup();
+  it('upgrades older summary indexes to full capture on the next sync', async () => {
+    const { service, sessions, state } = setup();
     await service.sync();
-    expect(sessions.getSession('fx-auto-1')?.turns[0]?.userText).not.toBeNull();
-    setCaptureLevel('metrics');
-    await service.changeCaptureLevel('metrics');
-    expect(sessions.getSession('fx-auto-1')?.turns[0]?.userText).toBeNull();
-    expect(sessions.getSession('fx-auto-1')?.captureLevel).toBe('metrics');
+    sessions.downgradeStoredContent('summaries');
+    state.setMeta(META.ingestVersion, '6');
+    expect(sessions.getSession('fx-auto-1')?.turns[0]?.toolCalls[0]?.args).toBeNull();
+    await service.sync();
+    const session = sessions.getSession('fx-auto-1');
+    expect(session?.captureLevel).toBe('full');
+    expect(session?.turns[0]?.toolCalls[0]?.args).not.toBeNull();
   });
 
   it('stores telemetry from debug logs and keeps no conversation content', async () => {

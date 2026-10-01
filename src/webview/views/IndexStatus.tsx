@@ -21,7 +21,7 @@ function IndexStatusSummary({ status }: { status: IndexStatusData }) {
         <strong>{status.sessions}</strong> sessions · <strong>{status.turns}</strong> turns indexed
       </p>
       <p className="muted">
-        Capture level: {status.captureLevel}
+        Full local capture
         {status.lastSyncAt !== null && ` · last scan ${new Date(status.lastSyncAt).toLocaleString()}`}
       </p>
       {status.role === 'follower' && (

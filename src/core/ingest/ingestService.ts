@@ -12,7 +12,7 @@ import type { FullScanOutput } from './scanAll';
 import type { ScanInput, ScanStats } from './scanner';
 
 /** Bump when parsing or normalization changes so every source file is re-parsed on the next sync. */
-export const INGEST_VERSION = 6;
+export const INGEST_VERSION = 7;
 
 export const META = {
   ingestVersion: 'ingest.version',
@@ -34,7 +34,6 @@ export interface IngestDeps {
   lock: { tryAcquire(): boolean };
   resolveRoots(): StorageRoot[];
   runScan(input: ScanInput): Promise<FullScanOutput>;
-  captureLevel(): CaptureLevel;
   retentionDays(): number;
   onChanged(): void;
   log: { info(message: string): void; warn(message: string): void };
@@ -86,17 +85,6 @@ export class IngestService {
     return tracked;
   }
 
-  /** Scrubs already-stored content down to `level`, then re-parses sources at that level. */
-  async changeCaptureLevel(level: CaptureLevel): Promise<SyncResult> {
-    if (this.deps.lock.tryAcquire()) {
-      this.deps.database.transaction(() => {
-        this.deps.sessions.downgradeStoredContent(level);
-        if (level === 'metrics') this.observations.clearCommandHashes();
-      });
-    }
-    return this.sync({ force: true });
-  }
-
   private async run(force: boolean): Promise<SyncResult> {
     const { sessions, state, log } = this.deps;
     if (!this.deps.lock.tryAcquire()) {
@@ -111,7 +99,6 @@ export class IngestService {
     const output = await this.deps.runScan({
       roots: this.deps.resolveRoots(),
       known: reparseAll ? {} : state.getFingerprints(),
-      captureLevel: this.deps.captureLevel(),
       tombstones: state.getTombstones(),
       salt: getOrCreateSalt(state),
     });
@@ -120,21 +107,14 @@ export class IngestService {
     let written = 0;
     let purged = 0;
     this.deps.database.transaction(() => {
-      // Clears and privacy changes can happen while the worker is reading. Recheck before writing.
+      // Clears can happen while the worker is reading. Recheck before writing.
       const tombstones = state.getTombstones();
-      const level = this.deps.captureLevel();
-      sessions.downgradeStoredContent(level);
-      if (level === 'metrics') this.observations.clearCommandHashes();
       for (const result of output.results) {
         const id = result.session?.id;
         if (id !== undefined && tombstones[id] === 'deleted') continue;
         if (result.session !== null) {
-          const captureLevel =
-            tombstones[result.session.id] === 'content-cleared' || level === 'metrics'
-              ? 'metrics'
-              : result.captureLevel === 'full' && level === 'summaries'
-                ? 'summaries'
-                : result.captureLevel;
+          const captureLevel: CaptureLevel =
+            tombstones[result.session.id] === 'content-cleared' ? 'metrics' : 'full';
           sessions.replaceSession(applyCaptureLevel(result.session, captureLevel), captureLevel, now);
           written++;
         }

@@ -11,6 +11,15 @@ describe('new settings', () => {
   });
 
   it('are declared with safe defaults', () => {
+    const extension = vscode.extensions.getExtension('local.copilot-insights');
+    assert.ok(extension);
+    const manifest = extension.packageJSON as {
+      contributes: { configuration: { properties: Record<string, unknown> } };
+    };
+    assert.equal(
+      Object.hasOwn(manifest.contributes.configuration.properties, 'copilotInsights.captureLevel'),
+      false,
+    );
     assert.equal(config().get('liveNudge'), false);
     assert.equal(config().get('monthlyCreditBudget'), 0);
     assert.deepEqual(config().get('workspaceCreditBudgets'), {});

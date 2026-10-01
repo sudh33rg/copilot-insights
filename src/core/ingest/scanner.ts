@@ -21,7 +21,6 @@ export interface ScanInput {
   roots: StorageRoot[];
   /** file path → fingerprint from the previous scan; matching files are skipped. */
   known: Record<string, string>;
-  captureLevel: CaptureLevel;
   tombstones: Record<string, TombstoneKind>;
   /** Per-install salt for content-derived fingerprints; omitted means none are produced. */
   salt?: string;
@@ -103,7 +102,7 @@ export function scanChatSessions(input: ScanInput): ScanOutput {
           file,
           fingerprint,
           session: null,
-          captureLevel: input.captureLevel,
+          captureLevel: 'full',
           skipped: 'empty',
         });
         continue;
@@ -115,12 +114,12 @@ export function scanChatSessions(input: ScanInput): ScanOutput {
           file,
           fingerprint,
           session: null,
-          captureLevel: input.captureLevel,
+          captureLevel: 'full',
           skipped: 'deleted',
         });
         continue;
       }
-      const captureLevel: CaptureLevel = tombstone === 'content-cleared' ? 'metrics' : input.captureLevel;
+      const captureLevel: CaptureLevel = tombstone === 'content-cleared' ? 'metrics' : 'full';
       results.push({
         file,
         fingerprint,

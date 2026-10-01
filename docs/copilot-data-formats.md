@@ -162,9 +162,10 @@ URI / Location shapes. File, directory, enabled implicit, and prompt-file entrie
 recorded as file events with source `context:attachment`. Location values use `value.uri`; direct URI
 values use `value`. String content, images, remote URIs, and disabled implicit entries are ignored.
 No names, descriptions, ranges, attachment contents, or tool outputs are retained. These are recorded
-references, not proof of which file bytes reached a model. Ingest version 6 reparses retained sessions so
+references, not proof of which file bytes reached a model. Ingest version 7 reparses retained sessions so
 existing files can gain this metadata without a manual index rebuild.
 
-The session-detail RPC exposes secret-redacted tool argument JSON only for sessions indexed at `full`.
-It checks capture level and validates/redacts the stored JSON again at the query boundary. `metrics`
-and `summaries` expose tool names, origins, statuses and file paths, with null arguments.
+New sessions always use full local capture; there is no configuration setting or worker input for lower
+capture levels. Ingest version 7 upgrades legacy summary indexes by rereading available sources.
+Explicitly cleared sessions remain content-free. Legacy capture metadata is still readable, and the
+session-detail query validates/redacts argument JSON again before returning it to the webview.

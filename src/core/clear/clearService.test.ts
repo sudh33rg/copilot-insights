@@ -85,7 +85,6 @@ describe('ClearService', () => {
     const { results, stats } = scanChatSessions({
       roots: resolveStorageRoots({ userDirs: [userDir] }),
       known: {},
-      captureLevel: 'full',
       tombstones: state.getTombstones(),
     });
     expect(results.some((result) => result.session?.id === 'fx-auto-1')).toBe(false);

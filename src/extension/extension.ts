@@ -107,7 +107,6 @@ export function activate(context: vscode.ExtensionContext): void {
       }),
     runScan: (input) =>
       runScan(input, { workerFile: join(context.extensionUri.fsPath, 'dist', 'scanWorker.js') }),
-    captureLevel: () => readConfig().captureLevel,
     retentionDays: () => readConfig().retentionDays,
     onChanged: () => {
       dataChanged.fire();
@@ -175,7 +174,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const handlers: RpcHandlers = {
     ping: () => ({ version, now: Date.now() }),
-    getIndexStatus: () => indexStatus(service, sessions, state, readConfig().captureLevel),
+    getIndexStatus: () => indexStatus(service, sessions, state),
     listSessions: (params) => queries.listSessions(params),
     getSession: ({ id }) => queries.getSession(id),
     getOverview: () => queries.getOverview(localDay()),
@@ -237,11 +236,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     dataChanged,
-    registerTerminalObserver(
-      observations,
-      () => getOrCreateSalt(state),
-      () => readConfig().captureLevel,
-    ),
+    registerTerminalObserver(observations, () => getOrCreateSalt(state)),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration(`${CONFIG_SECTION}.liveNudge`)) liveNudge.update();
     }),

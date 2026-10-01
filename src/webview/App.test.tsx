@@ -27,7 +27,7 @@ describe('App', () => {
     renderDashboard({ getIndexStatus: status() });
     const indexStatus = await screen.findByLabelText('Index status');
     expect(indexStatus).toHaveTextContent('2 sessions · 5 turns indexed');
-    expect(indexStatus).toHaveTextContent('Capture level: summaries');
+    expect(indexStatus).toHaveTextContent('Full local capture');
   });
 
   it('explains follower windows and scan errors', async () => {

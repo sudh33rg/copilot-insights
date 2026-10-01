@@ -10,22 +10,22 @@ describe('indexStatus', () => {
     const database = new Database(':memory:');
     const state = new IngestStateStore(database);
     const sessions = new SessionStore(database);
-    expect(indexStatus({ lastResult: null, lastError: null }, sessions, state, 'summaries')).toEqual({
+    expect(indexStatus({ lastResult: null, lastError: null }, sessions, state)).toEqual({
       sessions: 0,
       turns: 0,
       lastSyncAt: null,
       role: 'idle',
       lastError: null,
-      captureLevel: 'summaries',
+      captureLevel: 'full',
     });
     state.setMeta(META.lastSyncAt, '1790000000000');
     expect(
-      indexStatus({ lastResult: { role: 'follower' }, lastError: 'boom' }, sessions, state, 'metrics'),
+      indexStatus({ lastResult: { role: 'follower' }, lastError: 'boom' }, sessions, state),
     ).toMatchObject({
       lastSyncAt: 1790000000000,
       role: 'follower',
       lastError: 'boom',
-      captureLevel: 'metrics',
+      captureLevel: 'full',
     });
   });
 });

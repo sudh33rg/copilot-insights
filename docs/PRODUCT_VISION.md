@@ -84,7 +84,7 @@ Never mix estimates with exact telemetry.
 Everything stays inside the VS Code extension by default. No separate server, no daemon, no external web app,
 no CLI, no Claude, no Codex, no other AI provider.
 
-Support metrics-only capture, summaries, full prompt/response capture, retention windows, clearing an
+Always capture complete redacted prompts, responses and tool arguments locally. Support retention windows, clearing an
 individual session, clearing conversation content only, clearing usage data, clearing by date range, clearing by
 workspace, and clearing everything local. Never claim to delete GitHub-side billing/usage history.
 

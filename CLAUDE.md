@@ -59,7 +59,7 @@ pnpm smoke:real       # parses this machine's real Copilot data and prints aggre
 - Never divide GitHub daily/account credits across sessions. Per-session credits come only from Copilot's own
   per-request fields.
 - Never delete or modify Copilot's own files or GitHub-side data. Clearing affects only this extension's index.
-- Default capture level is `summaries`. `metrics` must store no conversation text, titles, or tool arguments.
+- Always capture complete prompts, responses and tool arguments locally, with secrets redacted. There is no capture-level setting. Explicit content-clearing tombstones must still prevent restoration.
 - Secrets are redacted (`src/core/privacy/redact.ts`) before anything is stored.
 
 ## Engineering conventions

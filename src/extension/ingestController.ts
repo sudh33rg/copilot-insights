@@ -72,14 +72,6 @@ export class IngestController implements vscode.Disposable {
   private onConfigurationChanged(event: vscode.ConfigurationChangeEvent): void {
     if (!event.affectsConfiguration(CONFIG_SECTION)) return;
     if (event.affectsConfiguration(`${CONFIG_SECTION}.nativeRefreshSeconds`)) this.scheduleInterval();
-    if (event.affectsConfiguration(`${CONFIG_SECTION}.captureLevel`)) {
-      this.service.changeCaptureLevel(readConfig().captureLevel).catch((error: unknown) => {
-        this.log.error(
-          `Applying the capture level failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      });
-      return;
-    }
     this.syncSoon();
   }
 }

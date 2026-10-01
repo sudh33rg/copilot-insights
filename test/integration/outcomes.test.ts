@@ -89,11 +89,7 @@ describe('diagnostics adapter', () => {
 
 describe('terminal observer', () => {
   it('registers and disposes cleanly', () => {
-    const disposable = registerTerminalObserver(
-      new ObservationStore(new Database(':memory:')),
-      () => 'salt',
-      () => 'summaries',
-    );
+    const disposable = registerTerminalObserver(new ObservationStore(new Database(':memory:')), () => 'salt');
     disposable.dispose();
   });
 });

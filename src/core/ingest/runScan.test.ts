@@ -14,7 +14,6 @@ function input(): ScanInput {
   return {
     roots: resolveStorageRoots({ userDirs: [userDir] }),
     known: {},
-    captureLevel: 'summaries',
     tombstones: {},
   };
 }

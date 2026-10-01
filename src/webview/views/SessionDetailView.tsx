@@ -109,14 +109,10 @@ function Detail({ session }: { session: SessionDetail }) {
         </div>
       </dl>
       <div className="notice">
-        <strong>Capture level: {session.captureLevel}</strong>
+        <strong>Full local capture</strong>
         <p>
-          {session.captureLevel === 'full'
-            ? 'Complete stored prompts, responses and tool arguments are shown with secrets redacted.'
-            : session.captureLevel === 'summaries'
-              ? 'Prompts and responses are shortened summaries. To inspect complete text and tool arguments, set Copilot Insights › Capture Level to Full in VS Code settings, then rebuild the index.'
-              : 'Conversation text and tool arguments are not stored. File paths and available telemetry are shown.'}{' '}
-          File references show recorded context and activity; file contents and tool outputs are not retained.
+          Complete stored prompts, responses and tool arguments are shown with secrets redacted. File
+          references show recorded context and activity; file contents and tool outputs are not retained.
         </p>
       </div>
       {session.baseline !== null && (
@@ -178,7 +174,7 @@ function Detail({ session }: { session: SessionDetail }) {
         </nav>
         <div className="trace-content">
           {turns.map((turn) => (
-            <TurnTrace key={turn.index} turn={turn} captureLevel={session.captureLevel} />
+            <TurnTrace key={turn.index} turn={turn} />
           ))}
           {turns.length === 0 && <p className="empty-state">No turns match these filters.</p>}
         </div>

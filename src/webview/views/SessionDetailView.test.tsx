@@ -133,7 +133,7 @@ describe('SessionDetailView', () => {
     expect(container.querySelector('script')).toBeNull();
   });
 
-  it('explains missing text at low capture levels and marks system turns and errors', async () => {
+  it('explains cleared or missing text and marks system turns and errors', async () => {
     view({
       getSession: sessionDetail({
         captureLevel: 'metrics',
@@ -151,7 +151,10 @@ describe('SessionDetailView', () => {
       }),
     });
     const first = await screen.findByRole('article', { name: 'Turn 1' });
-    expect(within(first).getAllByText('Not stored at this capture level.').length).toBe(2);
+    expect(
+      within(first).getAllByText('No recorded text. It may have been cleared or absent from the source.')
+        .length,
+    ).toBe(2);
     const second = screen.getByRole('article', { name: 'Turn 2' });
     expect(within(second).getByText('System-initiated')).toBeInTheDocument();
     expect(within(second).getByText('Failed')).toBeInTheDocument();

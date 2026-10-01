@@ -42,9 +42,11 @@ cannot assume the same completeness, timestamps, span nesting or replay capabili
 
 ## Capture limitations
 
-`metrics` stores no conversation text. `summaries` keeps shortened, redacted prompt/response text.
-`full` keeps complete redacted text and tool arguments. The detail query exposes arguments only at `full`
-and validates/redacts stored JSON again; exports continue omitting arguments.
+Full local capture is unconditional: complete redacted prompts, responses and tool arguments are kept.
+There is no capture-level setting. The scanner upgrades legacy summary indexes by rereading retained
+source files on the next scan; explicit content-clearing and deletion tombstones remain respected.
+Legacy capture metadata remains readable for old or explicitly cleared records. The query validates and
+redacts argument JSON again, and portable exports continue omitting arguments.
 
 Attached local file URI paths are recorded independently from tool-derived activity, with the source
 `context:attachment`. A recorded attachment is evidence of a reference, not proof of exact file content
