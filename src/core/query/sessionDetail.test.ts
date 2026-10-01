@@ -39,12 +39,42 @@ describe('getSessionDetail', () => {
     });
   });
 
-  it('lists tool names and file events but never tool arguments', () => {
+  it('exposes redacted tool arguments at full capture and file evidence', () => {
     const turn = getSessionDetail(seededStore().database, 'fx-auto-1')?.turns[0];
     expect(turn?.toolCalls.map((call) => call.name)).toEqual(['read_file', 'replace_string_in_file']);
-    expect(turn?.toolCalls[0]).toEqual({ name: 'read_file', status: expect.any(String) as string });
-    expect(turn?.fileEvents).toContainEqual({ path: '/repo/src/execution/manager.ts', action: 'edited' });
-    expect(JSON.stringify(turn)).not.toContain('"args"');
+    expect(turn?.toolCalls[0]).toMatchObject({
+      name: 'read_file',
+      args: expect.stringContaining('filePath') as string,
+      origin: 'toolCallRound',
+    });
+    expect(turn?.fileEvents).toContainEqual({
+      path: '/repo/src/execution/manager.ts',
+      action: 'edited',
+      source: 'textEditGroup',
+    });
+    expect(turn?.elapsedMs.value).toBe(8000);
+  });
+
+  it('never exposes arguments at lower capture levels, even if a stale row contains them', () => {
+    for (const level of ['metrics', 'summaries'] as const) {
+      const { database } = seededStore(level);
+      database.db.prepare("UPDATE tool_calls SET args = '{}'").run();
+      const detail = getSessionDetail(database, 'fx-auto-1');
+      expect(detail?.turns.flatMap((turn) => turn.toolCalls).every((call) => call.args === null)).toBe(true);
+    }
+  });
+
+  it('redacts secret keys before returning arguments and rejects malformed stored JSON', () => {
+    const { database } = seededStore();
+    database.db
+      .prepare('UPDATE tool_calls SET args = :args')
+      .run({ args: JSON.stringify({ authorization: 'short', nested: { password: 'hidden' } }) });
+    const args = getSessionDetail(database, 'fx-auto-1')?.turns[0]?.toolCalls[0]?.args;
+    expect(args).toContain('[REDACTED:secret]');
+    expect(args).not.toContain('short');
+    expect(args).not.toContain('hidden');
+    database.db.prepare("UPDATE tool_calls SET args = 'broken'").run();
+    expect(getSessionDetail(database, 'fx-auto-1')?.turns[0]?.toolCalls[0]?.args).toBeNull();
   });
 
   it('marks missing measurements unavailable and keeps system-initiated turns', () => {

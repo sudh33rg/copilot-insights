@@ -4,6 +4,7 @@ import { isCaptureLevel } from '../privacy/captureLevel';
 import type { Database } from '../storage/database';
 import { exact, unavailable, type Measured } from '../../shared/provenance';
 import { isRecord } from '../json';
+import { redactDeep } from '../privacy/redact';
 import { groupBy, known, SOURCES, summed, toTurnState } from './measure';
 import { routingFor } from './routing';
 import { getSessionEfficiency } from './sessionEfficiency';
@@ -24,6 +25,7 @@ interface TurnRow {
   idx: number;
   response_id: string | null;
   started_at: number | null;
+  elapsed_ms: number | null;
   state: string;
   system_initiated: number;
   mode: string | null;
@@ -56,7 +58,7 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
   if (header === undefined) return null;
   const turnRows = db
     .prepare(
-      `SELECT idx, response_id, started_at, state, system_initiated, mode, user_text, assistant_text, requested_model,
+      `SELECT idx, response_id, started_at, elapsed_ms, state, system_initiated, mode, user_text, assistant_text, requested_model,
               resolved_model, selection_mode, model_host, prompt_tokens, completion_tokens, credits,
               reasoning_ms, reasoning_blocks, tool_rounds, tool_input_retries, compactions, prompt_composition,
               error_code, error_message
@@ -65,14 +67,24 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     .all({ id }) as unknown as TurnRow[];
   const tools = groupBy(
     db
-      .prepare('SELECT turn_idx, name, status FROM tool_calls WHERE session_id = :id ORDER BY turn_idx, seq')
-      .all({ id }) as unknown as { turn_idx: number; name: string; status: string }[],
+      .prepare(
+        'SELECT turn_idx, name, status, args, origin FROM tool_calls WHERE session_id = :id ORDER BY turn_idx, seq',
+      )
+      .all({ id }) as unknown as {
+      turn_idx: number;
+      name: string;
+      status: string;
+      args: string | null;
+      origin: string;
+    }[],
     (row) => row.turn_idx,
   );
   const files = groupBy(
     db
-      .prepare('SELECT turn_idx, path, action FROM file_events WHERE session_id = :id ORDER BY turn_idx, seq')
-      .all({ id }) as unknown as { turn_idx: number; path: string; action: string }[],
+      .prepare(
+        'SELECT turn_idx, path, action, source FROM file_events WHERE session_id = :id ORDER BY turn_idx, seq',
+      )
+      .all({ id }) as unknown as { turn_idx: number; path: string; action: string; source: string }[],
     (row) => row.turn_idx,
   );
 
@@ -123,8 +135,18 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       compactions: exact(countJsonArray(row.compactions), SOURCES.compactions),
       contextTokensBefore: largestContextBefore(row.compactions),
       promptComposition: parseComposition(row.prompt_composition),
-      toolCalls: (tools.get(row.idx) ?? []).map((call) => ({ name: call.name, status: call.status })),
-      fileEvents: (files.get(row.idx) ?? []).map((file) => ({ path: file.path, action: file.action })),
+      elapsedMs: known(row.elapsed_ms, 'chatSessions elapsedMs / result.timings.totalElapsed'),
+      toolCalls: (tools.get(row.idx) ?? []).map((call) => ({
+        name: call.name,
+        status: call.status,
+        origin: call.origin,
+        args: header.capture_level === 'full' && call.args !== null ? safeToolArgs(call.args) : null,
+      })),
+      fileEvents: (files.get(row.idx) ?? []).map((file) => ({
+        path: file.path,
+        action: file.action,
+        source: file.source,
+      })),
       errorCode: row.error_code,
       errorMessage: row.error_message,
     };
@@ -215,5 +237,15 @@ function countJsonArray(text: string): number {
     return Array.isArray(parsed) ? parsed.length : 0;
   } catch {
     return 0;
+  }
+}
+
+/** Validate the stored JSON again before it crosses into the webview. */
+function safeToolArgs(json: string): string | null {
+  try {
+    const value: unknown = JSON.parse(json);
+    return JSON.stringify(redactDeep(value), null, 2);
+  } catch {
+    return null;
   }
 }

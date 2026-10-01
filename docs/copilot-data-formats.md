@@ -71,7 +71,7 @@ Keys come from the file — reject `__proto__`, `constructor`, and `prototype` t
 | `result.metadata.toolCallResults`           | map id → `{content:[…]}`                                                                                                                                    | Tool output (content — never store)                                    |
 | `result.metadata.summaries[]`               | `{contextLengthBefore,model,durationMs,outcome,numRounds,…}`                                                                                                | Context compaction events                                              |
 | `result.metadata.maxToolCallsExceeded`      | bool                                                                                                                                                        | Agent hit the tool-call limit                                          |
-| `variableData.variables[]`                  | attached context                                                                                                                                            | Content — do not store                                                 |
+| `variableData.variables[]`                  | attached context                                                                                                                                            | Retain only local file URI paths; never attachment contents            |
 
 Other observed request keys (ignored for now): `responseId`, `contentReferences`, `codeCitations`, `agent`,
 `followups`, `outputBuffer`, `responseMarkdownInfo`, `responseTimestamp`, `confirmation`, `terminalExecutionId`.
@@ -153,3 +153,18 @@ ignored. Tokens are estimated as characters ÷ 4 and always labelled `inferred`.
   (`nvidia-nim`, `ollama`, `customendpoint`, `omlx`, `m365-copilot`), which cost no Copilot credits.
 - Debug logs existed for 81 sessions but held only 9 `llm_request` events: they are sparse enrichment, not a
   primary source.
+
+## Attached context path capture (2026-10-01)
+
+`variableData.variables[]` is parsed conservatively using VS Code's
+[`chatVariableEntries.ts`](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/contrib/chat/common/attachments/chatVariableEntries.ts)
+URI / Location shapes. File, directory, enabled implicit, and prompt-file entries with a `file` URI are
+recorded as file events with source `context:attachment`. Location values use `value.uri`; direct URI
+values use `value`. String content, images, remote URIs, and disabled implicit entries are ignored.
+No names, descriptions, ranges, attachment contents, or tool outputs are retained. These are recorded
+references, not proof of which file bytes reached a model. Ingest version 6 reparses retained sessions so
+existing files can gain this metadata without a manual index rebuild.
+
+The session-detail RPC exposes secret-redacted tool argument JSON only for sessions indexed at `full`.
+It checks capture level and validates/redacts the stored JSON again at the query boundary. `metrics`
+and `summaries` expose tool names, origins, statuses and file paths, with null arguments.

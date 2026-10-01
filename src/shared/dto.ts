@@ -72,7 +72,7 @@ export type SessionList = z.infer<typeof sessionListSchema>;
 // ---- session detail ----
 export const sessionIdParams = z.object({ id: z.string().min(1).max(200) });
 
-/** Tool arguments are deliberately absent: they can contain file contents and secrets. */
+/** Content fields are redacted and tool arguments are exposed only at full capture. */
 export const turnDetailSchema = z.object({
   index: z.number(),
   startedAt: z.number().nullable(),
@@ -100,8 +100,16 @@ export const turnDetailSchema = z.object({
   contextTokensBefore: measuredNumber,
   /** Share (0–1) of the prompt each category took, as Copilot reported it. */
   promptComposition: z.array(z.object({ category: z.string(), label: z.string(), share: measuredNumber })),
-  toolCalls: z.array(z.object({ name: z.string(), status: z.string() })),
-  fileEvents: z.array(z.object({ path: z.string(), action: z.string() })),
+  elapsedMs: measuredNumber,
+  toolCalls: z.array(
+    z.object({
+      name: z.string(),
+      status: z.string(),
+      args: z.string().nullable().optional(),
+      origin: z.string().optional(),
+    }),
+  ),
+  fileEvents: z.array(z.object({ path: z.string(), action: z.string(), source: z.string().optional() })),
   errorCode: z.string().nullable(),
   errorMessage: z.string().nullable(),
 });

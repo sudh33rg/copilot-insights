@@ -187,7 +187,10 @@ function normalizeTurn(
     reasoningBlocks: reasoning.length,
     reasoningMs: reasoning.reduce((sum, block) => sum + (block.reasoningDurationMs ?? 0), 0),
     toolCalls,
-    fileEvents: collectFileEvents(parts, toolCalls, request.editedFileEvents ?? []),
+    fileEvents: [
+      ...collectAttachedFiles(request.variableData?.variables),
+      ...collectFileEvents(parts, toolCalls, request.editedFileEvents ?? []),
+    ],
     editFingerprints: salt === undefined ? [] : collectEditFingerprints(parts, salt),
     compactions: parseCompactions(meta?.summaries),
     toolRounds: rounds.length,
@@ -327,6 +330,25 @@ function collectToolCalls(
         invocation.isComplete === undefined ? 'unknown' : invocation.isComplete ? 'complete' : 'incomplete',
     }),
   );
+}
+
+/** Read URI metadata only. Never inspect string values or retain attachment contents. */
+function collectAttachedFiles(variables: readonly unknown[] | undefined): FileEvent[] {
+  const paths = new Set<string>();
+  for (const entry of variables ?? []) {
+    if (
+      !isRecord(entry) ||
+      typeof entry.kind !== 'string' ||
+      !['file', 'directory', 'implicit', 'promptFile'].includes(entry.kind)
+    )
+      continue;
+    if (entry.kind === 'implicit' && entry.enabled === false) continue;
+    const value = entry.value;
+    const uri = isRecord(value) && isRecord(value.uri) ? value.uri : value;
+    if (!isRecord(uri) || uri.scheme !== 'file' || typeof uri.path !== 'string') continue;
+    if (uri.path !== '') paths.add(uri.path);
+  }
+  return [...paths].map((path) => ({ path, action: 'read', source: 'context:attachment' }));
 }
 
 function collectFileEvents(

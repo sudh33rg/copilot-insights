@@ -14,6 +14,15 @@ function load(name: string) {
 }
 
 describe('normalizeChatSession', () => {
+  it('records attached file paths as context without storing attachment content', () => {
+    const session = load('attached-context-session.jsonl');
+    expect(session?.turns[0]?.fileEvents).toEqual([
+      { path: '/repo/src/main.ts', action: 'read', source: 'context:attachment' },
+      { path: '/repo/test/main.test.ts', action: 'read', source: 'context:attachment' },
+    ]);
+    expect(JSON.stringify(session)).not.toContain('private attachment content');
+  });
+
   it('returns null for a session without requests', () => {
     expect(load('empty-session.jsonl')).toBeNull();
   });

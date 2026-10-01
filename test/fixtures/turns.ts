@@ -20,6 +20,7 @@ export function makeTurn(overrides: Partial<TurnDetail> & { index: number }): Tu
     cachedTokens: unavailable('test'),
     ttftMs: unavailable('test'),
     nanoAiu: unavailable('test'),
+    elapsedMs: unavailable('test'),
     reasoningMs: unavailable('test'),
     toolRounds: exact(0, 'test'),
     toolInputRetries: exact(0, 'test'),

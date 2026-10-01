@@ -11,3 +11,6 @@ changes, add a new fixture that reproduces the change instead of copying a real 
 - `chatSessions/empty-session.jsonl` — a chat that was opened but never used.
 
 Debug-log fixtures (`debugLogs/`) contain `SECRET-*` sentinels in every content field; tests assert they never reach storage.
+
+- `chatSessions/attached-context-session.jsonl` — direct file and Location URI attachments, disabled implicit
+  context, string content, remote URI, and malformed entries. Only the two local file paths are retained.

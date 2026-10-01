@@ -23,6 +23,7 @@ export const requestSchema = z.looseObject({
     .array(z.looseObject({ category: str, label: str, percentageOfPrompt: num }))
     .optional()
     .catch(undefined),
+  variableData: z.looseObject({ variables: list }).optional().catch(undefined),
   editedFileEvents: z
     .array(z.looseObject({ uri, eventKind: num }))
     .optional()
