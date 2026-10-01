@@ -4,7 +4,9 @@ import { isCaptureLevel } from '../privacy/captureLevel';
 import type { Database } from '../storage/database';
 import { exact, unavailable, type Measured } from '../../shared/provenance';
 import { isRecord } from '../json';
-import { redactDeep } from '../privacy/redact';
+import { contextItemSchema } from '../../shared/dto';
+import { SessionLibrary } from '../storage/sessionLibrary';
+import { redactSecrets, redactDeep } from '../privacy/redact';
 import { groupBy, known, SOURCES, summed, toTurnState } from './measure';
 import { routingFor } from './routing';
 import { getSessionEfficiency } from './sessionEfficiency';
@@ -44,6 +46,7 @@ interface TurnRow {
   compactions: string;
   tool_input_retries: number;
   prompt_composition: string;
+  context_items: string;
   error_code: string | null;
   error_message: string | null;
 }
@@ -61,17 +64,19 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       `SELECT idx, response_id, started_at, elapsed_ms, state, system_initiated, mode, user_text, assistant_text, requested_model,
               resolved_model, selection_mode, model_host, prompt_tokens, completion_tokens, credits,
               reasoning_ms, reasoning_blocks, tool_rounds, tool_input_retries, compactions, prompt_composition,
-              error_code, error_message
+              context_items, error_code, error_message
          FROM turns WHERE session_id = :id ORDER BY idx`,
     )
     .all({ id }) as unknown as TurnRow[];
   const tools = groupBy(
     db
       .prepare(
-        'SELECT turn_idx, name, status, args, origin FROM tool_calls WHERE session_id = :id ORDER BY turn_idx, seq',
+        'SELECT turn_idx, call_id, name, status, args, output, origin FROM tool_calls WHERE session_id = :id ORDER BY turn_idx, seq',
       )
       .all({ id }) as unknown as {
       turn_idx: number;
+      call_id: string | null;
+      output: string | null;
       name: string;
       status: string;
       args: string | null;
@@ -109,6 +114,13 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     const call = row.response_id === null ? undefined : byResponse.get(row.response_id);
     if (call !== undefined && row.response_id !== null) matchedResponses.add(row.response_id);
     return {
+      contextItems:
+        header.capture_level === 'full'
+          ? parseJsonArray(row.context_items).flatMap((entry) => {
+              const parsed = contextItemSchema.safeParse(redactDeep(entry));
+              return parsed.success ? [parsed.data] : [];
+            })
+          : [],
       index: row.idx,
       startedAt: row.started_at,
       state: toTurnState(row.state),
@@ -138,6 +150,8 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
       elapsedMs: known(row.elapsed_ms, 'chatSessions elapsedMs / result.timings.totalElapsed'),
       toolCalls: (tools.get(row.idx) ?? []).map((call) => ({
         name: call.name,
+        callId: call.call_id,
+        output: header.capture_level === 'full' && call.output !== null ? safeToolArgs(call.output) : null,
         status: call.status,
         origin: call.origin,
         args: header.capture_level === 'full' && call.args !== null ? safeToolArgs(call.args) : null,
@@ -162,7 +176,63 @@ export function getSessionDetail(database: Pick<Database, 'db'>, id: string): Se
     );
   };
   const outcomes = getSessionOutcomes(database, id);
+  const spans = db
+    .prepare(
+      'SELECT span_id, response_id, started_at, duration_ms, model, role, input_tokens, output_tokens, cached_tokens FROM llm_calls WHERE session_id = :id ORDER BY started_at, span_id',
+    )
+    .all({ id }) as unknown as {
+    span_id: string;
+    response_id: string | null;
+    started_at: number;
+    duration_ms: number | null;
+    model: string | null;
+    role: string;
+    input_tokens: number | null;
+    output_tokens: number | null;
+    cached_tokens: number | null;
+  }[];
+  const artifacts: NonNullable<SessionDetail['promptArtifacts']> = [];
+  if (header.capture_level === 'full') {
+    const prompt = db
+      .prepare('SELECT content, source FROM llm_prompt_files WHERE session_id = :id')
+      .get({ id }) as { content: string | null; source: string | null } | undefined;
+    if (prompt?.content != null)
+      artifacts.push({
+        kind: 'instructions',
+        name: 'Recorded system instructions',
+        content: redactSecrets(prompt.content),
+        source: `debug artifact ${prompt.source ?? 'system prompt'} (latest recorded; request association unavailable)`,
+      });
+    const defs = db
+      .prepare(
+        'SELECT name, definition FROM llm_tool_defs WHERE session_id = :id AND definition IS NOT NULL ORDER BY name',
+      )
+      .all({ id }) as unknown as { name: string; definition: string }[];
+    for (const def of defs)
+      artifacts.push({
+        kind: 'tool-definition',
+        name: def.name,
+        content: safeToolArgs(def.definition) ?? '',
+        source: 'debug tools artifact (latest recorded; request association unavailable)',
+      });
+  }
   return {
+    annotation: new SessionLibrary(database).get(id),
+    promptArtifacts: artifacts,
+    modelCalls: spans.map((span) => ({
+      id: span.span_id,
+      turnIndex:
+        span.response_id === null
+          ? null
+          : (turnRows.find((row) => row.response_id === span.response_id)?.idx ?? null),
+      startedAt: span.started_at,
+      durationMs: known(span.duration_ms, 'debug llm_request.duration'),
+      model: span.model,
+      role: span.role,
+      inputTokens: known(span.input_tokens, 'agent debug log llm_request.inputTokens'),
+      outputTokens: known(span.output_tokens, 'agent debug log llm_request.outputTokens'),
+      cachedTokens: known(span.cached_tokens, SOURCES.cachedTokens),
+    })),
     id: header.id,
     workspace: header.workspace,
     title: header.title,

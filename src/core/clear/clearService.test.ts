@@ -117,7 +117,7 @@ describe('ClearService', () => {
   it('removes a deleted session’s tool-definition and system-prompt sizes with it', () => {
     const { clear, database } = setup();
     database.db.exec(
-      "INSERT OR REPLACE INTO llm_tool_defs VALUES ('fx-auto-1', 'read_file', 10); INSERT OR REPLACE INTO llm_prompt_files VALUES ('fx-auto-1', 100, 10); INSERT OR REPLACE INTO llm_tool_defs VALUES ('fx-byok-1', 'x', 1); INSERT OR REPLACE INTO llm_prompt_files VALUES ('fx-byok-1', 1, 1)",
+      "INSERT OR REPLACE INTO llm_tool_defs (session_id, name, chars) VALUES ('fx-auto-1', 'read_file', 10); INSERT OR REPLACE INTO llm_prompt_files (session_id, system_prompt_chars, tool_defs_chars) VALUES ('fx-auto-1', 100, 10); INSERT OR REPLACE INTO llm_tool_defs (session_id, name, chars) VALUES ('fx-byok-1', 'x', 1); INSERT OR REPLACE INTO llm_prompt_files (session_id, system_prompt_chars, tool_defs_chars) VALUES ('fx-byok-1', 1, 1)",
     );
     clear.clear({ kind: 'session', id: 'fx-auto-1' });
     expect(database.db.prepare('SELECT session_id FROM llm_tool_defs').all()).toEqual([

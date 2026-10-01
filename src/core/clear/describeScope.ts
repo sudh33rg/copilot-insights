@@ -29,7 +29,7 @@ export function describeScope(
   })();
   const detail = destructive
     ? `${REASSURE} Deleted sessions will not be re-imported.`
-    : `${REASSURE} Tokens, credits, models and file paths are kept; prompts, responses, titles and tool arguments are removed.`;
+    : `${REASSURE} Tokens, credits, models and file paths are kept; prompts, responses, titles, tool arguments/results, context values, debug artifacts, notes and tags are removed. Bookmarks are kept.`;
   return {
     title,
     detail,

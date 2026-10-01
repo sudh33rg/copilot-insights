@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { SessionDetail } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
-import { formatCredits, formatInt } from '../ui/format';
+import { formatCredits, formatDuration, formatInt } from '../ui/format';
 import { Measure } from '../ui/Measure';
 
 const int = (value: number | string) => formatInt(Number(value));
@@ -48,6 +48,10 @@ export function CompareView() {
   return (
     <section className="card" aria-label="Compare sessions">
       <h3>Compare sessions</h3>
+      <p className="muted">
+        Choose sessions with comparable tasks. Differences describe recorded evidence; they do not establish a
+        model quality ranking.
+      </p>
       {list.isPending && <p className="muted">Loading session choices…</p>}
       {list.isError && <p role="alert">Could not load session choices: {list.error.message}</p>}
       {ready && pair.isPending && <p className="muted">Loading comparison…</p>}
@@ -85,6 +89,64 @@ function ComparisonTable({ a, b }: { a: SessionDetail; b: SessionDetail }) {
         </thead>
         <tbody>
           {row('Workspace', (s) => s.workspace)}
+          {row('Initial prompt', (s) => (
+            <pre className="text compare-prompt">
+              {s.turns.find((t) => !t.systemInitiated)?.userText ?? 'Not recorded or explicitly cleared'}
+            </pre>
+          ))}
+          {row('Models', (s) => [...new Set(s.turns.map((t) => t.model ?? 'Unknown'))].join(', '))}
+          {row('Active time', (s) => (
+            <Measure
+              measure={{
+                value: s.activeMs,
+                provenance: { kind: 'derived', source: 'sum of recorded turn elapsed times' },
+              }}
+              format={(value) => formatDuration(Number(value))}
+            />
+          ))}
+          {row(
+            'Tools',
+            (s) =>
+              [...new Set(s.turns.flatMap((t) => t.toolCalls.map((c) => c.name)))].join(', ') ||
+              'No recorded calls',
+          )}
+          {row('Context references', (s) => (
+            <ul className="files">
+              {[...new Set(s.turns.flatMap((t) => t.fileEvents.map((f) => f.path)))].map((path) => (
+                <li key={path}>
+                  <code>{path}</code>
+                </li>
+              ))}
+            </ul>
+          ))}
+          {row('Context payloads', (s) => (
+            <>
+              {s.turns.flatMap((t) =>
+                (t.contextItems ?? []).map((item, i) => (
+                  <details key={`${t.index}-${i}`}>
+                    <summary>
+                      Turn {t.index} · {item.name}
+                    </summary>
+                    <pre className="text">{item.content}</pre>
+                  </details>
+                )),
+              )}
+              {s.promptArtifacts?.map((item, i) => (
+                <details key={`artifact-${i}`}>
+                  <summary>{item.name}</summary>
+                  <pre className="text">{item.content}</pre>
+                </details>
+              ))}
+            </>
+          ))}
+          {row('Final response', (s) => (
+            <details>
+              <summary>Inspect recorded response</summary>
+              <pre className="text compare-prompt">
+                {s.turns.at(-1)?.assistantText ?? 'Not recorded or explicitly cleared'}
+              </pre>
+            </details>
+          ))}
           {row('Turns', (s) => formatInt(s.turns.length))}
           {row('Input tokens', (s) => (
             <Measure measure={s.inputTokens} format={int} />

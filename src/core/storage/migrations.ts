@@ -269,4 +269,20 @@ export const MIGRATIONS: readonly string[] = [
     tool_defs_chars INTEGER
   );
   `,
+  `
+  ALTER TABLE turns ADD COLUMN context_items TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE tool_calls ADD COLUMN output TEXT;
+  ALTER TABLE llm_tool_defs ADD COLUMN definition TEXT;
+  ALTER TABLE llm_prompt_files ADD COLUMN content TEXT;
+  ALTER TABLE llm_prompt_files ADD COLUMN source TEXT;
+  CREATE TABLE session_annotations (
+    session_id TEXT PRIMARY KEY,
+    bookmarked INTEGER NOT NULL DEFAULT 0,
+    note TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '[]'
+  );
+  CREATE TABLE saved_session_views (
+    id TEXT PRIMARY KEY, label TEXT NOT NULL, filters TEXT NOT NULL
+  );
+  `,
 ];

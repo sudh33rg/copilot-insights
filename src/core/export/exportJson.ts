@@ -26,8 +26,10 @@ export function exportIndex(database: Pick<Database, 'db'>, now: number): Export
       return [
         {
           ...session,
+          promptArtifacts: [],
           turns: session.turns.map((turn) => ({
             ...turn,
+            contextItems: [],
             toolCalls: turn.toolCalls.map(({ name, status, origin }) => ({ name, status, origin })),
           })),
         },

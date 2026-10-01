@@ -69,6 +69,19 @@ describe('AnalyticsView', () => {
     ).toBeVisible();
   });
 
+  it('switches to token activity and keeps day drilldown accessible', async () => {
+    view();
+    await screen.findByRole('table', { name: 'Usage by day' });
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Metric' }), 'inputTokens');
+    expect(
+      screen.getByRole('img', {
+        name: 'Input tokens per day over the last 30 days; highest 2,500 tokens on 2026-09-21.',
+      }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '2026-09-21 · 2,500' }));
+    expect(await screen.findByRole('table', { name: 'Sessions on 2026-09-21' })).toBeInTheDocument();
+  });
+
   it('opens the selected day from an accessible chart control', async () => {
     view();
     await userEvent.click(await screen.findByRole('button', { name: '2026-09-21 · 2.5' }));

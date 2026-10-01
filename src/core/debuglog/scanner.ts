@@ -1,10 +1,12 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { redactDeep, redactSecrets } from '../privacy/redact';
+import { isRecord } from '../json';
+import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileFingerprint, safeReaddir } from '../ingest/scanner';
 import type { StorageRoot } from '../ingest/roots';
 import type { TombstoneKind } from '../ingest/types';
 import { parseDebugLog } from './parseDebugLog';
-import { parsePromptFileChars, parseToolDefs } from './promptFiles';
+import { fileContent, parsePromptFileChars, parseToolDefs } from './promptFiles';
 import type { DebugSessionLog } from './types';
 
 export interface DebugFile {
@@ -75,6 +77,10 @@ export function scanDebugLogs(input: DebugScanInput): DebugScanOutput {
     try {
       const log = parseDebugLog(sessionId, readFileSync(file, 'utf8'));
       attachPromptFileSizes(log, dirname(file));
+      if (input.tombstones[sessionId] === 'content-cleared') {
+        log.systemPromptContent = null;
+        log.toolDefinitions = [];
+      }
       results.push({ file, fingerprint, log });
       stats.parsed++;
     } catch (error) {
@@ -86,13 +92,16 @@ export function scanDebugLogs(input: DebugScanInput): DebugScanOutput {
 
 const MAX_PROMPT_FILE_BYTES = 5 * 1024 * 1024;
 
-/** Measures the tool and system-prompt files next to `main.jsonl`; only sizes and tool names are kept. */
+/** Measures the tool and system-prompt files next to `main.jsonl`; retains redacted supported payloads alongside sizes and tool names. */
 function attachPromptFileSizes(log: DebugSessionLog, dir: string): void {
   const read = (name: string | null): string | null => {
     if (name === null) return null;
     try {
       const path = join(dir, name);
-      return statSync(path).size > MAX_PROMPT_FILE_BYTES ? null : readFileSync(path, 'utf8');
+      const stat = lstatSync(path);
+      return !stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_PROMPT_FILE_BYTES
+        ? null
+        : readFileSync(path, 'utf8');
     } catch {
       return null;
     }
@@ -101,4 +110,23 @@ function attachPromptFileSizes(log: DebugSessionLog, dir: string): void {
   log.toolDefs = tools === null ? null : parseToolDefs(tools);
   const system = read(log.systemPromptFile);
   log.systemPromptChars = system === null ? null : parsePromptFileChars(system);
+  const content = system === null ? null : fileContent(system);
+  log.systemPromptContent = typeof content === 'string' ? redactSecrets(content) : null;
+  log.toolDefinitions = [];
+  if (tools !== null) {
+    const raw = fileContent(tools);
+    try {
+      const definitions: unknown = typeof raw === 'string' ? JSON.parse(raw) : null;
+      if (Array.isArray(definitions))
+        log.toolDefinitions = definitions.flatMap((entry: unknown) => {
+          if (!isRecord(entry)) return [];
+          const nested = isRecord(entry.function) ? entry.function : entry;
+          return typeof nested.name === 'string'
+            ? [{ name: nested.name, content: JSON.stringify(redactDeep(entry), null, 2) }]
+            : [];
+        });
+    } catch {
+      /* Unsupported artifact remains unavailable. */
+    }
+  }
 }

@@ -92,7 +92,7 @@ describe('scanDebugLogs', () => {
       return scanDebugLogs(input).results[0]?.log;
     }
 
-    it('reads tool definition and system prompt sizes next to main.jsonl, and never their text', () => {
+    it('reads tool definition sizes and retains recorded artifacts for full local capture', () => {
       const log = withFiles(
         {
           'tools_0.json': JSON.stringify({
@@ -104,7 +104,8 @@ describe('scanDebugLogs', () => {
       );
       expect(log?.toolDefs?.map((def) => def.name)).toEqual(['read_file', 'grep_search']);
       expect(log?.systemPromptChars).toBe('SECRET-system-prompt'.length);
-      expect(JSON.stringify(log)).not.toContain('SECRET');
+      expect(log?.systemPromptContent).toBe('SECRET-system-prompt');
+      expect(log?.toolDefinitions?.[0]?.content).toContain('SECRET-description');
     });
 
     it('leaves sizes null when the named files are missing or unreadable', () => {

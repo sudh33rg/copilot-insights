@@ -31,4 +31,6 @@ export interface DebugSessionLog {
   toolDefs: { name: string; chars: number }[] | null;
   /** Filled in by the scanner from `systemPromptFile`: its character count, never its text. */
   systemPromptChars: number | null;
+  systemPromptContent?: string | null;
+  toolDefinitions?: { name: string; content: string }[];
 }

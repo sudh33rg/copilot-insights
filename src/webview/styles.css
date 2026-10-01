@@ -842,3 +842,128 @@ meter::-webkit-meter-optimum-value {
     padding: 10px;
   }
 }
+
+/* Investigation workspace: readable conversation with an adjacent selected-event inspector. */
+.view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 24px 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.trace-layout--inspecting {
+  grid-template-columns: 140px minmax(0, 1fr) minmax(260px, 340px);
+}
+.event-inspector {
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  align-self: start;
+  min-width: 0;
+}
+.event-inspector .section-heading {
+  margin-top: 0;
+}
+.event-inspector .text {
+  max-height: 380px;
+  overflow: auto;
+}
+.inspect-action {
+  float: right;
+  margin: 8px;
+  font-size: 11px;
+}
+.context-inspector .disclosure {
+  margin: 10px 0;
+}
+.context-inspector .text {
+  max-height: 480px;
+  overflow: auto;
+}
+.field {
+  display: block;
+  margin: 16px 0;
+}
+.field textarea,
+.field input:not([type='checkbox']) {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+textarea {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  font: inherit;
+  resize: vertical;
+}
+.token-bars {
+  display: block;
+  width: 200px;
+  height: 24px;
+}
+.input-bar {
+  fill: var(--vscode-charts-blue, var(--accent));
+}
+.output-bar {
+  fill: var(--vscode-charts-green, #73bda8);
+}
+.table td small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.session-preview {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 12px;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+}
+.investigation-filters {
+  padding: 12px 0;
+}
+.investigation-filters label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.investigation-filters input:not([type='checkbox']) {
+  display: block;
+  max-width: 170px;
+  margin-top: 4px;
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 1200px) {
+  .trace-layout--inspecting {
+    grid-template-columns: 100px minmax(0, 1fr);
+  }
+  .event-inspector {
+    grid-column: 1 / -1;
+    position: fixed;
+    z-index: 30;
+    top: 0;
+    right: 0;
+    width: min(420px, 100vw);
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: -12px 0 40px rgb(0 0 0 / 20%);
+  }
+}
+@media (max-width: 900px) {
+  .trace-layout--inspecting {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .event-inspector {
+    grid-column: auto;
+  }
+}

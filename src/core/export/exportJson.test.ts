@@ -1,3 +1,4 @@
+import { SessionLibrary } from '../storage/sessionLibrary';
 import { describe, expect, it } from 'vitest';
 import { seededStore } from '../../../test/fixtures/sessions';
 import { exportIndex } from './exportJson';
@@ -21,5 +22,28 @@ describe('exportIndex', () => {
     const { database } = seededStore();
     database.db.exec('DELETE FROM sessions');
     expect(exportIndex(database, 1).sessions).toEqual([]);
+  });
+  it('exports redacted annotations but omits newly captured result and context payloads', () => {
+    const { database } = seededStore();
+    new SessionLibrary(database).save('fx-auto-1', {
+      bookmarked: true,
+      note: 'Useful approach',
+      tags: ['reuse'],
+    });
+    database.db
+      .prepare('UPDATE tool_calls SET output = ? WHERE session_id = ?')
+      .run('historical tool output', 'fx-auto-1');
+    database.db
+      .prepare('UPDATE turns SET context_items = ? WHERE session_id = ?')
+      .run(
+        JSON.stringify([{ kind: 'file', name: 'file.ts', content: 'historical context', source: 'fixture' }]),
+        'fx-auto-1',
+      );
+    database.db
+      .prepare('UPDATE llm_prompt_files SET content = ? WHERE session_id = ?')
+      .run('historical instruction', 'fx-auto-1');
+    const document = exportIndex(database, 1);
+    expect(document.sessions.find((s) => s.id === 'fx-auto-1')?.annotation?.note).toBe('Useful approach');
+    expect(JSON.stringify(document)).not.toMatch(/historical (tool output|context|instruction)/);
   });
 });

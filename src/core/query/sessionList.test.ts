@@ -75,7 +75,7 @@ describe('listSessions', () => {
     const { database } = seededStore();
     const total = (q: string) => listSessions(database, { ...page, q }).total;
     expect(total('%')).toBe(0);
-    expect(total('_')).toBe(0);
+    expect(total('_')).toBe(1); // Literal underscore matches the recorded tool names, not every session.
     expect(total("'; DROP TABLE sessions; --")).toBe(0);
     expect(total('\\')).toBe(0);
     expect(listSessions(database, page).total).toBe(2);

@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import type { SessionRow } from '../../shared/dto';
+import { useMemo, useState } from 'react';
+import type { SavedSessionView, SessionRow } from '../../shared/dto';
+import { SavedViews } from './SavedViews';
 import { useRpc } from '../rpcContext';
 import { Button } from '../ui/Button';
 import { DataTable, type Column } from '../ui/DataTable';
@@ -25,7 +26,11 @@ const columns: Column<SessionRow>[] = [
     header: 'Session',
     cell: (row) => (
       <>
-        <strong>{row.title ?? row.outcome ?? 'Untitled session'}</strong>
+        <strong>
+          {row.bookmarked ? '★ ' : ''}
+          {row.title ?? row.outcome ?? 'Untitled session'}
+        </strong>
+        {row.preview && <p className="session-preview">{row.preview}</p>}
         <div className="muted">
           {row.workspace}
           {row.title !== null && row.outcome !== null ? ` · ${row.outcome}` : ''}
@@ -68,29 +73,69 @@ const columns: Column<SessionRow>[] = [
 export function SessionsView({
   onOpen,
   debounceMs = 250,
+  initialFilters = {},
 }: {
   onOpen: (id: string) => void;
   debounceMs?: number;
+  initialFilters?: SavedSessionView['filters'];
 }) {
   const rpc = useRpc();
-  const [text, setText] = useState('');
-  const [failedOnly, setFailedOnly] = useState(false);
-  const [workspace, setWorkspace] = useState('');
-  const [fromDay, setFromDay] = useState('');
-  const [toDay, setToDay] = useState('');
+  const [text, setText] = useState(initialFilters.q ?? '');
+  const [failedOnly, setFailedOnly] = useState(initialFilters.failedOnly ?? false);
+  const [workspace, setWorkspace] = useState(initialFilters.workspace ?? '');
+  const [fromDay, setFromDay] = useState(initialFilters.fromDay ?? '');
+  const [toDay, setToDay] = useState(initialFilters.toDay ?? '');
+  const [model, setModel] = useState(initialFilters.model ?? '');
+  const [tool, setTool] = useState(initialFilters.tool ?? '');
+  const [file, setFile] = useState(initialFilters.file ?? '');
+  const [state, setState] = useState<SessionRow['state'] | ''>(initialFilters.state ?? '');
+  const [sort, setSort] = useState<NonNullable<SavedSessionView['filters']['sort']>>(
+    initialFilters.sort ?? 'newest',
+  );
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(initialFilters.bookmarkedOnly ?? false);
+  const rawExtras = useMemo(() => ({ model, tool, file }), [model, tool, file]);
+  const extras = useDebounced(rawExtras, debounceMs);
   const q = useDebounced(text.trim(), debounceMs);
   const workspaceFilter = useDebounced(workspace.trim(), debounceMs);
-  const filtered = q !== '' || failedOnly || workspaceFilter !== '' || fromDay !== '' || toDay !== '';
+  const filtered =
+    q !== '' ||
+    failedOnly ||
+    workspaceFilter !== '' ||
+    fromDay !== '' ||
+    toDay !== '' ||
+    model !== '' ||
+    tool !== '' ||
+    file !== '' ||
+    state !== '' ||
+    bookmarkedOnly ||
+    sort !== 'newest';
   const invalidRange = fromDay !== '' && toDay !== '' && fromDay > toDay;
 
   const list = useInfiniteQuery({
-    queryKey: ['sessions', q, failedOnly, workspaceFilter, fromDay, toDay],
+    queryKey: [
+      'sessions',
+      q,
+      failedOnly,
+      workspaceFilter,
+      fromDay,
+      toDay,
+      extras,
+      state,
+      sort,
+      bookmarkedOnly,
+    ],
     initialPageParam: 0,
     enabled: !invalidRange,
     queryFn: ({ pageParam }) =>
       rpc.call('listSessions', {
         offset: pageParam,
         limit: PAGE_SIZE,
+        ...(extras.model ? { model: extras.model } : {}),
+        ...(extras.tool ? { tool: extras.tool } : {}),
+        ...(extras.file ? { file: extras.file } : {}),
+        ...(state ? { state } : {}),
+        ...(sort !== 'newest' ? { sort } : {}),
+        ...(bookmarkedOnly ? { bookmarkedOnly: true } : {}),
         ...(q !== '' ? { q } : {}),
         ...(failedOnly ? { failedOnly: true } : {}),
         ...(workspaceFilter !== '' ? { workspace: workspaceFilter } : {}),
@@ -116,7 +161,8 @@ export function SessionsView({
         <input
           type="search"
           aria-label="Search sessions"
-          placeholder="Search title, workspace, prompt or model"
+          placeholder="Search prompts, responses, tools, results or files"
+          maxLength={200}
           value={text}
           onChange={(event) => {
             setText(event.target.value);
@@ -184,11 +230,138 @@ export function SessionsView({
             setWorkspace('');
             setFromDay('');
             setToDay('');
+            setModel('');
+            setTool('');
+            setFile('');
+            setState('');
+            setSort(initialFilters.sort ?? 'newest');
+            setBookmarkedOnly(false);
           }}
         >
           Reset filters
         </Button>
       )}
+      <div className="toolbar investigation-filters">
+        <label>
+          Model{' '}
+          <input
+            value={model}
+            maxLength={200}
+            onChange={(e) => {
+              setModel(e.target.value);
+            }}
+            placeholder="Model contains…"
+          />
+        </label>
+        <label>
+          Tool{' '}
+          <input
+            value={tool}
+            maxLength={200}
+            onChange={(e) => {
+              setTool(e.target.value);
+            }}
+            placeholder="Exact tool name"
+          />
+        </label>
+        <label>
+          File{' '}
+          <input
+            value={file}
+            maxLength={500}
+            onChange={(e) => {
+              setFile(e.target.value);
+            }}
+            placeholder="Path contains…"
+          />
+        </label>
+        <label>
+          Turn status{' '}
+          <select
+            value={state}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (
+                value === '' ||
+                value === 'complete' ||
+                value === 'failed' ||
+                value === 'cancelled' ||
+                value === 'pending' ||
+                value === 'unknown'
+              )
+                setState(value);
+            }}
+          >
+            <option value="">Any status</option>
+            {Object.entries(STATE_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Sort{' '}
+          <select
+            value={sort}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (
+                value === 'newest' ||
+                value === 'oldest' ||
+                value === 'tokens' ||
+                value === 'credits' ||
+                value === 'duration'
+              )
+                setSort(value);
+            }}
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="tokens">Most input + output tokens</option>
+            <option value="credits">Most credits</option>
+            <option value="duration">Longest active time</option>
+          </select>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={bookmarkedOnly}
+            onChange={(e) => {
+              setBookmarkedOnly(e.target.checked);
+            }}
+          />{' '}
+          Bookmarked only
+        </label>
+      </div>
+      <SavedViews
+        filters={{
+          q: text,
+          failedOnly,
+          workspace,
+          fromDay: fromDay || undefined,
+          toDay: toDay || undefined,
+          model,
+          tool,
+          file,
+          state: state || undefined,
+          sort,
+          bookmarkedOnly,
+        }}
+        onApply={(filters) => {
+          setText(filters.q ?? '');
+          setFailedOnly(filters.failedOnly ?? false);
+          setWorkspace(filters.workspace ?? '');
+          setFromDay(filters.fromDay ?? '');
+          setToDay(filters.toDay ?? '');
+          setModel(filters.model ?? '');
+          setTool(filters.tool ?? '');
+          setFile(filters.file ?? '');
+          setState(filters.state ?? '');
+          setSort(filters.sort ?? 'newest');
+          setBookmarkedOnly(filters.bookmarkedOnly ?? false);
+        }}
+      />
       {invalidRange && <p role="alert">The start date must be on or before the end date.</p>}
       {list.isPending && !invalidRange && <p className="muted">Loading…</p>}
       {list.isError && <p role="alert">Could not load sessions: {list.error.message}</p>}

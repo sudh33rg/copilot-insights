@@ -106,6 +106,7 @@ const TURN_COLUMNS = [
   'compactions',
   'error_code',
   'error_message',
+  'context_items',
 ] as const;
 const TOOL_COLUMNS = [
   'session_id',
@@ -117,6 +118,7 @@ const TOOL_COLUMNS = [
   'origin',
   'status',
   'command_hash',
+  'output',
 ] as const;
 const FILE_COLUMNS = ['session_id', 'turn_idx', 'seq', 'path', 'action', 'source'] as const;
 const FINGERPRINT_COLUMNS = ['session_id', 'turn_idx', 'path', 'hashes'] as const;
@@ -166,6 +168,7 @@ export class SessionStore {
             origin: call.origin,
             status: call.status,
             command_hash: call.commandHash,
+            output: call.output ?? null,
           };
           this.statements.insertTool.run(row);
         }
@@ -268,6 +271,9 @@ export class SessionStore {
   }
 
   deleteSessions(ids: readonly string[]): void {
+    this.database.db
+      .prepare(`DELETE FROM session_annotations WHERE session_id IN (${IDS})`)
+      .run({ ids: JSON.stringify(ids) });
     this.database.db.prepare(`DELETE FROM sessions WHERE id IN (${IDS})`).run({ ids: JSON.stringify(ids) });
   }
 
@@ -277,9 +283,14 @@ export class SessionStore {
     const params = { ids: JSON.stringify(ids) };
     this.database.transaction(() => {
       db.prepare(
-        `UPDATE turns SET user_text = NULL, assistant_text = NULL, error_message = NULL WHERE session_id IN (${IDS})`,
+        `UPDATE turns SET user_text = NULL, assistant_text = NULL, error_message = NULL, context_items = '[]' WHERE session_id IN (${IDS})`,
       ).run(params);
-      db.prepare(`UPDATE tool_calls SET args = NULL, command_hash = NULL WHERE session_id IN (${IDS})`).run(
+      db.prepare(
+        `UPDATE tool_calls SET args = NULL, output = NULL, command_hash = NULL WHERE session_id IN (${IDS})`,
+      ).run(params);
+      db.prepare(`UPDATE llm_prompt_files SET content = NULL WHERE session_id IN (${IDS})`).run(params);
+      db.prepare(`UPDATE llm_tool_defs SET definition = NULL WHERE session_id IN (${IDS})`).run(params);
+      db.prepare(`UPDATE session_annotations SET note = '', tags = '[]' WHERE session_id IN (${IDS})`).run(
         params,
       );
       db.prepare(`DELETE FROM edit_fingerprints WHERE session_id IN (${IDS})`).run(params);
@@ -311,9 +322,11 @@ export class SessionStore {
     this.database.transaction(() => {
       const { db } = this.database;
       db.exec(
-        `UPDATE turns SET ${cut('user_text', SUMMARY_LIMITS.user)}, ${cut('assistant_text', SUMMARY_LIMITS.assistant)}, ${cut('error_message', SUMMARY_LIMITS.error)} WHERE session_id IN (${full})`,
+        `UPDATE turns SET context_items = '[]', ${cut('user_text', SUMMARY_LIMITS.user)}, ${cut('assistant_text', SUMMARY_LIMITS.assistant)}, ${cut('error_message', SUMMARY_LIMITS.error)} WHERE session_id IN (${full})`,
       );
-      db.exec(`UPDATE tool_calls SET args = NULL WHERE session_id IN (${full})`);
+      db.exec(`UPDATE tool_calls SET args = NULL, output = NULL WHERE session_id IN (${full})`);
+      db.exec(`UPDATE llm_prompt_files SET content = NULL WHERE session_id IN (${full})`);
+      db.exec(`UPDATE llm_tool_defs SET definition = NULL WHERE session_id IN (${full})`);
       db.exec(`DELETE FROM session_analysis WHERE session_id IN (${full})`);
       db.exec(
         `UPDATE sessions SET ${cut('title', SUMMARY_LIMITS.title)}, capture_level = 'summaries' WHERE capture_level = 'full'`,
@@ -331,7 +344,7 @@ export class SessionStore {
     db.prepare(
       'DELETE FROM debug_sessions WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)',
     ).run(params);
-    for (const table of ['llm_tool_defs', 'llm_prompt_files']) {
+    for (const table of ['llm_tool_defs', 'llm_prompt_files', 'session_annotations']) {
       db.prepare(`DELETE FROM ${table} WHERE session_id IN (SELECT id FROM sessions WHERE day < :day)`).run(
         params,
       );
@@ -418,6 +431,7 @@ function turnRow(sessionId: string, turn: NormalizedTurn): Row<typeof TURN_COLUM
     compactions: JSON.stringify(turn.compactions),
     error_code: turn.errorCode,
     error_message: turn.errorMessage,
+    context_items: JSON.stringify(turn.contextItems ?? []),
   };
 }
 

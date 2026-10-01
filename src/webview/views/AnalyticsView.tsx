@@ -6,8 +6,9 @@ import { DataTable, type Column } from '../ui/DataTable';
 import { formatCredits, formatInt } from '../ui/format';
 import { Measure } from '../ui/Measure';
 import { Button } from '../ui/Button';
-import { CompareView } from './CompareView';
 
+type ChartMetric = 'credits' | 'inputTokens' | 'outputTokens';
+const METRIC_LABELS = { credits: 'Credits', inputTokens: 'Input tokens', outputTokens: 'Output tokens' };
 const RANGES = [7, 30, 90] as const;
 const int = (value: number | string) => formatInt(Number(value));
 const credits = (value: number | string) => formatCredits(Number(value));
@@ -64,6 +65,7 @@ const breakdownColumns = (label: string): readonly Column<BreakdownRow>[] => [
 export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) => void }) {
   const rpc = useRpc();
   const [range, setRange] = useState<(typeof RANGES)[number]>(30);
+  const [metric, setMetric] = useState<ChartMetric>('credits');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const trends = useQuery({
     queryKey: ['trends', range],
@@ -98,13 +100,26 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
             ))}
           </select>
         </label>
+        <label>
+          Metric{' '}
+          <select
+            value={metric}
+            onChange={(event) => {
+              setMetric(event.target.value as ChartMetric);
+            }}
+          >
+            <option value="credits">Credits</option>
+            <option value="inputTokens">Input tokens</option>
+            <option value="outputTokens">Output tokens</option>
+          </select>
+        </label>
       </div>
       {trends.isPending && <p className="muted">Loading…</p>}
       {trends.isError && <p role="alert">Could not load trends: {trends.error.message}</p>}
       {trends.data && used.length === 0 && <p className="muted">No usage in this range.</p>}
       {trends.data && used.length > 0 && (
         <>
-          <CreditsChart days={days} range={range} onSelectDay={setSelectedDay} />
+          <CreditsChart metric={metric} days={days} range={range} onSelectDay={setSelectedDay} />
           <p className="muted">
             {first !== undefined && last !== undefined && <span>{`From ${first} to ${last}.`} </span>}
             <span>Days without usage are not listed. Select a day to see its sessions.</span>
@@ -144,23 +159,26 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
           )}
         </>
       )}
-      <CompareView />
     </section>
   );
 }
 
 /** Dependency-free bar chart; the table below carries the same numbers for anyone who cannot see it. */
 function CreditsChart({
+  metric,
   days,
   range,
   onSelectDay,
 }: {
+  metric: ChartMetric;
   days: readonly TrendDay[];
   range: number;
   onSelectDay: (day: string) => void;
 }) {
+  const unit = metric === 'credits' ? 'credits' : 'tokens';
+  const formatValue = metric === 'credits' ? formatCredits : formatInt;
   const known = days.flatMap((entry) =>
-    entry.credits.value === null ? [] : [{ day: entry.day, value: entry.credits.value }],
+    entry[metric].value === null ? [] : [{ day: entry.day, value: entry[metric].value }],
   );
   const peak = known.reduce(
     (best, entry) => (entry.value > best.value ? entry : best),
@@ -172,15 +190,17 @@ function CreditsChart({
   const plotHeight = 160;
   const left = 48;
   const slot = (width - left - 16) / days.length;
-  const label = `Credits per day over the last ${String(range)} days; highest ${formatCredits(peak.value)} credits on ${peak.day}.`;
+  const label = `${METRIC_LABELS[metric]} per day over the last ${String(range)} days; highest ${formatValue(peak.value)} ${unit} on ${peak.day}.`;
   return (
-    <section className="card chart-card" aria-label="Credit activity">
+    <section className="card chart-card" aria-label={`${METRIC_LABELS[metric]} activity`}>
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Recorded Copilot credits</p>
+          <p className="eyebrow">Recorded Copilot ${unit}</p>
           <h3>Daily activity</h3>
         </div>
-        <span className="muted">Peak {formatCredits(peak.value)} credits</span>
+        <span className="muted">
+          Peak {formatValue(peak.value)} {unit}
+        </span>
       </div>
       <svg className="chart" viewBox={`0 0 ${String(width)} ${String(height)}`} role="img" aria-label={label}>
         {[0, 0.5, 1].map((share) => (
@@ -198,24 +218,24 @@ function CreditsChart({
               y={plotHeight + 16 - share * plotHeight}
               textAnchor="end"
             >
-              {formatCredits(peak.value * share)}
+              {formatValue(peak.value * share)}
             </text>
           </g>
         ))}
         {days.map((entry, index) =>
-          entry.credits.value === null ? null : (
+          entry[metric].value === null ? null : (
             <rect
               key={entry.day}
               x={left + index * slot + slot * 0.18}
               width={slot * 0.64}
-              y={plotHeight + 12 - (peak.value > 0 ? (entry.credits.value / peak.value) * plotHeight : 0)}
-              height={peak.value > 0 ? (entry.credits.value / peak.value) * plotHeight : 0}
+              y={plotHeight + 12 - (peak.value > 0 ? (entry[metric].value / peak.value) * plotHeight : 0)}
+              height={peak.value > 0 ? (entry[metric].value / peak.value) * plotHeight : 0}
               rx={3}
               onClick={() => {
                 onSelectDay(entry.day);
               }}
             >
-              <title>{`${entry.day}: ${formatCredits(entry.credits.value)} credits`}</title>
+              <title>{`${entry.day}: ${formatValue(entry[metric].value)} ${unit}`}</title>
             </rect>
           ),
         )}
@@ -227,7 +247,7 @@ function CreditsChart({
         </text>
       </svg>
       <p className="muted">{label}</p>
-      <p className="muted">Gaps can mean no recorded credits. Unavailable usage is not treated as zero.</p>
+      <p className="muted">Gaps can mean no recorded usage. Unavailable usage is not treated as zero.</p>
       <div className="chart-days" aria-label="Explore active days">
         {known
           .filter((entry) => entry.value > 0)
@@ -238,7 +258,7 @@ function CreditsChart({
                 onSelectDay(entry.day);
               }}
             >
-              {entry.day} · {formatCredits(entry.value)}
+              {entry.day} · {formatValue(entry.value)}
             </Button>
           ))}
       </div>

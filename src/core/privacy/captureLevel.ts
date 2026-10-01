@@ -25,6 +25,10 @@ export function applyCaptureLevel(session: NormalizedSession, level: CaptureLeve
 function captureTurn(turn: NormalizedTurn, level: CaptureLevel): NormalizedTurn {
   return {
     ...turn,
+    contextItems:
+      level === 'full'
+        ? (redactDeep(turn.contextItems ?? []) as NonNullable<NormalizedTurn['contextItems']>)
+        : [],
     userText: captureText(turn.userText, level, SUMMARY_LIMITS.user),
     assistantText: captureText(turn.assistantText, level, SUMMARY_LIMITS.assistant),
     errorMessage: captureText(turn.errorMessage, level, SUMMARY_LIMITS.error),
@@ -35,6 +39,7 @@ function captureTurn(turn: NormalizedTurn, level: CaptureLevel): NormalizedTurn 
       ...call,
       args:
         level === 'full' && call.args !== null ? (redactDeep(call.args) as Record<string, unknown>) : null,
+      output: level === 'full' && call.output != null ? redactPayload(call.output) : null,
       commandHash: level === 'metrics' ? null : call.commandHash,
     })),
   };
@@ -50,4 +55,13 @@ function captureText(value: string | null, level: CaptureLevel, limit: number): 
 export function truncate(value: string, limit: number): string {
   const oneLine = value.replace(/\s+/g, ' ').trim();
   return oneLine.length <= limit ? oneLine : `${oneLine.slice(0, limit - 1).trimEnd()}…`;
+}
+
+/** Structured payloads also redact sensitive keys whose values are too short for text patterns. */
+export function redactPayload(value: string): string {
+  try {
+    return JSON.stringify(redactDeep(JSON.parse(value) as unknown), null, 2);
+  } catch {
+    return redactSecrets(value);
+  }
 }

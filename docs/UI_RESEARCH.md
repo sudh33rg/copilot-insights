@@ -174,40 +174,30 @@ through telemetry, select a file-read event, inspect its recorded arguments/resu
 items were referenced versus captured, follow a token spike to its turn, and return to the same filtered
 session list. All available text remains captured regardless of which panels are expanded.
 
-## Implemented screens
+## Implemented screens (2026-10-01)
 
-- **Dashboard shell:** constrained reading width, theme-aware surfaces, section descriptions, clearer
-  navigation, responsive layouts, keyboard focus and smaller provenance badges.
-- **Overview:** prominent sessions/turns, separate today/month cards, quieter telemetry, roomier tables.
-- **Sessions:** search, failures, exact workspace and date filters, reset, range validation, pagination.
-- **Session explorer:** turn navigation, search across conversation/model/tool/file/error-code fields,
-  failure filtering, readable prompt/response panels, expandable tool arguments, context/file source labels,
-  prompt composition meters, duration, retries, cache, first-token latency and pre-compaction context.
-- **Analytics:** labeled axes/grid, peak usage, day drill-down controls, unavailable-data explanation.
+- Theme-aware dashboard shell and responsive session investigation layout, with turn navigation and a tool inspector.
+- Session panels: Conversation, Events, Context, Usage, Model calls and Notes. Context distinguishes recorded file references from captured values and latest debug artifacts.
+- Tool inspector: call IDs, source, recorded status, redacted arguments and available results. Turn-level files are labeled separately from call attribution.
+- Usage: input/output/cache, compactions and measured duration per turn, with links back to the conversation. Analytics switches among credits, input tokens and output tokens, with day drilldowns.
+- Tools: scoped counts by workspace/model/date, recorded completion labels, grouped turn errors and session drilldowns.
+- Sessions: search across prompts/responses/errors/context values/tool payloads/file paths, model/tool/file/status filters, usage sorting, bookmarks and saved views. Returning from detail preserves the session list and scroll position.
+- Compare: initial prompts, models, measured tokens/time/credits, tools, context references and final responses.
+- Local bookmarks, tags and notes survive rescans. Content clearing removes notes/tags, context values, results and debug artifacts; session deletion removes annotations. Portable exports include redacted annotations but omit tool/context/debug payloads. Clearing everything also removes saved views.
 
-## Further options and their data requirements
+## Coverage and remaining data requirements
 
-| Screen / capability                                            | Data needed before implementation                                                                                                             |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Model-call waterfall with duration bars                        | Reliable start/end timestamps and turn joins for every model round and tool call; aggregate turn timing is insufficient                       |
-| Context inspector for system instructions and tool definitions | Parser and storage support for redacted debug prompt artifacts, with clearing coverage; currently only composition telemetry is exposed       |
-| Tool output viewer                                             | Parser and storage support for redacted outputs, with explicit truncation metadata for source limits; currently tool outputs are not retained |
-| Session comparison with prompt/context diffs                   | Full-capture sessions with comparable tasks; metrics-only sessions cannot support text diffs                                                  |
-| Failure investigation grouped by error/tool/model              | Existing error codes can support grouping; attributing a turn failure to a specific tool requires additional evidence                         |
-| Bookmarks and local annotations                                | Local annotation storage, export and clearing semantics                                                                                       |
-| Saved filter views                                             | Local preferences with clear workspace/date/model scopes                                                                                      |
-| Evaluation or prompt playground                                | Outside the current passive observer product; replay would require provider calls and authorization                                           |
+Full local capture is unconditional; no capture-level setting exists. Ingest version 8 rereads retained
+sources, while clearing/deletion tombstones prevent restoration. All supported payloads are redacted before
+storage and validated/redacted again for inspection. Unsupported, absent or oversized debug artifacts remain
+unavailable. The existing debug-artifact parser limit is 5 MB per file.
 
-## Capture limitations
+Recorded model calls have real start times and measured durations, with matched turn links. Internal and
+unmatched calls stay separate. A model-to-tool waterfall or agent graph still needs trustworthy tool timing
+and parent relationships. Latest recorded instruction/tool artifacts cannot be attributed to individual
+requests. Complete assembled prompts and historical file bytes cannot be inferred from reference paths.
 
-Full local capture is unconditional: complete redacted prompts, responses and tool arguments are kept.
-There is no capture-level setting. The scanner upgrades legacy summary indexes by rereading retained
-source files on the next scan; explicit content-clearing and deletion tombstones remain respected.
-Legacy capture metadata remains readable for old or explicitly cleared records. The query validates and
-redacts argument JSON again, and portable exports continue omitting arguments.
-
-Attached local file URI paths are recorded independently from tool-derived activity, with the source
-`context:attachment`. A recorded attachment is evidence of a reference, not proof of exact file content
-sent to the model. String/image contents and remote resources are ignored. No file contents or tool
-outputs are retained. Unknown tool status is displayed as “Status not recorded”. Prompt composition
-percentages are Copilot's reported shares, and missing usage is never presented as zero.
+Search uses SQLite literal matching over stored payloads; dedicated full-text indexing and highlighted
+matching-turn snippets remain follow-ups for large indexes. Comparisons describe recorded evidence rather
+than judging model quality. Replay, provider-backed evaluations and prompt playgrounds remain outside this
+passive local observer.

@@ -44,6 +44,12 @@ export const sessionListParams = z.object({
   toDay: dayString.optional(),
   workspace: z.string().max(500).optional(),
   failedOnly: z.boolean().optional(),
+  model: z.string().max(200).optional(),
+  tool: z.string().max(200).optional(),
+  file: z.string().max(500).optional(),
+  state: turnStateSchema.optional(),
+  bookmarkedOnly: z.boolean().optional(),
+  sort: z.enum(['newest', 'oldest', 'tokens', 'credits', 'duration']).optional(),
   offset: z.number().int().min(0),
   limit: z.number().int().min(1).max(100),
 });
@@ -56,6 +62,9 @@ export const sessionRowSchema = z.object({
   workspace: z.string(),
   title: z.string().nullable(),
   outcome: z.string().nullable(),
+  preview: z.string().nullable().optional(),
+  bookmarked: z.boolean().optional(),
+  activeMs: measuredNumber.optional(),
   routing: routingSchema,
   state: turnStateSchema,
   turns: z.number(),
@@ -71,6 +80,25 @@ export type SessionList = z.infer<typeof sessionListSchema>;
 
 // ---- session detail ----
 export const sessionIdParams = z.object({ id: z.string().min(1).max(200) });
+
+export const annotationSchema = z.object({
+  bookmarked: z.boolean(),
+  note: z.string().max(8000),
+  tags: z.array(z.string().max(40)).max(20),
+});
+export const contextItemSchema = z.object({
+  kind: z.string(),
+  name: z.string(),
+  content: z.string(),
+  source: z.string(),
+});
+export const savedViewSchema = z.object({
+  id: z.string().min(1).max(100),
+  label: z.string().min(1).max(80),
+  filters: sessionListParams.omit({ offset: true, limit: true }),
+});
+export type SessionAnnotation = z.infer<typeof annotationSchema>;
+export type SavedSessionView = z.infer<typeof savedViewSchema>;
 
 /** Content fields are redacted and tool arguments are exposed only at full capture. */
 export const turnDetailSchema = z.object({
@@ -101,12 +129,15 @@ export const turnDetailSchema = z.object({
   /** Share (0–1) of the prompt each category took, as Copilot reported it. */
   promptComposition: z.array(z.object({ category: z.string(), label: z.string(), share: measuredNumber })),
   elapsedMs: measuredNumber,
+  contextItems: z.array(contextItemSchema).optional(),
   toolCalls: z.array(
     z.object({
       name: z.string(),
       status: z.string(),
       args: z.string().nullable().optional(),
       origin: z.string().optional(),
+      callId: z.string().nullable().optional(),
+      output: z.string().nullable().optional(),
     }),
   ),
   fileEvents: z.array(z.object({ path: z.string(), action: z.string(), source: z.string().optional() })),
@@ -286,7 +317,21 @@ export const autoAuditSchema = z.object({
 });
 export type AutoAudit = z.infer<typeof autoAuditSchema>;
 
+export const modelCallSchema = z.object({
+  id: z.string(),
+  turnIndex: z.number().nullable(),
+  startedAt: z.number(),
+  durationMs: measuredNumber,
+  model: z.string().nullable(),
+  role: z.string(),
+  inputTokens: measuredNumber,
+  outputTokens: measuredNumber,
+  cachedTokens: measuredNumber,
+});
 export const sessionDetailSchema = z.object({
+  annotation: annotationSchema.optional(),
+  modelCalls: z.array(modelCallSchema).optional(),
+  promptArtifacts: z.array(contextItemSchema).optional(),
   id: z.string(),
   workspace: z.string(),
   title: z.string().nullable(),
@@ -488,3 +533,18 @@ export const diagnosticsSchema = z.object({
   catalog: z.object({ models: z.number(), lastSeenAt: z.number().nullable() }),
 });
 export type Diagnostics = z.infer<typeof diagnosticsSchema>;
+
+export const toolAnalyticsSchema = z.object({
+  tools: z.array(
+    z.object({
+      name: z.string(),
+      calls: z.number(),
+      sessions: z.number(),
+      complete: z.number(),
+      incomplete: z.number(),
+      unknown: z.number(),
+    }),
+  ),
+  failures: z.array(z.object({ code: z.string().nullable(), turns: z.number(), sessions: z.number() })),
+});
+export type ToolAnalytics = z.infer<typeof toolAnalyticsSchema>;

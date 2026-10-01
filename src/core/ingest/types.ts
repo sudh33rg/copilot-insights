@@ -15,6 +15,7 @@ export interface ToolCall {
   status: 'complete' | 'incomplete' | 'unknown';
   /** Salted hash of the redacted, whitespace-collapsed command of a terminal tool call; null otherwise. */
   commandHash: string | null;
+  output?: string | null;
 }
 
 export interface FileEvent {
@@ -43,6 +44,7 @@ export interface PromptShare {
 }
 
 export interface NormalizedTurn {
+  contextItems?: { kind: string; name: string; content: string; source: string }[];
   index: number;
   requestId: string | null;
   responseId: string | null;

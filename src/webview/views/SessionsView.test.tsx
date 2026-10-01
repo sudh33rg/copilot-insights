@@ -17,7 +17,7 @@ describe('SessionsView', () => {
     expect(screen.getByText('54,000')).toBeInTheDocument();
     expect(screen.getByText('2,600')).toBeInTheDocument();
     expect(screen.getByText('1.626')).toBeInTheDocument();
-    expect(screen.getByText('Complete')).toBeInTheDocument();
+    expect(screen.getByText('Complete', { selector: 'span' })).toBeInTheDocument();
     expect(screen.getByText('Showing 1 of 1 sessions')).toBeInTheDocument();
   });
 
@@ -116,7 +116,11 @@ describe('SessionsView', () => {
     expect(screen.getByText('Showing 1 of 2 sessions')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByText('Second')).toBeInTheDocument();
-    expect(calls.map((call) => (call.params as SessionListParams).offset)).toEqual([0, 1]);
+    expect(
+      calls
+        .filter((call) => call.method === 'listSessions')
+        .map((call) => (call.params as SessionListParams).offset),
+    ).toEqual([0, 1]);
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
   });
 

@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import {
+  annotationSchema,
+  toolAnalyticsSchema,
+  savedViewSchema,
   clearScopeSchema,
   baselinesSchema,
   budgetSchema,
@@ -45,6 +48,17 @@ export const rpcSchemas = {
     result: indexStatusSchema,
   },
   listSessions: { params: sessionListParams, result: sessionListSchema },
+  saveAnnotation: {
+    params: z.object({ id: z.string().min(1).max(200), annotation: annotationSchema }),
+    result: annotationSchema,
+  },
+  getSavedViews: { params: z.object({}), result: z.array(savedViewSchema) },
+  saveView: { params: savedViewSchema, result: z.object({ saved: z.boolean() }) },
+  deleteView: {
+    params: z.object({ id: z.string().min(1).max(100) }),
+    result: z.object({ deleted: z.boolean() }),
+  },
+  getToolAnalytics: { params: sessionListParams, result: toolAnalyticsSchema },
   getSession: { params: sessionIdParams, result: sessionDetailSchema.nullable() },
   getOverview: { params: z.object({}), result: overviewSchema },
   openDashboard: { params: z.object({}), result: z.object({ opened: z.boolean() }) },

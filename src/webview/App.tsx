@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from './ui/Button';
+import { CompareView } from './views/CompareView';
+import { ToolsView } from './views/ToolsView';
 import { AnalyticsView } from './views/AnalyticsView';
 import { DiagnosticsView } from './views/DiagnosticsView';
 import { IndexStatus } from './views/IndexStatus';
@@ -15,11 +17,13 @@ export function App({ view }: { view: 'dashboard' | 'sidebar' }) {
   );
 }
 
-const TABS = ['overview', 'sessions', 'analytics', 'learning', 'diagnostics'] as const;
+const TABS = ['overview', 'sessions', 'analytics', 'tools', 'compare', 'learning', 'diagnostics'] as const;
 const TAB_LABEL = {
   overview: 'Overview',
   sessions: 'Sessions',
   analytics: 'Analytics',
+  tools: 'Tools',
+  compare: 'Compare',
   learning: 'Learning',
   diagnostics: 'Diagnostics',
 } as const;
@@ -27,6 +31,7 @@ const TAB_LABEL = {
 function DashboardView() {
   const [tab, setTab] = useState<(typeof TABS)[number]>('overview');
   const [selected, setSelected] = useState<string | null>(null);
+  const historyScroll = useRef(0);
   return (
     <>
       <header className="app-header">
@@ -71,6 +76,8 @@ function DashboardView() {
               {
                 overview: 'Activity, usage and outcomes at a glance.',
                 sessions: 'Follow every request, tool call and file reference.',
+                tools: 'Inspect tool activity and recorded failures.',
+                compare: 'Compare recorded prompts, context, usage and results.',
                 analytics: 'Explore usage over time, across models and workspaces.',
                 learning: 'Find patterns that help you get better results.',
                 diagnostics: 'Check capture coverage and the health of your local index.',
@@ -89,6 +96,15 @@ function DashboardView() {
           }}
         />
       )}
+      {tab === 'tools' && (
+        <ToolsView
+          onOpenSession={(id) => {
+            setTab('sessions');
+            setSelected(id);
+          }}
+        />
+      )}
+      {tab === 'compare' && <CompareView />}
       {tab === 'learning' && (
         <LearningView
           onOpenSession={(id) => {
@@ -97,17 +113,30 @@ function DashboardView() {
           }}
         />
       )}
-      {tab === 'sessions' &&
-        (selected === null ? (
-          <SessionsView onOpen={setSelected} />
-        ) : (
-          <SessionDetailView
-            id={selected}
-            onBack={() => {
-              setSelected(null);
-            }}
-          />
-        ))}
+      {tab === 'sessions' && (
+        <>
+          <div hidden={selected !== null}>
+            <SessionsView
+              onOpen={(id) => {
+                historyScroll.current = window.scrollY;
+                setSelected(id);
+                window.scrollTo(0, 0);
+              }}
+            />
+          </div>
+          {selected !== null && (
+            <SessionDetailView
+              id={selected}
+              onBack={() => {
+                setSelected(null);
+                requestAnimationFrame(() => {
+                  window.scrollTo(0, historyScroll.current);
+                });
+              }}
+            />
+          )}
+        </>
+      )}
     </>
   );
 }

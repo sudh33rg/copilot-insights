@@ -1,6 +1,6 @@
 import { isRecord } from '../json';
 
-function fileContent(fileText: string): unknown {
+export function fileContent(fileText: string): unknown {
   try {
     const parsed: unknown = JSON.parse(fileText);
     return isRecord(parsed) ? parsed.content : undefined;

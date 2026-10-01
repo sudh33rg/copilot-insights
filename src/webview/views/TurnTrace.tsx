@@ -1,4 +1,5 @@
 import type { TurnDetail } from '../../shared/dto';
+import { Button } from '../ui/Button';
 import { ProvenanceBadge } from '../ui/Badge';
 import { formatCredits, formatDateTime, formatDuration, formatInt, formatPercent } from '../ui/format';
 import { Measure } from '../ui/Measure';
@@ -13,7 +14,7 @@ const STATE_LABEL = {
 const HOST_LABEL = { copilot: 'Copilot', byok: 'BYOK / local', unknown: 'Unknown host' } as const;
 const int = (value: number | string) => formatInt(Number(value));
 
-export function TurnTrace({ turn }: { turn: TurnDetail }) {
+export function TurnTrace({ turn, onInspect }: { turn: TurnDetail; onInspect?: (position: number) => void }) {
   const extras = [
     turn.reasoningMs.value !== null ? `reasoning ${formatDuration(turn.reasoningMs.value)}` : null,
     turn.toolRounds.value !== null
@@ -130,6 +131,17 @@ export function TurnTrace({ turn }: { turn: TurnDetail }) {
           <ol className="tool-list" aria-label="Tool calls">
             {turn.toolCalls.map((call, index) => (
               <li key={`${call.name}-${String(index)}`}>
+                {onInspect && (
+                  <Button
+                    className="inspect-action"
+                    aria-label={`Inspect ${call.name} in turn ${turn.index}`}
+                    onClick={() => {
+                      onInspect(index);
+                    }}
+                  >
+                    Inspect →
+                  </Button>
+                )}
                 <details className="disclosure">
                   <summary>
                     <span className="sequence">{String(index + 1).padStart(2, '0')}</span>
@@ -153,7 +165,14 @@ export function TurnTrace({ turn }: { turn: TurnDetail }) {
                     ) : (
                       <pre className="text code-text">{call.args}</pre>
                     )}
-                    <p className="muted">Tool outputs are not retained.</p>
+                    <p className="label">Result</p>
+                    {call.output == null ? (
+                      <p className="muted">
+                        Result was not recorded, could not be joined, or was explicitly cleared.
+                      </p>
+                    ) : (
+                      <pre className="text code-text">{call.output}</pre>
+                    )}
                   </div>
                 </details>
               </li>

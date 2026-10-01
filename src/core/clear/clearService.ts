@@ -57,7 +57,9 @@ export class ClearService {
         new LlmCallStore(this.database).deleteSessions(deletedIds);
         observations.deleteSessions(ids);
         if (scope.kind === 'everything') {
-          this.database.db.exec('DELETE FROM github_daily_usage');
+          this.database.db.exec(
+            'DELETE FROM github_daily_usage; DELETE FROM saved_session_views; DELETE FROM session_annotations',
+          );
           observations.deleteAll();
           this.state.deleteMeta(META.salt);
         }
@@ -85,8 +87,13 @@ export class ClearService {
             .prepare('SELECT id FROM sessions WHERE workspace = :workspace')
             .all({ workspace: scope.workspace });
         case 'everything':
-        case 'allContent':
           return db.prepare('SELECT id FROM sessions').all();
+        case 'allContent':
+          return db
+            .prepare(
+              `SELECT id FROM sessions UNION SELECT session_id AS id FROM llm_prompt_files UNION SELECT session_id AS id FROM llm_tool_defs`,
+            )
+            .all();
       }
     })() as unknown as { id: string }[];
     return rows.map((row) => row.id);

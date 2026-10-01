@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import type { Analysis, ClearScope, SessionDetail } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { ProvenanceBadge } from '../ui/Badge';
@@ -8,6 +8,10 @@ import { formatCredits, formatDateTime, formatDuration, formatInt } from '../ui/
 import { Measure } from '../ui/Measure';
 import { EfficiencyCard } from './EfficiencyCard';
 import { OutcomeCard } from './OutcomeCard';
+import { ContextInspector } from './ContextInspector';
+import { EventInspector, type SelectedTool } from './EventInspector';
+import { SessionNotes } from './SessionNotes';
+import { ModelCalls, SessionUsage } from './SessionUsage';
 import { TurnTrace } from './TurnTrace';
 
 export function SessionDetailView({ id, onBack }: { id: string; onBack: () => void }) {
@@ -54,15 +58,23 @@ export function SessionDetailView({ id, onBack }: { id: string; onBack: () => vo
       {query.isPending && <p className="muted">Loading…</p>}
       {query.isError && <p role="alert">Could not load the session: {query.error.message}</p>}
       {query.data === null && <p className="muted">This session is no longer in the index.</p>}
-      {query.data && <Detail key={query.data.id} session={query.data} />}
+      {query.data && <Detail key={`${query.data.id}-${query.data.captureLevel}`} session={query.data} />}
     </section>
   );
 }
 
 function Detail({ session }: { session: SessionDetail }) {
   const [search, setSearch] = useState('');
+  const [mode, setMode] = useState<'Conversation' | 'Events' | 'Context' | 'Usage' | 'Model calls' | 'Notes'>(
+    'Conversation',
+  );
+  const [selected, setSelected] = useState<SelectedTool | null>(null);
+  const goToTurn = (index: number) => {
+    setMode('Conversation');
+    requestAnimationFrame(() => document.getElementById(`turn-${index}`)?.scrollIntoView({ block: 'start' }));
+  };
   const [failedOnly, setFailedOnly] = useState(false);
-  const query = search.trim().toLowerCase();
+  const query = useDeferredValue(search.trim().toLowerCase());
   const turns = session.turns.filter(
     (turn) =>
       (!failedOnly || turn.state === 'failed') &&
@@ -72,7 +84,8 @@ function Detail({ session }: { session: SessionDetail }) {
           turn.assistantText,
           turn.model,
           turn.errorCode,
-          ...turn.toolCalls.map((call) => call.name),
+          ...turn.toolCalls.flatMap((call) => [call.name, call.args, call.output]),
+          ...(turn.contextItems ?? []).flatMap((item) => [item.name, item.content]),
           ...turn.fileEvents.map((file) => file.path),
         ].some((value) => value?.toLowerCase().includes(query))),
   );
@@ -109,11 +122,19 @@ function Detail({ session }: { session: SessionDetail }) {
         </div>
       </dl>
       <div className="notice">
-        <strong>Full local capture</strong>
-        <p>
-          Complete stored prompts, responses and tool arguments are shown with secrets redacted. File
-          references show recorded context and activity; file contents and tool outputs are not retained.
-        </p>
+        <strong>{session.captureLevel === 'full' ? 'Full local capture' : 'Stored content coverage'}</strong>
+        {session.captureLevel !== 'full' ? (
+          <p>
+            Conversation text is not stored in full for this session. Content clearing or legacy capture
+            limits apply; available telemetry and file references remain.
+          </p>
+        ) : (
+          <p>
+            Complete stored prompts, responses and tool arguments are shown with secrets redacted. File
+            references show recorded context and activity. Retained context values, tool results and debug
+            artifacts are available in the inspector when recorded by Copilot.
+          </p>
+        )}
       </div>
       {session.baseline !== null && (
         <p className="notice">
@@ -132,53 +153,121 @@ function Detail({ session }: { session: SessionDetail }) {
           {session.debug.unmatchedCalls} unmatched. Per-turn telemetry covers matched requests.
         </p>
       )}
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Execution trace</p>
-          <h3>Timeline</h3>
-        </div>
-        <span className="muted">
-          {turns.length} of {session.turns.length} turns
-        </span>
-      </div>
-      <div className="toolbar" role="search">
-        <input
-          type="search"
-          aria-label="Search turns"
-          placeholder="Search prompts, responses, tools or file paths"
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-          }}
-        />
-        <label>
-          <input
-            type="checkbox"
-            checked={failedOnly}
-            onChange={(event) => {
-              setFailedOnly(event.target.checked);
+      <div className="view-switch" aria-label="Session views">
+        {(['Conversation', 'Events', 'Context', 'Usage', 'Model calls', 'Notes'] as const).map((name) => (
+          <Button
+            key={name}
+            variant={mode === name ? 'primary' : 'secondary'}
+            aria-pressed={mode === name}
+            onClick={() => {
+              setMode(name);
             }}
-          />{' '}
-          Failed turns only
-        </label>
+          >
+            {name}
+          </Button>
+        ))}
       </div>
-      <div className="trace-layout">
-        <nav className="trace-nav" aria-label="Turn navigation">
-          {turns.map((turn) => (
-            <a key={turn.index} href={`#turn-${String(turn.index)}`}>
-              <span className={`trace-dot state--${turn.state}`} />
-              Turn {turn.index}
-              <small>{turn.toolCalls.length} tools</small>
-            </a>
-          ))}
-        </nav>
-        <div className="trace-content">
-          {turns.map((turn) => (
-            <TurnTrace key={turn.index} turn={turn} />
-          ))}
-          {turns.length === 0 && <p className="empty-state">No turns match these filters.</p>}
-        </div>
-      </div>
+      {mode === 'Context' && <ContextInspector session={session} />}
+      {mode === 'Usage' && <SessionUsage session={session} onTurn={goToTurn} />}
+      {mode === 'Model calls' && <ModelCalls session={session} onTurn={goToTurn} />}
+      {mode === 'Notes' && <SessionNotes key={`${session.id}-${session.captureLevel}`} session={session} />}
+      {(mode === 'Conversation' || mode === 'Events') && (
+        <>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Execution trace</p>
+              <h3>Timeline</h3>
+            </div>
+            <span className="muted">
+              {turns.length} of {session.turns.length} turns
+            </span>
+          </div>
+          <div className="toolbar" role="search">
+            <input
+              type="search"
+              aria-label="Search turns"
+              placeholder="Search prompts, responses, tools or file paths"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+              }}
+            />
+            <label>
+              <input
+                type="checkbox"
+                checked={failedOnly}
+                onChange={(event) => {
+                  setFailedOnly(event.target.checked);
+                }}
+              />{' '}
+              Failed turns only
+            </label>
+          </div>
+          <div className={`trace-layout ${selected === null ? '' : 'trace-layout--inspecting'}`}>
+            <nav className="trace-nav" aria-label="Turn navigation">
+              {turns.map((turn) => (
+                <a key={turn.index} href={`#turn-${String(turn.index)}`}>
+                  <span className={`trace-dot state--${turn.state}`} />
+                  Turn {turn.index}
+                  <small>{turn.toolCalls.length} tools</small>
+                </a>
+              ))}
+            </nav>
+            <div className="trace-content">
+              {turns.map((turn) =>
+                mode === 'Conversation' ? (
+                  <TurnTrace
+                    key={turn.index}
+                    turn={turn}
+                    onInspect={(position) => {
+                      const call = turn.toolCalls[position];
+                      if (call) setSelected({ turn, call, position });
+                    }}
+                  />
+                ) : (
+                  <section key={turn.index} className="card" aria-label={`Turn ${turn.index} events`}>
+                    <h4>
+                      Turn {turn.index} · {turn.model ?? 'Unknown model'}
+                    </h4>
+                    {turn.toolCalls.map((call, position) => (
+                      <Button
+                        key={position}
+                        onClick={() => {
+                          setSelected({ turn, call, position });
+                        }}
+                      >
+                        {position + 1}. {call.name} →
+                      </Button>
+                    ))}
+                    {turn.fileEvents.map((file, index) => (
+                      <p key={index}>
+                        <span className="tag">{file.action}</span> <code>{file.path}</code>
+                      </p>
+                    ))}
+                    {turn.errorCode && (
+                      <p className="error">
+                        {turn.errorCode}: {turn.errorMessage}
+                      </p>
+                    )}
+                    {turn.toolCalls.length === 0 && turn.fileEvents.length === 0 && (
+                      <p className="muted">No tool or file events recorded.</p>
+                    )}
+                  </section>
+                ),
+              )}
+              {turns.length === 0 && <p className="empty-state">No turns match these filters.</p>}
+            </div>
+            {selected !== null && (
+              <EventInspector
+                selected={selected}
+                onClose={() => {
+                  setSelected(null);
+                }}
+              />
+            )}
+          </div>
+        </>
+      )}
       <div className="section-heading">
         <div>
           <p className="eyebrow">Session insights</p>

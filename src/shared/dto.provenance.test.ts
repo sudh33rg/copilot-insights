@@ -59,6 +59,8 @@ const ALLOWED = {
   sessionList: ['total', 'rows[].failedTurns', 'rows[].startedAt', 'rows[].turns'],
   sessionDetail: [
     'activeMs',
+    'modelCalls[].startedAt',
+    'modelCalls[].turnIndex',
     'debug.calls',
     'debug.internalCalls',
     'debug.unmatchedCalls',

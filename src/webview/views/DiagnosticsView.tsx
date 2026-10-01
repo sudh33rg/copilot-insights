@@ -43,8 +43,8 @@ function Body({ data }: { data: Diagnostics }) {
           <>
             <p className="muted">
               Turning it on adds cached tokens, per-request latency and Copilot’s own usage figures for new
-              sessions. Copilot writes prompts to those log files on this machine; Copilot Insights never
-              stores them.
+              sessions. Copilot writes prompts to those log files on this machine. Supported system
+              instructions and tool definitions are retained locally with secrets redacted.
             </p>
             <Button
               onClick={() => {

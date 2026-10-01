@@ -1,3 +1,5 @@
+import { redactPayload } from '../privacy/captureLevel';
+import { redactSecrets } from '../privacy/redact';
 import type { DebugSessionLog } from '../debuglog/types';
 import type { Database } from './database';
 
@@ -9,6 +11,11 @@ export class LlmCallStore {
   replaceSession(log: DebugSessionLog, file: string, now: number): void {
     const { db } = this.database;
     this.database.transaction(() => {
+      const tombstone = db
+        .prepare('SELECT kind FROM tombstones WHERE session_id = :id')
+        .get({ id: log.sessionId }) as { kind: string } | undefined;
+      if (tombstone?.kind === 'deleted') return;
+      const cleared = tombstone?.kind === 'content-cleared';
       db.prepare('DELETE FROM llm_calls WHERE session_id = :id').run({ id: log.sessionId });
       db.prepare('DELETE FROM llm_tool_defs WHERE session_id = :id').run({ id: log.sessionId });
       const insertTool = db.prepare(
@@ -26,6 +33,18 @@ export class LlmCallStore {
         system: log.systemPromptChars,
         tools: log.toolDefs === null ? null : log.toolDefs.reduce((total, def) => total + def.chars, 0),
       });
+      db.prepare(
+        'UPDATE llm_prompt_files SET content = :content, source = :source WHERE session_id = :id',
+      ).run({
+        id: log.sessionId,
+        content: cleared || log.systemPromptContent == null ? null : redactSecrets(log.systemPromptContent),
+        source: log.systemPromptFile,
+      });
+      if (!cleared)
+        for (const def of log.toolDefinitions ?? [])
+          db.prepare(
+            'UPDATE llm_tool_defs SET definition = :content WHERE session_id = :id AND name = :name',
+          ).run({ id: log.sessionId, name: def.name, content: redactPayload(def.content) });
       const insert = db.prepare(
         `INSERT INTO llm_calls (session_id, span_id, response_id, started_at, duration_ms, model, debug_name, role,
            input_tokens, output_tokens, cached_tokens, ttft_ms, nano_aiu)

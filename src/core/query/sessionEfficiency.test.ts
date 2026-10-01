@@ -6,12 +6,16 @@ import { getSessionEfficiency } from './sessionEfficiency';
 import { getSessionDetail } from './sessionDetail';
 
 function addToolDefs(database: ReturnType<typeof seededStore>['database'], unused: number, chars = 4000) {
-  const insert = database.db.prepare('INSERT INTO llm_tool_defs VALUES (:s, :name, :chars)');
+  const insert = database.db.prepare(
+    'INSERT INTO llm_tool_defs (session_id, name, chars) VALUES (:s, :name, :chars)',
+  );
   for (const name of ['read_file', 'replace_string_in_file'])
     insert.run({ s: 'fx-auto-1', name, chars: 100 });
   for (let i = 0; i < unused; i++) insert.run({ s: 'fx-auto-1', name: `never_used_${String(i)}`, chars });
   database.db
-    .prepare('INSERT OR REPLACE INTO llm_prompt_files VALUES (:s, :system, :tools)')
+    .prepare(
+      'INSERT OR REPLACE INTO llm_prompt_files (session_id, system_prompt_chars, tool_defs_chars) VALUES (:s, :system, :tools)',
+    )
     .run({ s: 'fx-auto-1', system: 46_352, tools: 200 + unused * chars });
 }
 

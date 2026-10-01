@@ -159,6 +159,15 @@ function normalizeTurn(
     completedAt ?? (startedAt !== null && elapsedMs !== null ? startedAt + elapsedMs : startedAt);
   const rounds = parseRounds(meta?.toolCallRounds);
   const toolCalls = collectToolCalls(rounds, parts, salt);
+  const results = isRecord(meta?.toolCallResults) ? meta.toolCallResults : {};
+  for (const call of toolCalls) {
+    const result =
+      call.callId === null || !Object.hasOwn(results, call.callId) ? undefined : results[call.callId];
+    call.output =
+      call.origin === 'toolCallRound' && isRecord(result) && Array.isArray(result.content)
+        ? JSON.stringify(result.content, null, 2)
+        : null;
+  }
   const reasoning = parsePartsOfKind(parts, 'thinking', thinkingPartSchema);
   const stateValue = request.modelState?.value;
   const errorDetails = request.result?.errorDetails;
@@ -173,6 +182,24 @@ function normalizeTurn(
     systemInitiated: request.isSystemInitiated === true,
     hidden: request.hiddenFromTranscript === true,
     mode: request.modeInfo?.kind ?? null,
+    contextItems: (request.variableData?.variables ?? []).flatMap((entry) => {
+      if (
+        !isRecord(entry) ||
+        typeof entry.kind !== 'string' ||
+        !['file', 'promptFile', 'implicit'].includes(entry.kind) ||
+        entry.enabled === false ||
+        typeof entry.value !== 'string'
+      )
+        return [];
+      return [
+        {
+          kind: entry.kind,
+          name: typeof entry.name === 'string' ? entry.name : 'Attached context',
+          content: entry.value,
+          source: 'chatSessions variableData.variables',
+        },
+      ];
+    }),
     userText: nonEmpty(request.message?.text),
     assistantText: nonEmpty(assistantText(parts)),
     ...modelRouting(request.modelId ?? null, parts, meta?.resolvedModel ?? null),

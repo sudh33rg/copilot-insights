@@ -259,7 +259,7 @@ describe('SessionStore', () => {
       const session = fixture();
       sessions.replaceSession(session, 'full', 1);
       database.db.exec(
-        "INSERT OR REPLACE INTO llm_tool_defs VALUES ('fx-auto-1', 'read_file', 10); INSERT OR REPLACE INTO llm_prompt_files VALUES ('fx-auto-1', 100, 10)",
+        "INSERT OR REPLACE INTO llm_tool_defs (session_id, name, chars) VALUES ('fx-auto-1', 'read_file', 10); INSERT OR REPLACE INTO llm_prompt_files (session_id, system_prompt_chars, tool_defs_chars) VALUES ('fx-auto-1', 100, 10)",
       );
       sessions.purgeBefore(daysAgo(localDay(session.startedAt), -1));
       expect(rows(database, 'SELECT * FROM llm_tool_defs')).toEqual([]);

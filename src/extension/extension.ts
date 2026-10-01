@@ -1,5 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { getToolAnalytics } from '../core/query/toolAnalytics';
+import { SessionLibrary } from '../core/storage/sessionLibrary';
 import * as vscode from 'vscode';
 import { ClearService } from '../core/clear/clearService';
 import { GithubClient } from '../core/github/client';
@@ -177,9 +179,20 @@ export function activate(context: vscode.ExtensionContext): void {
     getIndexStatus: () => indexStatus(service, sessions, state),
     listSessions: (params) => queries.listSessions(params),
     getSession: ({ id }) => queries.getSession(id),
+    saveAnnotation: ({ id, annotation }) => new SessionLibrary(database).save(id, annotation),
+    getSavedViews: () => new SessionLibrary(database).views(),
+    saveView: (view) => {
+      new SessionLibrary(database).saveView(view);
+      return { saved: true };
+    },
+    deleteView: ({ id }) => {
+      new SessionLibrary(database).deleteView(id);
+      return { deleted: true };
+    },
     getOverview: () => queries.getOverview(localDay()),
     getSurvivalByModel: () => ({ rows: queries.getSurvivalByModel() }),
     getCommitCosts: () => ({ rows: queries.getCommitCosts() }),
+    getToolAnalytics: (params) => getToolAnalytics(database, params),
     getFailureAnalytics: () => queries.getFailureAnalytics(),
     getBaselines: () => queries.getBaselines(),
     getLeaderboard: () => queries.getLeaderboard(),

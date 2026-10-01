@@ -1,19 +1,14 @@
-import type { SessionRow } from '../../shared/dto';
+import type { SessionListParams, SessionRow } from '../../shared/dto';
 import type { Database, SqlValue } from '../storage/database';
 import { SOURCES, summed, toTurnState } from './measure';
 import { routingFor, type RoutingEntry } from './routing';
 
-export interface SessionListQuery {
-  q?: string;
-  fromDay?: string;
-  toDay?: string;
-  workspace?: string;
-  failedOnly?: boolean;
-  offset: number;
-  limit: number;
-}
+export type SessionListQuery = SessionListParams;
 
 interface ListRow {
+  preview: string | null;
+  bookmarked: number;
+  active_ms: number;
   id: string;
   day: string;
   started_at: number;
@@ -44,7 +39,9 @@ export function listSessions(
   ).n;
   const list = db
     .prepare(
-      `SELECT s.id, s.day, s.started_at, s.workspace, s.title,
+      `SELECT s.id, s.day, s.started_at, s.workspace, s.title, s.active_ms,
+              (SELECT user_text FROM turns pt WHERE pt.session_id = s.id AND pt.system_initiated = 0 AND pt.user_text IS NOT NULL ORDER BY pt.idx LIMIT 1) AS preview,
+              coalesce((SELECT bookmarked FROM session_annotations a WHERE a.session_id = s.id), 0) AS bookmarked,
               count(t.idx) AS turns,
               coalesce(sum(t.state = 'failed'), 0) AS failed_turns,
               sum(t.prompt_tokens) AS in_sum, count(t.prompt_tokens) AS in_known,
@@ -55,7 +52,7 @@ export function listSessions(
          FROM sessions s LEFT JOIN turns t ON t.session_id = s.id
          ${filter.where}
         GROUP BY s.id
-        ORDER BY s.started_at DESC, s.id
+        ORDER BY ${{ newest: 's.started_at DESC', oldest: 's.started_at ASC', tokens: '(sum(t.prompt_tokens) + coalesce(sum(t.completion_tokens), 0)) DESC NULLS LAST', credits: 'sum(t.credits) DESC NULLS LAST', duration: 's.active_ms DESC' }[query.sort ?? 'newest']}, s.id
         LIMIT :limit OFFSET :offset`,
     )
     .all({ ...filter.params, limit: query.limit, offset: query.offset }) as unknown as ListRow[];
@@ -64,6 +61,12 @@ export function listSessions(
     list.map((row) => row.id),
   );
   const rows = list.map((row): SessionRow => ({
+    preview: row.preview === null ? null : row.preview.slice(0, 220),
+    bookmarked: row.bookmarked === 1,
+    activeMs: {
+      value: row.active_ms,
+      provenance: { kind: 'derived', source: 'sum of recorded turn elapsed times' },
+    },
     id: row.id,
     day: row.day,
     startedAt: row.started_at,
@@ -87,7 +90,7 @@ export function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
-function buildFilter(query: SessionListQuery): { where: string; params: Record<string, SqlValue> } {
+export function buildFilter(query: SessionListQuery): { where: string; params: Record<string, SqlValue> } {
   const clauses: string[] = [];
   const params: Record<string, SqlValue> = {};
   if (query.fromDay !== undefined) {
@@ -105,6 +108,30 @@ function buildFilter(query: SessionListQuery): { where: string; params: Record<s
   if (query.failedOnly === true) {
     clauses.push("EXISTS (SELECT 1 FROM turns ft WHERE ft.session_id = s.id AND ft.state = 'failed')");
   }
+  if (query.model) {
+    clauses.push(
+      "EXISTS (SELECT 1 FROM turns mt WHERE mt.session_id = s.id AND lower(coalesce(mt.resolved_model, mt.requested_model, '')) LIKE :model ESCAPE '\\')",
+    );
+    params.model = `%${escapeLike(query.model.toLowerCase())}%`;
+  }
+  if (query.tool) {
+    clauses.push('EXISTS (SELECT 1 FROM tool_calls tc WHERE tc.session_id = s.id AND tc.name = :tool)');
+    params.tool = query.tool;
+  }
+  if (query.file) {
+    clauses.push(
+      "EXISTS (SELECT 1 FROM file_events fe WHERE fe.session_id = s.id AND lower(fe.path) LIKE :file ESCAPE '\\')",
+    );
+    params.file = `%${escapeLike(query.file.toLowerCase())}%`;
+  }
+  if (query.state) {
+    clauses.push('EXISTS (SELECT 1 FROM turns st WHERE st.session_id = s.id AND st.state = :state)');
+    params.state = query.state;
+  }
+  if (query.bookmarkedOnly)
+    clauses.push(
+      'EXISTS (SELECT 1 FROM session_annotations a WHERE a.session_id = s.id AND a.bookmarked = 1)',
+    );
   const text = query.q?.trim().toLowerCase();
   if (text !== undefined && text !== '') {
     params.q = `%${escapeLike(text)}%`;
@@ -113,7 +140,12 @@ function buildFilter(query: SessionListQuery): { where: string; params: Record<s
         OR lower(s.workspace) LIKE :q ESCAPE '\\'
         OR EXISTS (SELECT 1 FROM turns qt WHERE qt.session_id = s.id
              AND (lower(coalesce(qt.user_text, '')) LIKE :q ESCAPE '\\'
-               OR lower(coalesce(qt.resolved_model, qt.requested_model, '')) LIKE :q ESCAPE '\\')))`,
+               OR lower(coalesce(qt.assistant_text, '')) LIKE :q ESCAPE '\\'
+               OR lower(coalesce(qt.error_code, '')) LIKE :q ESCAPE '\\'
+               OR lower(qt.context_items) LIKE :q ESCAPE '\\'
+               OR lower(coalesce(qt.resolved_model, qt.requested_model, '')) LIKE :q ESCAPE '\\'))
+        OR EXISTS (SELECT 1 FROM tool_calls tc WHERE tc.session_id = s.id AND (lower(tc.name) LIKE :q ESCAPE '\\' OR lower(coalesce(tc.args, '')) LIKE :q ESCAPE '\\' OR lower(coalesce(tc.output, '')) LIKE :q ESCAPE '\\'))
+        OR EXISTS (SELECT 1 FROM file_events fe WHERE fe.session_id = s.id AND lower(fe.path) LIKE :q ESCAPE '\\'))`,
     );
   }
   return { where: clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '', params };

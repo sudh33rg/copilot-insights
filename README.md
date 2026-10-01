@@ -19,8 +19,7 @@ participant, proxy, server, or AI provider is involved.
 - **Exact telemetry (opt-in)** — with Copilot's agent debug log on, each turn shows cached tokens, first-token
   latency and Copilot's own usage figure (nano-AIU), and the Overview accounts for the utility requests Copilot
   makes itself (titles, summaries, …) as a lower bound. Turn it on with _Enable Exact Telemetry…_. Copilot writes
-  your prompts to those log files on this machine; Copilot Insights reads numbers and identifiers only and never
-  stores or shows that text.
+  your prompts to those log files on this machine; Copilot Insights retains supported system instructions and tool definitions locally with secrets redacted.
 - **Outcomes** — per session: lines changed, Copilot edits kept / undone / modified, whether inserted lines
   are still present an hour, a day and one commit later, terminal and test exit codes, the change in editor error
   and warning counts, and the commits the session led to with the credits that cost. The Overview adds edit
@@ -79,12 +78,12 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 - To tell whether Copilot's inserted lines survive, Copilot Insights stores **salted fingerprints** (truncated
   SHA-256 of each inserted line of at least 20 characters, at most 200 per edit) and a salted hash of each
   terminal command after secret redaction. They cannot be turned back into text, the random per-install salt
-  never leaves your machine, and no code or command text is stored. They are not kept at capture level `metrics`,
+  never leaves your machine. This fingerprinting does not retain plaintext; separately captured tool/context
+  payloads can contain redacted code or commands. They are not kept at capture level `metrics`,
   and _Clear conversation text_, lowering the level to `metrics`, and _Clear everything_ remove them (clearing
   everything also forgets the salt).
-- For context-bloat advice, only the **names** of the tools Copilot sent and the **character counts** of tool
-  definitions and the system prompt are kept (from Copilot's debug log); descriptions, schemas and prompt text are
-  never stored.
+- For context-bloat advice, the tool names, definition sizes and system-prompt sizes are recorded.
+  Supported debug artifacts also retain redacted instructions and tool definitions for inspection.
 - Git, terminal exit-code and diagnostics evidence comes from VS Code's built-in git extension, terminal shell
   integration and diagnostics, and is only recorded while VS Code is open with this extension. Only counts, file
   paths, commit hashes, exit codes, timestamps and salted hashes are stored — never diffs, messages or command
@@ -105,11 +104,15 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 
 The session explorer groups each turn into prompt, response, usage/timing, tool calls and context/file
 activity. Search turns by text, model, tool or path, filter failures, and use turn navigation to jump
-through a long conversation. Session history also supports exact workspace and date filters.
+through a long conversation. Session history supports workspace/date/model/tool/file/status filters, usage sorting, bookmarks and
+saved views. Conversation, Events, Context, Usage, Model calls and Notes panels support investigation;
+Tools groups recorded calls and failures, and Compare shows two sessions side by side.
 
 Complete redacted prompts, responses and tool arguments are always captured. No setting is required.
-Attached file paths are labeled separately from tool activity. File contents and tool outputs are not
-retained, and JSON exports omit tool arguments. Existing summary indexes are automatically upgraded
+Attached file paths are labeled separately from tool activity. Supported recorded context values, tool
+results and debug prompt artifacts are retained with secrets redacted; file paths alone do not establish
+historical file contents. Portable JSON exports omit tool arguments/results and context/debug payloads,
+and include redacted notes and tags. Existing summary indexes are automatically upgraded
 on the next scan when their source files still exist; explicit content clearing remains respected.
 
 The dashboard and charts follow the active VS Code theme. See [UI research](docs/UI_RESEARCH.md) for the
