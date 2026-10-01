@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { BreakdownRow, SessionRow, TrendDay } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { DataTable, type Column } from '../ui/DataTable';
 import { formatCredits, formatInt } from '../ui/format';
 import { Measure } from '../ui/Measure';
+import { Button } from '../ui/Button';
 import { CompareView } from './CompareView';
 
 const RANGES = [7, 30, 90] as const;
@@ -120,6 +121,7 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
             }}
             empty=""
           />
+          {breakdown.isError && <p role="alert">Could not load range breakdown: {breakdown.error.message}</p>}
           {breakdown.data && (
             <>
               <h3>By model</h3>
@@ -197,9 +199,15 @@ const sessionColumns: readonly Column<SessionRow>[] = [
 
 function DaySessions({ day, onOpenSession }: { day: string; onOpenSession: (id: string) => void }) {
   const rpc = useRpc();
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['daySessions', day],
-    queryFn: () => rpc.call('listSessions', { fromDay: day, toDay: day, offset: 0, limit: 50 }),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      rpc.call('listSessions', { fromDay: day, toDay: day, offset: pageParam, limit: 50 }),
+    getNextPageParam: (last, pages) => {
+      const loaded = pages.reduce((count, page) => count + page.rows.length, 0);
+      return last.rows.length > 0 && loaded < last.total ? loaded : undefined;
+    },
   });
   return (
     <div>
@@ -210,13 +218,23 @@ function DaySessions({ day, onOpenSession }: { day: string; onOpenSession: (id: 
         <DataTable
           caption={`Sessions on ${day}`}
           columns={sessionColumns}
-          rows={query.data.rows}
+          rows={query.data.pages.flatMap((page) => page.rows)}
           rowKey={(row) => row.id}
           onRowActivate={(row) => {
             onOpenSession(row.id);
           }}
           empty="No sessions on this day."
         />
+      )}
+      {query.hasNextPage && (
+        <Button
+          disabled={query.isFetchingNextPage}
+          onClick={() => {
+            void query.fetchNextPage();
+          }}
+        >
+          {query.isFetchingNextPage ? 'Loading…' : 'Load more sessions'}
+        </Button>
       )}
     </div>
   );

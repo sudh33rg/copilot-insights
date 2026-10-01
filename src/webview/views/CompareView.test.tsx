@@ -26,6 +26,11 @@ const results = {
 };
 
 describe('CompareView', () => {
+  it('reports errors loading session choices', async () => {
+    renderWithHost(<CompareView />, {});
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load session choices: boom');
+  });
+
   it('asks for two sessions first', async () => {
     renderWithHost(<CompareView />, results);
     expect(await screen.findByText('Choose two sessions to compare.')).toBeInTheDocument();

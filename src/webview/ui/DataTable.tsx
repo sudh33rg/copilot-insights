@@ -30,39 +30,41 @@ export function DataTable<Row>({
     }
   };
   return (
-    <table className="table" aria-label={caption}>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column.id} scope="col" className={column.align === 'end' ? 'num' : undefined}>
-              {column.header}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr
-            key={rowKey(row)}
-            tabIndex={onRowActivate ? 0 : undefined}
-            className={onRowActivate ? 'row--interactive' : undefined}
-            onClick={
-              onRowActivate
-                ? () => {
-                    onRowActivate(row);
-                  }
-                : undefined
-            }
-            onKeyDown={onRowActivate ? activate(row) : undefined}
-          >
+    <div className="table-scroll" role="region" aria-label={caption} tabIndex={0}>
+      <table className="table" aria-label={caption}>
+        <thead>
+          <tr>
             {columns.map((column) => (
-              <td key={column.id} className={column.align === 'end' ? 'num' : undefined}>
-                {column.cell(row)}
-              </td>
+              <th key={column.id} scope="col" className={column.align === 'end' ? 'num' : undefined}>
+                {column.header}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={rowKey(row)}
+              tabIndex={onRowActivate ? 0 : undefined}
+              className={onRowActivate ? 'row--interactive' : undefined}
+              onClick={
+                onRowActivate
+                  ? () => {
+                      onRowActivate(row);
+                    }
+                  : undefined
+              }
+              onKeyDown={onRowActivate ? activate(row) : undefined}
+            >
+              {columns.map((column) => (
+                <td key={column.id} className={column.align === 'end' ? 'num' : undefined}>
+                  {column.cell(row)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

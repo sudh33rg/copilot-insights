@@ -30,6 +30,33 @@ const view = (results: Record<string, unknown> = {}, onOpen: (id: string) => voi
   });
 
 describe('AnalyticsView', () => {
+  it('loads additional sessions for a busy day instead of truncating the list', async () => {
+    const { calls } = view({
+      listSessions: (params: unknown) => {
+        const { offset, fromDay } = params as { offset: number; fromDay?: string };
+        if (fromDay === undefined) return { rows: [], total: 0 };
+        return {
+          rows:
+            offset === 0
+              ? Array.from({ length: 50 }, (_, i) =>
+                  sessionRow({ id: `s-${String(i)}`, title: `Session ${String(i)}` }),
+                )
+              : [sessionRow({ id: 'last', title: 'Last session' })],
+          total: 51,
+        };
+      },
+    });
+    const table = await screen.findByRole('table', { name: 'Usage by day' });
+    await userEvent.click(within(table).getByText('2026-09-21'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Load more sessions' }));
+    expect(await screen.findByText('Last session')).toBeInTheDocument();
+    expect(
+      calls.some(
+        (call) => call.method === 'listSessions' && (call.params as { offset: number }).offset === 50,
+      ),
+    ).toBe(true);
+  });
+
   it('draws credits per day as a chart that is described in words, with the peak day named', async () => {
     view();
     const chart = await screen.findByRole('img', {
@@ -110,6 +137,6 @@ describe('AnalyticsView', () => {
 
   it('reports a failed query', async () => {
     renderWithHost(<AnalyticsView onOpenSession={() => undefined} />, {});
-    expect((await screen.findAllByRole('alert'))[0]).toHaveTextContent('Could not load trends: boom');
+    expect(await screen.findByText('Could not load trends: boom')).toHaveAttribute('role', 'alert');
   });
 });

@@ -34,33 +34,35 @@ export function SessionDetailView({ id, onBack }: { id: string; onBack: () => vo
   };
   return (
     <section aria-label="Session">
-      <Button
-        onClick={() => {
-          onBack();
-        }}
-      >
-        ← Sessions
-      </Button>
-      {query.data && (
-        <>
-          <Button
-            onClick={() => {
-              void run({ kind: 'sessionContent', id });
-            }}
-          >
-            Clear conversation text
-          </Button>
-          <Button
-            onClick={() => {
-              void run({ kind: 'session', id }).then((deleted) => {
-                if (deleted) onBack();
-              });
-            }}
-          >
-            Delete session
-          </Button>
-        </>
-      )}
+      <div className="toolbar">
+        <Button
+          onClick={() => {
+            onBack();
+          }}
+        >
+          ← Sessions
+        </Button>
+        {query.data && (
+          <>
+            <Button
+              onClick={() => {
+                void run({ kind: 'sessionContent', id });
+              }}
+            >
+              Clear conversation text
+            </Button>
+            <Button
+              onClick={() => {
+                void run({ kind: 'session', id }).then((deleted) => {
+                  if (deleted) onBack();
+                });
+              }}
+            >
+              Delete session
+            </Button>
+          </>
+        )}
+      </div>
       {query.isPending && <p className="muted">Loading…</p>}
       {query.isError && <p role="alert">Could not load the session: {query.error.message}</p>}
       {query.data === null && <p className="muted">This session is no longer in the index.</p>}

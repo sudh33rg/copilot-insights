@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Prevent in-flight scans from restoring deleted sessions or cleared conversation content.
+- Clear orphan debug telemetry with all data, and invalidate learning facts after content changes.
+- Redact structured credentials and deeply nested tool arguments.
+- Add pagination to analytics day drill-downs and visible comparison/breakdown errors.
+- Improve keyboard focus, table scrolling, themed controls, and narrow-panel layouts.
+
 ## 0.8.0 — personal learning & analytics
 
 - **Learning** tab built from your own sessions, every statistic with its sample size and "not enough data" under

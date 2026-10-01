@@ -107,6 +107,7 @@ h1 {
   display: flex;
   gap: 16px;
   align-items: center;
+  flex-wrap: wrap;
   margin: 8px 0;
 }
 .toolbar input[type='search'] {
@@ -212,11 +213,12 @@ h3 {
 .tabs {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
   margin: 8px 0 12px;
 }
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16em, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16em), 1fr));
   gap: 12px;
 }
 
@@ -259,4 +261,56 @@ h4 {
 
 .table {
   margin-bottom: 12px;
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.table-scroll:focus-visible,
+.link:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+.card,
+.facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+select {
+  max-width: 100%;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, transparent));
+}
+.toolbar label {
+  max-width: 100%;
+}
+.btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+@media (max-width: 420px) {
+  .app--dashboard {
+    padding: 12px;
+  }
+  .toolbar input[type='search'] {
+    flex-basis: 100%;
+  }
+  .facts {
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    gap: 4px 8px;
+  }
+  .measure {
+    flex-wrap: wrap;
+    gap: 2px 6px;
+  }
+}
+
+.table-scroll th[scope='row'] {
+  white-space: nowrap;
 }

@@ -21,11 +21,8 @@ export function CompareView() {
   const ready = firstId !== '' && secondId !== '';
   const pair = useQuery({
     queryKey: ['comparePair', firstId, secondId],
-    queryFn: async () =>
-      [
-        await rpc.call('getSession', { id: firstId }),
-        await rpc.call('getSession', { id: secondId }),
-      ] as const,
+    queryFn: () =>
+      Promise.all([rpc.call('getSession', { id: firstId }), rpc.call('getSession', { id: secondId })]),
     enabled: ready,
   });
   const rows = list.data?.rows ?? [];
@@ -51,6 +48,9 @@ export function CompareView() {
   return (
     <section className="card" aria-label="Compare sessions">
       <h3>Compare sessions</h3>
+      {list.isPending && <p className="muted">Loading session choices…</p>}
+      {list.isError && <p role="alert">Could not load session choices: {list.error.message}</p>}
+      {ready && pair.isPending && <p className="muted">Loading comparison…</p>}
       <div className="toolbar">
         {select('First session', firstId, setFirstId)}
         {select('Second session', secondId, setSecondId)}
@@ -74,42 +74,44 @@ function ComparisonTable({ a, b }: { a: SessionDetail; b: SessionDetail }) {
     </tr>
   );
   return (
-    <table className="table" aria-label="Session comparison">
-      <thead>
-        <tr>
-          <th scope="col">Measure</th>
-          <th scope="col">{a.title ?? 'Untitled session'}</th>
-          <th scope="col">{b.title ?? 'Untitled session'}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {row('Workspace', (s) => s.workspace)}
-        {row('Turns', (s) => formatInt(s.turns.length))}
-        {row('Input tokens', (s) => (
-          <Measure measure={s.inputTokens} format={int} />
-        ))}
-        {row('Output tokens', (s) => (
-          <Measure measure={s.outputTokens} format={int} />
-        ))}
-        {row('Credits', (s) => (
-          <Measure measure={s.credits} format={(value) => formatCredits(Number(value))} />
-        ))}
-        {row('Task type', (s) => (s.analysis === null ? '—' : <Measure measure={s.analysis.taskType} />))}
-        {row('Outcome', (s) => (s.analysis === null ? '—' : <Measure measure={s.analysis.outcome} />))}
-        {row('Efficiency', (s) =>
-          s.efficiency.score === null ? (
-            '—'
-          ) : (
-            <Measure
-              measure={{
-                value:
-                  s.efficiency.score.band.value === null ? null : BAND_LABEL[s.efficiency.score.band.value],
-                provenance: s.efficiency.score.band.provenance,
-              }}
-            />
-          ),
-        )}
-      </tbody>
-    </table>
+    <div className="table-scroll" role="region" aria-label="Session comparison" tabIndex={0}>
+      <table className="table" aria-label="Session comparison">
+        <thead>
+          <tr>
+            <th scope="col">Measure</th>
+            <th scope="col">{a.title ?? 'Untitled session'}</th>
+            <th scope="col">{b.title ?? 'Untitled session'}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {row('Workspace', (s) => s.workspace)}
+          {row('Turns', (s) => formatInt(s.turns.length))}
+          {row('Input tokens', (s) => (
+            <Measure measure={s.inputTokens} format={int} />
+          ))}
+          {row('Output tokens', (s) => (
+            <Measure measure={s.outputTokens} format={int} />
+          ))}
+          {row('Credits', (s) => (
+            <Measure measure={s.credits} format={(value) => formatCredits(Number(value))} />
+          ))}
+          {row('Task type', (s) => (s.analysis === null ? '—' : <Measure measure={s.analysis.taskType} />))}
+          {row('Outcome', (s) => (s.analysis === null ? '—' : <Measure measure={s.analysis.outcome} />))}
+          {row('Efficiency', (s) =>
+            s.efficiency.score === null ? (
+              '—'
+            ) : (
+              <Measure
+                measure={{
+                  value:
+                    s.efficiency.score.band.value === null ? null : BAND_LABEL[s.efficiency.score.band.value],
+                  provenance: s.efficiency.score.band.provenance,
+                }}
+              />
+            ),
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }

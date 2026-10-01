@@ -4,8 +4,8 @@ A local VS Code extension that observes your native GitHub Copilot Chat sessions
 what it cost, and how to get better results next time. You keep using Copilot Chat normally; no chat
 participant, proxy, server, or AI provider is involved.
 
-> Status: **0.5.0**. Exact telemetry (opt-in), enforced provenance, credit reconciliation and diagnostics are in.
-> Outcome and efficiency intelligence follow — see `docs/ROADMAP.md`.
+> Status: **0.8.0**. Includes exact telemetry, outcome and efficiency intelligence, personal learning,
+> analytics and budgets. Planned privacy and release work is tracked in `docs/ROADMAP.md`.
 
 ## What you get
 
