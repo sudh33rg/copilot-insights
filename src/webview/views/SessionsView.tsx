@@ -75,18 +75,27 @@ export function SessionsView({
   const rpc = useRpc();
   const [text, setText] = useState('');
   const [failedOnly, setFailedOnly] = useState(false);
+  const [workspace, setWorkspace] = useState('');
+  const [fromDay, setFromDay] = useState('');
+  const [toDay, setToDay] = useState('');
   const q = useDebounced(text.trim(), debounceMs);
-  const filtered = q !== '' || failedOnly;
+  const workspaceFilter = useDebounced(workspace.trim(), debounceMs);
+  const filtered = q !== '' || failedOnly || workspaceFilter !== '' || fromDay !== '' || toDay !== '';
+  const invalidRange = fromDay !== '' && toDay !== '' && fromDay > toDay;
 
   const list = useInfiniteQuery({
-    queryKey: ['sessions', q, failedOnly],
+    queryKey: ['sessions', q, failedOnly, workspaceFilter, fromDay, toDay],
     initialPageParam: 0,
+    enabled: !invalidRange,
     queryFn: ({ pageParam }) =>
       rpc.call('listSessions', {
         offset: pageParam,
         limit: PAGE_SIZE,
         ...(q !== '' ? { q } : {}),
         ...(failedOnly ? { failedOnly: true } : {}),
+        ...(workspaceFilter !== '' ? { workspace: workspaceFilter } : {}),
+        ...(fromDay !== '' ? { fromDay } : {}),
+        ...(toDay !== '' ? { toDay } : {}),
       }),
     getNextPageParam: (last, pages) => {
       const loaded = pages.reduce((count, page) => count + page.rows.length, 0);
@@ -99,6 +108,10 @@ export function SessionsView({
 
   return (
     <section aria-label="Sessions">
+      <div className="section-heading">
+        <h3>Session history</h3>
+        <span className="muted">{total} sessions found</span>
+      </div>
       <div className="toolbar" role="search">
         <input
           type="search"
@@ -127,9 +140,59 @@ export function SessionsView({
           Export…
         </Button>
       </div>
-      {list.isPending && <p className="muted">Loading…</p>}
+      <details className="filter-panel">
+        <summary>Filter by workspace & date</summary>
+        <div className="toolbar">
+          <label>
+            Workspace{' '}
+            <input
+              type="text"
+              value={workspace}
+              placeholder="Exact workspace name"
+              onChange={(event) => {
+                setWorkspace(event.target.value);
+              }}
+            />
+          </label>
+          <label>
+            From{' '}
+            <input
+              type="date"
+              value={fromDay}
+              onChange={(event) => {
+                setFromDay(event.target.value);
+              }}
+            />
+          </label>
+          <label>
+            To{' '}
+            <input
+              type="date"
+              value={toDay}
+              onChange={(event) => {
+                setToDay(event.target.value);
+              }}
+            />
+          </label>
+        </div>
+      </details>
+      {filtered && (
+        <Button
+          onClick={() => {
+            setText('');
+            setFailedOnly(false);
+            setWorkspace('');
+            setFromDay('');
+            setToDay('');
+          }}
+        >
+          Reset filters
+        </Button>
+      )}
+      {invalidRange && <p role="alert">The start date must be on or before the end date.</p>}
+      {list.isPending && !invalidRange && <p className="muted">Loading…</p>}
       {list.isError && <p role="alert">Could not load sessions: {list.error.message}</p>}
-      {list.data && (
+      {list.data && !invalidRange && (
         <>
           <DataTable
             caption="Sessions"

@@ -35,7 +35,11 @@ export function DataTable<Row>({
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.id} scope="col" className={column.align === 'end' ? 'num' : undefined}>
+              <th
+                key={column.id}
+                scope="col"
+                className={`${column.align === 'end' ? 'num ' : ''}col-${column.id}`}
+              >
                 {column.header}
               </th>
             ))}
@@ -57,7 +61,7 @@ export function DataTable<Row>({
               onKeyDown={onRowActivate ? activate(row) : undefined}
             >
               {columns.map((column) => (
-                <td key={column.id} className={column.align === 'end' ? 'num' : undefined}>
+                <td key={column.id} className={`${column.align === 'end' ? 'num ' : ''}col-${column.id}`}>
                   {column.cell(row)}
                 </td>
               ))}

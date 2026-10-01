@@ -9,6 +9,39 @@ const view = (results: Record<string, unknown>, onBack = vi.fn()) =>
   renderWithHost(<SessionDetailView id="fx-auto-1" onBack={onBack} />, results);
 
 describe('SessionDetailView', () => {
+  it('lets you inspect tool arguments, context composition and filter the trace', async () => {
+    view({
+      getSession: sessionDetail({
+        turns: [
+          turnDetail({
+            toolCalls: [
+              {
+                name: 'read_file',
+                status: 'unknown',
+                args: '{"filePath":"/repo/main.ts"}',
+                origin: 'toolCallRound',
+              },
+            ],
+            promptComposition: [
+              {
+                category: 'System',
+                label: 'Tool definitions',
+                share: { value: 0.4, provenance: { kind: 'exact', source: 'Copilot' } },
+              },
+            ],
+          }),
+        ],
+      }),
+    });
+    const turn = await screen.findByRole('article', { name: 'Turn 1' });
+    await userEvent.click(within(turn).getByText('read_file'));
+    expect(within(turn).getByText('{"filePath":"/repo/main.ts"}')).toBeVisible();
+    expect(within(turn).getByText('40%')).toBeInTheDocument();
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search turns' }), 'not-present');
+    expect(screen.queryByRole('article', { name: 'Turn 1' })).not.toBeInTheDocument();
+    expect(screen.getByText('No turns match these filters.')).toBeInTheDocument();
+  });
+
   it('shows the header, totals and the analysis with provenance', async () => {
     view({ getSession: sessionDetail() });
     expect(await screen.findByRole('heading', { name: 'Fix run timeout race' })).toBeInTheDocument();

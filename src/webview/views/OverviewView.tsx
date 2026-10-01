@@ -82,14 +82,20 @@ function OverviewBody({ overview }: { overview: Overview }) {
 
 function PeriodCard({ title, totals }: { title: string; totals: PeriodTotals }) {
   return (
-    <section className="card" aria-label={title}>
+    <section className="card period-card" aria-label={title}>
       <h3>{title}</h3>
       <p className="muted">{totals.from === totals.to ? totals.from : `${totals.from} → ${totals.to}`}</p>
-      <dl className="facts">
-        <dt>Sessions</dt>
-        <dd>{formatInt(totals.sessions)}</dd>
-        <dt>Turns</dt>
-        <dd>{formatInt(totals.turns)}</dd>
+      <dl className="period-activity">
+        <div>
+          <dt>Sessions</dt>
+          <dd>{formatInt(totals.sessions)}</dd>
+        </div>
+        <div>
+          <dt>Turns</dt>
+          <dd>{formatInt(totals.turns)}</dd>
+        </div>
+      </dl>
+      <dl className="facts period-usage">
         <dt>Input tokens</dt>
         <dd>
           <Measure measure={totals.inputTokens} format={int} />

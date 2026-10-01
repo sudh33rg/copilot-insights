@@ -29,8 +29,18 @@ function DashboardView() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
     <>
-      <h1>Copilot Insights</h1>
-      <IndexStatus />
+      <header className="app-header">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            ◈
+          </span>
+          <div>
+            <p className="eyebrow">Local observability</p>
+            <h1>Copilot Insights</h1>
+          </div>
+        </div>
+        <IndexStatus />
+      </header>
       <nav className="tabs" aria-label="Dashboard sections">
         {TABS.map((name) => (
           <Button
@@ -46,6 +56,29 @@ function DashboardView() {
           </Button>
         ))}
       </nav>
+      {selected === null && (
+        <header className="page-heading">
+          <p className="eyebrow">
+            {tab === 'sessions'
+              ? 'Explore your work'
+              : tab === 'analytics'
+                ? 'Understand your usage'
+                : 'Your Copilot workspace'}
+          </p>
+          <h2>{TAB_LABEL[tab]}</h2>
+          <p className="muted">
+            {
+              {
+                overview: 'Activity, usage and outcomes at a glance.',
+                sessions: 'Follow every request, tool call and file reference.',
+                analytics: 'Explore usage over time, across models and workspaces.',
+                learning: 'Find patterns that help you get better results.',
+                diagnostics: 'Check capture coverage and the health of your local index.',
+              }[tab]
+            }
+          </p>
+        </header>
+      )}
       {tab === 'overview' && <OverviewView />}
       {tab === 'diagnostics' && <DiagnosticsView />}
       {tab === 'analytics' && (

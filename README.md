@@ -103,6 +103,20 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 | `copilotInsights.workspaceCreditBudgets` | `{}`        | Per-workspace monthly budgets           |
 | `copilotInsights.liveNudge`              | `false`     | Status bar item for the active session  |
 
+## Exploring sessions
+
+The session explorer groups each turn into prompt, response, usage/timing, tool calls and context/file
+activity. Search turns by text, model, tool or path, filter failures, and use turn navigation to jump
+through a long conversation. Session history also supports exact workspace and date filters.
+
+For complete redacted prompts, responses and tool arguments, set `copilotInsights.captureLevel` to
+`full` in VS Code settings. The default `summaries` level shows shortened text; `metrics` stores no
+conversation text. Attached file paths are labeled separately from tool activity. File contents and tool
+outputs are not retained, and JSON exports omit tool arguments.
+
+The dashboard and charts follow the active VS Code theme. See [UI research](docs/UI_RESEARCH.md) for the
+open-source references, implemented screens and data requirements for further functionality.
+
 ## Development
 
 Requires Node 22+ and pnpm 11. Working rules: `CLAUDE.md` (work only on `main`).

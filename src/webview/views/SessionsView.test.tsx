@@ -68,6 +68,42 @@ describe('SessionsView', () => {
     });
   });
 
+  it('passes workspace and date filters to the host and can reset them', async () => {
+    const user = userEvent.setup();
+    const { calls } = renderWithHost(<SessionsView onOpen={vi.fn()} debounceMs={0} />, {
+      listSessions: { rows: [], total: 0 },
+    });
+    await user.click(screen.getByText('Filter by workspace & date'));
+    await user.type(screen.getByLabelText('Workspace'), 'alpha');
+    await user.type(screen.getByLabelText('From'), '2026-09-01');
+    await user.type(screen.getByLabelText('To'), '2026-09-30');
+    await waitFor(() => {
+      expect(calls.at(-1)?.params).toEqual({
+        offset: 0,
+        limit: 50,
+        workspace: 'alpha',
+        fromDay: '2026-09-01',
+        toDay: '2026-09-30',
+      });
+    });
+    await user.click(screen.getByRole('button', { name: 'Reset filters' }));
+    await waitFor(() => expect(screen.getByLabelText('Workspace')).toHaveValue(''));
+    expect(screen.getByLabelText('From')).toHaveValue('');
+    expect(screen.getByLabelText('To')).toHaveValue('');
+  });
+
+  it('rejects reversed date ranges without sending them to the host', async () => {
+    const user = userEvent.setup();
+    const { calls } = renderWithHost(<SessionsView onOpen={vi.fn()} debounceMs={0} />, {
+      listSessions: { rows: [], total: 0 },
+    });
+    await user.click(screen.getByText('Filter by workspace & date'));
+    await user.type(screen.getByLabelText('From'), '2026-09-30');
+    await user.type(screen.getByLabelText('To'), '2026-09-01');
+    expect(screen.getByRole('alert')).toHaveTextContent('start date');
+    expect(calls.some((call) => (call.params as SessionListParams).toDay === '2026-09-01')).toBe(false);
+  });
+
   it('loads the next page on demand', async () => {
     const user = userEvent.setup();
     const { calls } = renderWithHost(<SessionsView onOpen={vi.fn()} debounceMs={0} />, {

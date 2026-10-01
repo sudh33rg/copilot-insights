@@ -104,7 +104,7 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
       {trends.data && used.length === 0 && <p className="muted">No usage in this range.</p>}
       {trends.data && used.length > 0 && (
         <>
-          <CreditsChart days={days} range={range} />
+          <CreditsChart days={days} range={range} onSelectDay={setSelectedDay} />
           <p className="muted">
             {first !== undefined && last !== undefined && <span>{`From ${first} to ${last}.`} </span>}
             <span>Days without usage are not listed. Select a day to see its sessions.</span>
@@ -150,7 +150,15 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
 }
 
 /** Dependency-free bar chart; the table below carries the same numbers for anyone who cannot see it. */
-function CreditsChart({ days, range }: { days: readonly TrendDay[]; range: number }) {
+function CreditsChart({
+  days,
+  range,
+  onSelectDay,
+}: {
+  days: readonly TrendDay[];
+  range: number;
+  onSelectDay: (day: string) => void;
+}) {
   const known = days.flatMap((entry) =>
     entry.credits.value === null ? [] : [{ day: entry.day, value: entry.credits.value }],
   );
@@ -159,29 +167,82 @@ function CreditsChart({ days, range }: { days: readonly TrendDay[]; range: numbe
     known[0] ?? { day: '', value: 0 },
   );
   if (known.length === 0) return null;
-  const width = 600;
-  const height = 120;
-  const slot = width / days.length;
+  const width = 800;
+  const height = 220;
+  const plotHeight = 160;
+  const left = 48;
+  const slot = (width - left - 16) / days.length;
   const label = `Credits per day over the last ${String(range)} days; highest ${formatCredits(peak.value)} credits on ${peak.day}.`;
   return (
-    <>
+    <section className="card chart-card" aria-label="Credit activity">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Recorded Copilot credits</p>
+          <h3>Daily activity</h3>
+        </div>
+        <span className="muted">Peak {formatCredits(peak.value)} credits</span>
+      </div>
       <svg className="chart" viewBox={`0 0 ${String(width)} ${String(height)}`} role="img" aria-label={label}>
+        {[0, 0.5, 1].map((share) => (
+          <g key={share}>
+            <line
+              className="chart-grid"
+              x1={left}
+              x2={width - 16}
+              y1={plotHeight + 12 - share * plotHeight}
+              y2={plotHeight + 12 - share * plotHeight}
+            />
+            <text
+              className="chart-label"
+              x={left - 8}
+              y={plotHeight + 16 - share * plotHeight}
+              textAnchor="end"
+            >
+              {formatCredits(peak.value * share)}
+            </text>
+          </g>
+        ))}
         {days.map((entry, index) =>
           entry.credits.value === null ? null : (
             <rect
               key={entry.day}
-              x={index * slot + slot * 0.1}
-              width={slot * 0.8}
-              y={height - (peak.value > 0 ? (entry.credits.value / peak.value) * (height - 4) : 0) - 2}
-              height={peak.value > 0 ? (entry.credits.value / peak.value) * (height - 4) : 0}
+              x={left + index * slot + slot * 0.18}
+              width={slot * 0.64}
+              y={plotHeight + 12 - (peak.value > 0 ? (entry.credits.value / peak.value) * plotHeight : 0)}
+              height={peak.value > 0 ? (entry.credits.value / peak.value) * plotHeight : 0}
+              rx={3}
+              onClick={() => {
+                onSelectDay(entry.day);
+              }}
             >
               <title>{`${entry.day}: ${formatCredits(entry.credits.value)} credits`}</title>
             </rect>
           ),
         )}
+        <text className="chart-label" x={left} y={204}>
+          {days[0]?.day}
+        </text>
+        <text className="chart-label" x={width - 16} y={204} textAnchor="end">
+          {days[days.length - 1]?.day}
+        </text>
       </svg>
       <p className="muted">{label}</p>
-    </>
+      <p className="muted">Gaps can mean no recorded credits. Unavailable usage is not treated as zero.</p>
+      <div className="chart-days" aria-label="Explore active days">
+        {known
+          .filter((entry) => entry.value > 0)
+          .map((entry) => (
+            <Button
+              key={entry.day}
+              onClick={() => {
+                onSelectDay(entry.day);
+              }}
+            >
+              {entry.day} · {formatCredits(entry.value)}
+            </Button>
+          ))}
+      </div>
+    </section>
   );
 }
 

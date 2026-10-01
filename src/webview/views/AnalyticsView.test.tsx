@@ -69,6 +69,12 @@ describe('AnalyticsView', () => {
     ).toBeVisible();
   });
 
+  it('opens the selected day from an accessible chart control', async () => {
+    view();
+    await userEvent.click(await screen.findByRole('button', { name: '2026-09-21 · 2.5' }));
+    expect(await screen.findByRole('table', { name: 'Sessions on 2026-09-21' })).toBeInTheDocument();
+  });
+
   it('lists the days that had usage with exact totals, and leaves the empty days out of the table', async () => {
     view();
     const table = await screen.findByRole('table', { name: 'Usage by day' });

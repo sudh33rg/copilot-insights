@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Analysis, ClearScope, SessionDetail, TurnDetail } from '../../shared/dto';
+import { useState } from 'react';
+import type { Analysis, ClearScope, SessionDetail } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { ProvenanceBadge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -7,20 +8,7 @@ import { formatCredits, formatDateTime, formatDuration, formatInt } from '../ui/
 import { Measure } from '../ui/Measure';
 import { EfficiencyCard } from './EfficiencyCard';
 import { OutcomeCard } from './OutcomeCard';
-
-const STATE_LABEL: Record<TurnDetail['state'], string> = {
-  complete: 'Complete',
-  failed: 'Failed',
-  cancelled: 'Cancelled',
-  pending: 'In progress',
-  unknown: 'Unknown',
-};
-const HOST_LABEL: Record<TurnDetail['host'], string> = {
-  copilot: 'Copilot',
-  byok: 'BYOK / local',
-  unknown: 'Unknown host',
-};
-const NOT_STORED = 'Not stored at this capture level.';
+import { TurnTrace } from './TurnTrace';
 
 export function SessionDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const rpc = useRpc();
@@ -66,51 +54,146 @@ export function SessionDetailView({ id, onBack }: { id: string; onBack: () => vo
       {query.isPending && <p className="muted">Loading…</p>}
       {query.isError && <p role="alert">Could not load the session: {query.error.message}</p>}
       {query.data === null && <p className="muted">This session is no longer in the index.</p>}
-      {query.data && <Detail session={query.data} />}
+      {query.data && <Detail key={query.data.id} session={query.data} />}
     </section>
   );
 }
 
 function Detail({ session }: { session: SessionDetail }) {
+  const [search, setSearch] = useState('');
+  const [failedOnly, setFailedOnly] = useState(false);
+  const query = search.trim().toLowerCase();
+  const turns = session.turns.filter(
+    (turn) =>
+      (!failedOnly || turn.state === 'failed') &&
+      (query === '' ||
+        [
+          turn.userText,
+          turn.assistantText,
+          turn.model,
+          turn.errorCode,
+          ...turn.toolCalls.map((call) => call.name),
+          ...turn.fileEvents.map((file) => file.path),
+        ].some((value) => value?.toLowerCase().includes(query))),
+  );
+  const tools = session.turns.reduce((count, turn) => count + turn.toolCalls.length, 0);
+  const files = new Set(session.turns.flatMap((turn) => turn.fileEvents.map((file) => file.path))).size;
   return (
     <>
-      <h2>{session.title ?? 'Untitled session'}</h2>
-      <p className="muted">
-        {session.workspace} · {formatDateTime(session.startedAt)} · active {formatDuration(session.activeMs)}{' '}
-        · capture level: {session.captureLevel}
-      </p>
-      <dl className="facts">
-        <dt>Input tokens</dt>
-        <dd>
-          <Measure measure={session.inputTokens} format={(value) => formatInt(Number(value))} />
-        </dd>
-        <dt>Output tokens</dt>
-        <dd>
-          <Measure measure={session.outputTokens} format={(value) => formatInt(Number(value))} />
-        </dd>
-        <dt>Credits</dt>
-        <dd>
-          <Measure measure={session.credits} format={(value) => formatCredits(Number(value))} />
-        </dd>
-      </dl>
-      {session.baseline !== null && (
+      <header className="page-heading">
+        <p className="eyebrow">Session explorer · {session.workspace}</p>
+        <h2>{session.title ?? 'Untitled session'}</h2>
         <p className="muted">
+          {formatDateTime(session.startedAt)} · active {formatDuration(session.activeMs)} ·{' '}
+          {session.turns.length} turns · {tools} tool calls · {files} files
+        </p>
+      </header>
+      <dl className="metric-grid">
+        <div>
+          <dt>Input tokens</dt>
+          <dd>
+            <Measure measure={session.inputTokens} format={(value) => formatInt(Number(value))} />
+          </dd>
+        </div>
+        <div>
+          <dt>Output tokens</dt>
+          <dd>
+            <Measure measure={session.outputTokens} format={(value) => formatInt(Number(value))} />
+          </dd>
+        </div>
+        <div>
+          <dt>Credits</dt>
+          <dd>
+            <Measure measure={session.credits} format={(value) => formatCredits(Number(value))} />
+          </dd>
+        </div>
+      </dl>
+      <div className="notice">
+        <strong>Capture level: {session.captureLevel}</strong>
+        <p>
+          {session.captureLevel === 'full'
+            ? 'Complete stored prompts, responses and tool arguments are shown with secrets redacted.'
+            : session.captureLevel === 'summaries'
+              ? 'Prompts and responses are shortened summaries. To inspect complete text and tool arguments, set Copilot Insights › Capture Level to Full in VS Code settings, then rebuild the index.'
+              : 'Conversation text and tool arguments are not stored. File paths and available telemetry are shown.'}{' '}
+          File references show recorded context and activity; file contents and tool outputs are not retained.
+        </p>
+      </div>
+      {session.baseline !== null && (
+        <p className="notice">
           {session.baseline.message} <ProvenanceBadge provenance={session.baseline.verdict.provenance} />
         </p>
       )}
       {session.debug === null && (
-        <p className="muted">
+        <p className="notice muted">
           Agent debug logging is off for this session, so cached tokens, per-call latency and usage are not
           available. Run “Copilot Insights: Enable Exact Telemetry…” to turn it on for future sessions.
         </p>
       )}
+      {session.debug !== null && (
+        <p className="muted">
+          Debug coverage: {session.debug.calls} model calls · {session.debug.internalCalls} internal ·{' '}
+          {session.debug.unmatchedCalls} unmatched. Per-turn telemetry covers matched requests.
+        </p>
+      )}
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Execution trace</p>
+          <h3>Timeline</h3>
+        </div>
+        <span className="muted">
+          {turns.length} of {session.turns.length} turns
+        </span>
+      </div>
+      <div className="toolbar" role="search">
+        <input
+          type="search"
+          aria-label="Search turns"
+          placeholder="Search prompts, responses, tools or file paths"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+          }}
+        />
+        <label>
+          <input
+            type="checkbox"
+            checked={failedOnly}
+            onChange={(event) => {
+              setFailedOnly(event.target.checked);
+            }}
+          />{' '}
+          Failed turns only
+        </label>
+      </div>
+      <div className="trace-layout">
+        <nav className="trace-nav" aria-label="Turn navigation">
+          {turns.map((turn) => (
+            <a key={turn.index} href={`#turn-${String(turn.index)}`}>
+              <span className={`trace-dot state--${turn.state}`} />
+              Turn {turn.index}
+              <small>{turn.toolCalls.length} tools</small>
+            </a>
+          ))}
+        </nav>
+        <div className="trace-content">
+          {turns.map((turn) => (
+            <TurnTrace key={turn.index} turn={turn} captureLevel={session.captureLevel} />
+          ))}
+          {turns.length === 0 && <p className="empty-state">No turns match these filters.</p>}
+        </div>
+      </div>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Session insights</p>
+          <h3>Results & efficiency</h3>
+        </div>
+      </div>
       {session.analysis && <AnalysisCard analysis={session.analysis} />}
-      <OutcomeCard outcomes={session.outcomes} />
-      <EfficiencyCard efficiency={session.efficiency} />
-      <h3>Timeline</h3>
-      {session.turns.map((turn) => (
-        <TurnCard key={turn.index} turn={turn} />
-      ))}
+      <div className="insight-grid">
+        <OutcomeCard outcomes={session.outcomes} />
+        <EfficiencyCard efficiency={session.efficiency} />
+      </div>
     </>
   );
 }
@@ -161,95 +244,5 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
         </ul>
       )}
     </section>
-  );
-}
-
-function TurnCard({ turn }: { turn: TurnDetail }) {
-  const rounds = turn.toolRounds.value ?? 0;
-  const compactions = turn.compactions.value ?? 0;
-  const extras = [
-    turn.reasoningMs.value !== null ? `reasoning ${formatDuration(turn.reasoningMs.value)}` : null,
-    rounds > 0 ? `${String(rounds)} tool round${rounds === 1 ? '' : 's'}` : null,
-    compactions > 0 ? `${String(compactions)} compaction${compactions === 1 ? '' : 's'}` : null,
-  ].filter((item): item is string => item !== null);
-  return (
-    <article className="turn" aria-label={`Turn ${String(turn.index)}`}>
-      <header>
-        <strong>Turn {turn.index}</strong>{' '}
-        <span className={`state state--${turn.state}`}>{STATE_LABEL[turn.state]}</span>
-        {turn.systemInitiated && <span className="tag">System-initiated</span>}
-        <div className="muted">
-          <span>{turn.routing.label}</span> · {HOST_LABEL[turn.host]}
-          {turn.startedAt !== null && ` · ${formatDateTime(turn.startedAt)}`}
-        </div>
-      </header>
-      <p className="label">Prompt</p>
-      {turn.userText === null ? (
-        <p className="muted">{NOT_STORED}</p>
-      ) : (
-        <pre className="text">{turn.userText}</pre>
-      )}
-      <p className="label">Response</p>
-      {turn.assistantText === null ? (
-        <p className="muted">{NOT_STORED}</p>
-      ) : (
-        <pre className="text">{turn.assistantText}</pre>
-      )}
-      <dl className="facts facts--row">
-        <dt>Input</dt>
-        <dd>
-          <Measure measure={turn.inputTokens} format={(value) => formatInt(Number(value))} />
-        </dd>
-        <dt>Output</dt>
-        <dd>
-          <Measure measure={turn.outputTokens} format={(value) => formatInt(Number(value))} />
-        </dd>
-        <dt>Credits</dt>
-        <dd>
-          <Measure measure={turn.credits} format={(value) => formatCredits(Number(value))} />
-        </dd>
-      </dl>
-      {[turn.cachedTokens, turn.ttftMs, turn.nanoAiu].some((measure) => measure.value !== null) && (
-        <dl className="facts facts--row" aria-label="Exact telemetry">
-          <dt>Cached</dt>
-          <dd>
-            <Measure measure={turn.cachedTokens} format={(value) => formatInt(Number(value))} />
-          </dd>
-          <dt>First token</dt>
-          <dd>
-            <Measure measure={turn.ttftMs} format={(value) => formatDuration(Number(value))} />
-          </dd>
-          <dt>Usage (nano-AIU)</dt>
-          <dd>
-            <Measure measure={turn.nanoAiu} format={(value) => formatInt(Number(value))} />
-          </dd>
-        </dl>
-      )}
-      {extras.length > 0 && <p className="muted">{extras.join(' · ')}</p>}
-      {turn.toolCalls.length > 0 && (
-        <ul className="chips" aria-label="Tool calls">
-          {turn.toolCalls.map((call, index) => (
-            <li key={`${call.name}-${String(index)}`}>
-              {call.name}
-              {call.status === 'incomplete' ? ' (incomplete)' : ''}
-            </li>
-          ))}
-        </ul>
-      )}
-      {turn.fileEvents.length > 0 && (
-        <ul className="files" aria-label="File activity">
-          {turn.fileEvents.map((event, index) => (
-            <li key={`${event.path}-${String(index)}`}>
-              <code>{event.path}</code> <span className="muted">{event.action}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {(turn.errorCode !== null || turn.errorMessage !== null) && (
-        <p className="error">
-          Error {turn.errorCode ?? ''} {turn.errorMessage ?? ''}
-        </p>
-      )}
-    </article>
   );
 }
