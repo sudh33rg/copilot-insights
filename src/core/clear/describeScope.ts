@@ -3,7 +3,7 @@ import { deletesSessions } from './clearService';
 
 const sessionsOf = (count: number): string => `${String(count)} session${count === 1 ? '' : 's'}`;
 
-const REASSURE = "Only Copilot Insights' own index is affected; Copilot's own chat history is not touched.";
+const REASSURE = "Only TraceOn' own index is affected; Copilot's own chat history is not touched.";
 
 /** Confirmation-dialog wording, shared by every entry point so the promise is identical everywhere. */
 export function describeScope(
@@ -14,7 +14,7 @@ export function describeScope(
   const title = ((): string => {
     switch (scope.kind) {
       case 'session':
-        return 'Delete this session from Copilot Insights?';
+        return 'Delete this session from TraceOn?';
       case 'sessionContent':
         return 'Clear conversation text from this session?';
       case 'beforeDay':
@@ -22,7 +22,7 @@ export function describeScope(
       case 'workspace':
         return `Delete ${sessionsOf(count)} from workspace "${scope.workspace}"?`;
       case 'everything':
-        return `Delete all ${sessionsOf(count)} from Copilot Insights?`;
+        return `Delete all ${sessionsOf(count)} from TraceOn?`;
       case 'allContent':
         return `Clear conversation text from ${sessionsOf(count)}?`;
     }

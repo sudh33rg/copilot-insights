@@ -1,4 +1,4 @@
-# Copilot Insights — rewrite roadmap
+# TraceOn — rewrite roadmap
 
 Spec: `docs/PRODUCT_VISION.md`. Data reference: `docs/copilot-data-formats.md`. Working rules: `CLAUDE.md`
 (work only on `main`; no branches or worktrees).
@@ -30,7 +30,7 @@ Copilot files (read-only)                     VS Code window (extension host)
 └───────────────────────────┘             │   storage, analysis, github)                  │
                                             │        │  node:sqlite (WAL, migrations)      │
 GitHub REST API (opt-in sync) ◄──────────── │        ▼                                     │
-                                            │ globalStorage/local.copilot-insights/        │
+                                            │ globalStorage/local.traceon/        │
                                             │   insights.db  + scanner.lock                │
                                             └───────────────┬──────────────────────────────┘
                                                             │ typed RPC (zod-validated postMessage)

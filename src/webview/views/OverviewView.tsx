@@ -158,7 +158,7 @@ function InternalCard({ internal }: { internal: Overview['internal'] }) {
       <h3>Copilot internal calls</h3>
       {internal.sessionsWithLogs === 0 ? (
         <p className="muted">
-          No agent debug logs found. Enable “Copilot Insights: Enable Exact Telemetry…” to see the utility
+          No agent debug logs found. Enable “TraceOn: Enable Exact Telemetry…” to see the utility
           requests (titles, summaries, …) Copilot makes on its own.
         </p>
       ) : (

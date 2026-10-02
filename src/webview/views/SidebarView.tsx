@@ -10,7 +10,7 @@ export function SidebarView() {
   const overview = useQuery({ queryKey: ['overview'], queryFn: () => rpc.call('getOverview', {}) });
   return (
     <>
-      <h1>Copilot Insights</h1>
+      <h1>TraceOn</h1>
       {overview.isError && <p role="alert">Could not load the overview: {overview.error.message}</p>}
       {overview.data && (
         <section aria-label="Today">

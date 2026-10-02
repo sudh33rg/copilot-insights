@@ -2,8 +2,8 @@ import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 
 describe('commands', () => {
-  it('registers every Copilot Insights command', async () => {
-    await vscode.extensions.getExtension('local.copilot-insights')?.activate();
+  it('registers every TraceOn command', async () => {
+    await vscode.extensions.getExtension('local.traceon')?.activate();
     const commands = await vscode.commands.getCommands(true);
     for (const id of [
       'copilotInsights.openDashboard',

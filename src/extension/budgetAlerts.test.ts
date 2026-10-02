@@ -52,7 +52,7 @@ describe('BudgetAlerts', () => {
     await alerts.check();
     await alerts.check();
     expect(messages).toEqual([
-      'Copilot Insights: you have used 82% of your monthly credit budget (41 of 50 recorded on this machine).',
+      'TraceOn: you have used 82% of your monthly credit budget (41 of 50 recorded on this machine).',
     ]);
   });
 
@@ -64,7 +64,7 @@ describe('BudgetAlerts', () => {
     await alerts.check();
     expect(messages).toHaveLength(2);
     expect(messages[1]).toBe(
-      'Copilot Insights: you have reached your monthly credit budget (50.5 of 50 recorded on this machine).',
+      'TraceOn: you have reached your monthly credit budget (50.5 of 50 recorded on this machine).',
     );
   });
 
@@ -73,7 +73,7 @@ describe('BudgetAlerts', () => {
     await alerts.check();
     await alerts.check();
     expect(messages).toEqual([
-      'Copilot Insights: you have reached your monthly credit budget (60 of 50 recorded on this machine).',
+      'TraceOn: you have reached your monthly credit budget (60 of 50 recorded on this machine).',
     ]);
   });
 
@@ -94,7 +94,7 @@ describe('BudgetAlerts', () => {
     );
     await alerts.check();
     expect(messages).toEqual([
-      'Copilot Insights: you have used 90% of your monthly credit budget for alpha (9 of 10 recorded on this machine).',
+      'TraceOn: you have used 90% of your monthly credit budget for alpha (9 of 10 recorded on this machine).',
     ]);
   });
 

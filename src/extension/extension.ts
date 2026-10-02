@@ -1,5 +1,5 @@
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { getToolAnalytics } from '../core/query/toolAnalytics';
 import { SessionLibrary } from '../core/storage/sessionLibrary';
 import * as vscode from 'vscode';
@@ -47,13 +47,15 @@ import { SidebarProvider } from './webviewHost/sidebarProvider';
 
 const LIVE_TICK_MS = 60_000;
 const NUDGE_DEBOUNCE_MS = 1000;
+const LEGACY_EXTENSION_STORAGE_ID = 'local.copilot-insights';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const log = vscode.window.createOutputChannel('Copilot Insights', { log: true });
+  const log = vscode.window.createOutputChannel('TraceOn', { log: true });
   context.subscriptions.push(log);
   const version = extensionVersion(context);
   const storageDir = context.globalStorageUri.fsPath;
   mkdirSync(storageDir, { recursive: true });
+  migrateLegacyDatabase(storageDir);
 
   const database = new Database(join(storageDir, 'insights.db'));
   const sessions = new SessionStore(database);
@@ -294,7 +296,20 @@ export function activate(context: vscode.ExtensionContext): void {
   controller.start();
   void liveObserver.tick();
   offerLegacyCleanup(dataDeps);
-  log.info(`Copilot Insights ${version} activated (storage: ${storageDir})`);
+  log.info(`TraceOn ${version} activated (storage: ${storageDir})`);
+}
+
+/** Preserve the existing local index after the package identity changes. */
+function migrateLegacyDatabase(storageDir: string): void {
+  const databasePath = join(storageDir, 'insights.db');
+  if (existsSync(databasePath)) return;
+
+  const legacyStorageDir = join(dirname(storageDir), LEGACY_EXTENSION_STORAGE_ID);
+  const legacyWal = join(legacyStorageDir, 'insights.db-wal');
+  if (existsSync(legacyWal)) copyFileSync(legacyWal, join(storageDir, 'insights.db-wal'));
+
+  const legacyDatabase = join(legacyStorageDir, 'insights.db');
+  if (existsSync(legacyDatabase)) copyFileSync(legacyDatabase, databasePath);
 }
 
 export function deactivate(): void {

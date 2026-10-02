@@ -2,7 +2,7 @@ import * as assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import * as vscode from 'vscode';
 
-const EXTENSION_ID = 'local.copilot-insights';
+const EXTENSION_ID = 'local.traceon';
 
 describe('extension host environment', () => {
   it('activates the extension', async () => {

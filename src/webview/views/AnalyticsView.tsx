@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import type { BreakdownRow, SessionRow, TrendDay } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { DataTable, type Column } from '../ui/DataTable';
@@ -71,7 +71,12 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
     queryKey: ['trends', range],
     queryFn: () => rpc.call('getTrends', { days: range }),
   });
+  const chartTrends = useQuery({
+    queryKey: ['trends', 90],
+    queryFn: () => rpc.call('getTrends', { days: 90 }),
+  });
   const days = trends.data?.days ?? [];
+  const chartDays = chartTrends.data?.days ?? [];
   const first = days[0]?.day;
   const last = days[days.length - 1]?.day;
   const breakdown = useQuery({
@@ -80,6 +85,7 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
     enabled: first !== undefined && last !== undefined,
   });
   const used = days.filter((entry) => entry.turns > 0);
+  const chartUsed = chartDays.filter((entry) => entry.turns > 0);
 
   return (
     <section aria-label="Analytics">
@@ -116,10 +122,13 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
       </div>
       {trends.isPending && <p className="muted">Loading…</p>}
       {trends.isError && <p role="alert">Could not load trends: {trends.error.message}</p>}
+      {chartTrends.isError && <p role="alert">Could not load activity chart: {chartTrends.error.message}</p>}
+      {chartTrends.data && chartUsed.length > 0 && (
+        <CreditsChart metric={metric} days={chartDays} range={90} onSelectDay={setSelectedDay} />
+      )}
       {trends.data && used.length === 0 && <p className="muted">No usage in this range.</p>}
       {trends.data && used.length > 0 && (
         <>
-          <CreditsChart metric={metric} days={days} range={range} onSelectDay={setSelectedDay} />
           <p className="muted">
             {first !== undefined && last !== undefined && <span>{`From ${first} to ${last}.`} </span>}
             <span>Days without usage are not listed. Select a day to see its sessions.</span>
@@ -163,7 +172,7 @@ export function AnalyticsView({ onOpenSession }: { onOpenSession: (id: string) =
   );
 }
 
-/** Dependency-free bar chart; the table below carries the same numbers for anyone who cannot see it. */
+/** Calendar-style activity chart; each day remains a direct, keyboard-accessible drilldown. */
 function CreditsChart({
   metric,
   days,
@@ -175,6 +184,7 @@ function CreditsChart({
   range: number;
   onSelectDay: (day: string) => void;
 }) {
+  const [chartView, setChartView] = useState<'2d' | '3d'>('3d');
   const unit = metric === 'credits' ? 'credits' : 'tokens';
   const formatValue = metric === 'credits' ? formatCredits : formatInt;
   const known = days.flatMap((entry) =>
@@ -184,83 +194,210 @@ function CreditsChart({
     (best, entry) => (entry.value > best.value ? entry : best),
     known[0] ?? { day: '', value: 0 },
   );
-  if (known.length === 0) return null;
-  const width = 800;
-  const height = 220;
-  const plotHeight = 160;
-  const left = 48;
-  const slot = (width - left - 16) / days.length;
-  const label = `${METRIC_LABELS[metric]} per day over the last ${String(range)} days; highest ${formatValue(peak.value)} ${unit} on ${peak.day}.`;
+  const firstDay = days[0];
+  if (known.length === 0 || firstDay === undefined) return null;
+  const firstWeekday = (new Date(`${firstDay.day}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const cells: { day?: TrendDay; key: string }[] = [
+    ...Array.from({ length: firstWeekday }, (_, index) => ({ key: `padding-${String(index)}` })),
+    ...days.map((day) => ({ day, key: day.day })),
+  ];
+  const weekCount = Math.ceil(cells.length / 7);
+  while (cells.length < weekCount * 7) cells.push({ key: `padding-${String(cells.length)}` });
+  const plottedCells = cells.flatMap((cell, index) =>
+    cell.day === undefined
+      ? []
+      : [{ ...cell, day: cell.day, week: Math.floor(index / 7), weekday: index % 7 }],
+  );
+  plottedCells.sort((left, right) =>
+    left.week - left.weekday - (right.week - right.weekday) || left.week - right.week,
+  );
+  const scaleMax = Math.max(...known.map((entry) => entry.value));
+  const turnCount = days.reduce((total, day) => total + day.turns, 0);
+  const activeDays = days.filter((day) => day.turns > 0).length;
+  const dayName = (day: string) =>
+    new Intl.DateTimeFormat(undefined, { weekday: 'long', timeZone: 'UTC' }).format(
+      new Date(`${day}T00:00:00Z`),
+    );
+  const levelFor = (value: number) =>
+    value <= 0 || scaleMax <= 0 ? 0 : Math.min(4, Math.ceil((value / scaleMax) * 4));
+  const summary = `${METRIC_LABELS[metric]} per day over the last ${String(range)} days. Highest ${formatValue(peak.value)} ${unit} on ${peak.day}.`;
+  const plotWidth = 1000;
+  const tileWidth = 32;
+  const tileDepth = 18;
+  const weekX = 25;
+  const weekY = tileDepth / 2;
+  const rowX = tileWidth - weekX;
+  const rowY = -tileDepth / 2;
+  const planeWidth = weekCount * weekX + 7 * rowX;
+  const planeHeight = (weekCount + 8) * weekY;
+  const isoTop = 80;
+  const isoViewHeight = planeHeight + isoTop + 12;
+  const isoOffsetX = Math.max(0, (plotWidth - planeWidth) / 2);
+  const flatCell = 9;
+  const flatGap = 4;
+  const flatWidth = weekCount * (flatCell + flatGap) - flatGap;
+  const flatOffsetX = (plotWidth - flatWidth) / 2;
+  const onCellKeyDown = (event: KeyboardEvent<SVGGElement>, day: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelectDay(day);
+    }
+  };
   return (
     <section className="card chart-card" aria-label={`${METRIC_LABELS[metric]} activity`}>
       <div className="section-heading">
-        <div>
-          <p className="eyebrow">Recorded Copilot ${unit}</p>
-          <h3>Daily activity</h3>
+        <div className="chart-activity-count">
+          <strong>{formatInt(turnCount)} turns · {formatInt(activeDays)} active days</strong>
+          <span className="muted">Independent of the range filter.</span>
         </div>
-        <span className="muted">
-          Peak {formatValue(peak.value)} {unit}
-        </span>
+        <div className="chart-heading-actions">
+          <div className="chart-mode-toggle" role="group" aria-label="Chart view">
+            {(['2d', '3d'] as const).map((view) => (
+              <button
+                key={view}
+                className={chartView === view ? 'chart-mode is-active' : 'chart-mode'}
+                type="button"
+                aria-pressed={chartView === view}
+                onClick={() => setChartView(view)}
+              >
+                {view.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      <svg className="chart" viewBox={`0 0 ${String(width)} ${String(height)}`} role="img" aria-label={label}>
-        {[0, 0.5, 1].map((share) => (
-          <g key={share}>
-            <line
-              className="chart-grid"
-              x1={left}
-              x2={width - 16}
-              y1={plotHeight + 12 - share * plotHeight}
-              y2={plotHeight + 12 - share * plotHeight}
-            />
-            <text
-              className="chart-label"
-              x={left - 8}
-              y={plotHeight + 16 - share * plotHeight}
-              textAnchor="end"
-            >
-              {formatValue(peak.value * share)}
-            </text>
-          </g>
-        ))}
-        {days.map((entry, index) =>
-          entry[metric].value === null ? null : (
-            <rect
-              key={entry.day}
-              x={left + index * slot + slot * 0.18}
-              width={slot * 0.64}
-              y={plotHeight + 12 - (peak.value > 0 ? (entry[metric].value / peak.value) * plotHeight : 0)}
-              height={peak.value > 0 ? (entry[metric].value / peak.value) * plotHeight : 0}
-              rx={3}
-              onClick={() => {
-                onSelectDay(entry.day);
-              }}
-            >
-              <title>{`${entry.day}: ${formatValue(entry[metric].value)} ${unit}`}</title>
-            </rect>
-          ),
+      <svg
+        className={`activity-plot activity-plot--${chartView}`}
+        viewBox={`0 0 ${String(plotWidth)} ${String(chartView === '3d' ? isoViewHeight : 200)}`}
+        role="group"
+        aria-label={`${summary} Select a day to see its sessions.`}
+      >
+        <defs>
+          <pattern
+            id="activity-unknown-pattern"
+            width="5"
+            height="5"
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(45)"
+          >
+            <rect width="5" height="5" fill="#151d25" />
+            <line x1="0" y1="0" x2="0" y2="5" stroke="#46515b" strokeWidth="2" />
+          </pattern>
+        </defs>
+        {chartView === '3d' && (
+          <polygon
+            className="activity-plane"
+            points={[
+              `${isoOffsetX},${isoTop + 6 * weekY}`,
+              `${isoOffsetX + weekCount * weekX},${isoTop + 6 * weekY + weekCount * weekY}`,
+              `${isoOffsetX + weekCount * weekX + 7 * rowX},${isoTop + 6 * weekY + weekCount * weekY + 7 * rowY}`,
+              `${isoOffsetX + 7 * rowX},${isoTop + 6 * weekY + 7 * rowY}`,
+            ].join(' ')}
+          />
         )}
-        <text className="chart-label" x={left} y={204}>
-          {days[0]?.day}
-        </text>
-        <text className="chart-label" x={width - 16} y={204} textAnchor="end">
-          {days[days.length - 1]?.day}
-        </text>
-      </svg>
-      <p className="muted">{label}</p>
-      <p className="muted">Gaps can mean no recorded usage. Unavailable usage is not treated as zero.</p>
-      <div className="chart-days" aria-label="Explore active days">
-        {known
-          .filter((entry) => entry.value > 0)
-          .map((entry) => (
-            <Button
-              key={entry.day}
-              onClick={() => {
-                onSelectDay(entry.day);
-              }}
+        {plottedCells.map(({ day, key, week, weekday }) => {
+          const value = day[metric].value;
+          const unavailable = value === null && day.turns > 0;
+          const amount = value ?? 0;
+          const description = unavailable
+            ? `${day.day}, ${dayName(day.day)}: ${METRIC_LABELS[metric].toLowerCase()} unavailable`
+            : `${day.day}, ${dayName(day.day)}: ${formatValue(amount)} ${unit}`;
+          if (chartView === '2d') {
+            const x = flatOffsetX + week * (flatCell + flatGap);
+            const y = 20 + weekday * (flatCell + flatGap);
+            return (
+              <g
+                key={key}
+                className="activity-day"
+                role="button"
+                tabIndex={0}
+                aria-label={description}
+                onClick={() => onSelectDay(day.day)}
+                onKeyDown={(event) => onCellKeyDown(event, day.day)}
+              >
+                <rect
+                  className={`activity-cell activity-cell--level-${String(levelFor(amount))}${unavailable ? ' activity-cell--unknown' : ''}`}
+                  x={x}
+                  y={y}
+                  width={flatCell}
+                  height={flatCell}
+                  rx={2}
+                />
+                <title>{description}</title>
+              </g>
+            );
+          }
+          const x = isoOffsetX + week * weekX + weekday * rowX;
+          const y = isoTop + 6 * weekY + week * weekY + weekday * rowY;
+          const base = [
+            `${x},${y}`,
+            `${x + weekX},${y + weekY}`,
+            `${x + tileWidth},${y}`,
+            `${x + rowX},${y + rowY}`,
+          ].join(' ');
+          const height =
+            value === null || value <= 0 || scaleMax <= 0 ? 0 : Math.max(4, (value / scaleMax) * 50);
+          const top = [
+            `${x},${y - height}`,
+            `${x + weekX},${y + weekY - height}`,
+            `${x + tileWidth},${y - height}`,
+            `${x + rowX},${y + rowY - height}`,
+          ].join(' ');
+          const weekFace = [
+            `${x},${y}`,
+            `${x + weekX},${y + weekY}`,
+            `${x + weekX},${y + weekY - height}`,
+            `${x},${y - height}`,
+          ].join(' ');
+          const rowFace = [
+            `${x + weekX},${y + weekY}`,
+            `${x + tileWidth},${y}`,
+            `${x + tileWidth},${y - height}`,
+            `${x + weekX},${y + weekY - height}`,
+          ].join(' ');
+          return (
+            <g
+              key={key}
+              className="activity-day"
+              role="button"
+              tabIndex={0}
+              aria-label={description}
+              onClick={() => onSelectDay(day.day)}
+              onKeyDown={(event) => onCellKeyDown(event, day.day)}
             >
-              {entry.day} · {formatValue(entry.value)}
-            </Button>
-          ))}
+              <polygon className="activity-floor" points={base} />
+              {unavailable && <polygon className="activity-floor activity-floor--unknown" points={base} />}
+              {height > 0 && (
+                <>
+                  <polygon
+                    className={`activity-face activity-face--week activity-level-${String(levelFor(amount))}`}
+                    points={weekFace}
+                  />
+                  <polygon
+                    className={`activity-face activity-face--row activity-level-${String(levelFor(amount))}`}
+                    points={rowFace}
+                  />
+                  <polygon
+                    className={`activity-top activity-level-${String(levelFor(amount))}`}
+                    points={top}
+                  />
+                </>
+              )}
+              <title>{description}</title>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="activity-legend" aria-label="Activity amount: less to more">
+        <span>Less</span>
+        {[0, 1, 2, 3, 4].map((level) => (
+          <span
+            key={level}
+            className={`activity-legend-swatch activity-legend-swatch--${String(level)}`}
+            aria-hidden="true"
+          />
+        ))}
+        <span>More</span>
       </div>
     </section>
   );

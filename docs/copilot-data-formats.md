@@ -92,7 +92,7 @@ Other observed request keys (ignored for now): `responseId`, `contentReferences`
 `toolInvocationSerialized.toolCallId` (0 of 6,672 matched). Treat `toolCallRounds` as the tool-call list when
 present, and invocation parts only as file evidence.
 
-### What Copilot Insights derives from `textEditGroup` and terminal tool calls
+### What TraceOn derives from `textEditGroup` and terminal tool calls
 
 `textEditGroup.edits` is a list of edit groups, each a list of `{text, range}`; only `text` is read, and only to
 hash it: every line of the inserted text with at least 20 non-space characters is reduced to

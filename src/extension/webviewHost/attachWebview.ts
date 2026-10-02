@@ -17,7 +17,7 @@ export function attachWebview(
     styleUri: webview.asWebviewUri(vscode.Uri.joinPath(root, 'main.css')).toString(),
     nonce: createNonce(),
     view,
-    title: 'Copilot Insights',
+    title: 'TraceOn',
   });
   return new RpcHost(webview, handlers, (error) => {
     log.error(error instanceof Error ? error : String(error));

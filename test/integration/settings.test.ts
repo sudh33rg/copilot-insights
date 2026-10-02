@@ -11,7 +11,7 @@ describe('new settings', () => {
   });
 
   it('are declared with safe defaults', () => {
-    const extension = vscode.extensions.getExtension('local.copilot-insights');
+    const extension = vscode.extensions.getExtension('local.traceon');
     assert.ok(extension);
     const manifest = extension.packageJSON as {
       contributes: { configuration: { properties: Record<string, unknown> } };
@@ -26,7 +26,7 @@ describe('new settings', () => {
   });
 
   it('can be changed while the extension runs without breaking it', async () => {
-    const extension = vscode.extensions.getExtension('local.copilot-insights');
+    const extension = vscode.extensions.getExtension('local.traceon');
     assert.ok(extension);
     await extension.activate();
     await config().update('liveNudge', true, vscode.ConfigurationTarget.Global);

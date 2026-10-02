@@ -75,7 +75,7 @@ describe('App', () => {
   it('renders the compact summary in the sidebar', async () => {
     renderWithHost(<App view="sidebar" />, { getOverview: overview(), getIndexStatus: status() });
     expect(await screen.findByRole('button', { name: 'Open dashboard' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Copilot Insights' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'TraceOn' })).toBeInTheDocument();
   });
 
   it('opens the diagnostics tab', async () => {

@@ -1,4 +1,4 @@
-# Copilot Insights — product vision
+# TraceOn — product vision
 
 > Source: product goal statement from the project owner (2026-09-30). This is the spec every roadmap phase and
 > plan argues from.
@@ -96,7 +96,7 @@ extension passively observes Copilot's local session/debug data and builds intel
 ```
 Use GitHub Copilot normally
         ↓
-Copilot Insights quietly records session evidence
+TraceOn quietly records session evidence
         ↓
 Open dashboard when needed
         ↓
@@ -106,7 +106,7 @@ expensive, whether the prompt/model/context was efficient, and how to improve ne
 
 ## Summary
 
-Copilot Insights is a local VS Code observability and optimization layer for native GitHub Copilot Chat that
+TraceOn is a local VS Code observability and optimization layer for native GitHub Copilot Chat that
 reconstructs exact sessions, measures token/model/credit usage, explains coding outcomes and affected areas,
 evaluates prompt/model/context efficiency, and helps developers get better results from Copilot with less waste.
 

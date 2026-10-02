@@ -1,6 +1,6 @@
 {
-  "name": "copilot-insights",
-  "displayName": "Copilot Insights",
+  "name": "traceon",
+  "displayName": "TraceOn",
   "description": "Local observability and optimization for native GitHub Copilot Chat sessions in VS Code.",
   "version": "0.8.0",
   "publisher": "local",
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "https://github.com/sudh33rg/copilot-insights"
   },
-  "packageManager": "pnpm@11.11.0",
+  "packageManager": "pnpm@12.8.1",
   "engines": {
     "vscode": "^1.105.0"
   },
@@ -30,51 +30,51 @@
       {
         "command": "copilotInsights.openDashboard",
         "title": "Open Dashboard",
-        "category": "Copilot Insights",
+        "category": "TraceOn",
         "icon": "$(graph)"
       },
       {
         "command": "copilotInsights.refreshSessions",
         "title": "Refresh Copilot Sessions",
-        "category": "Copilot Insights",
+        "category": "TraceOn",
         "icon": "$(refresh)"
       },
       {
         "command": "copilotInsights.rebuildIndex",
         "title": "Rebuild Session Index",
-        "category": "Copilot Insights"
+        "category": "TraceOn"
       },
       {
         "command": "copilotInsights.clearData",
-        "title": "Clear Data\u2026",
-        "category": "Copilot Insights"
+        "title": "Clear Data…",
+        "category": "TraceOn"
       },
       {
         "command": "copilotInsights.exportData",
-        "title": "Export Index as JSON\u2026",
-        "category": "Copilot Insights"
+        "title": "Export Index as JSON…",
+        "category": "TraceOn"
       },
       {
         "command": "copilotInsights.deleteLegacyData",
-        "title": "Delete Data From Previous Version\u2026",
-        "category": "Copilot Insights"
+        "title": "Delete Data From Previous Version…",
+        "category": "TraceOn"
       },
       {
         "command": "copilotInsights.syncGithubUsage",
         "title": "Sync GitHub Usage",
-        "category": "Copilot Insights"
+        "category": "TraceOn"
       },
       {
         "command": "copilotInsights.enableDebugLogging",
-        "title": "Enable Exact Telemetry\u2026",
-        "category": "Copilot Insights"
+        "title": "Enable Exact Telemetry…",
+        "category": "TraceOn"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "copilotInsights",
-          "title": "Copilot Insights",
+          "title": "TraceOn",
           "icon": "media/icon.svg"
         }
       ]
@@ -103,7 +103,7 @@
       ]
     },
     "configuration": {
-      "title": "Copilot Insights",
+      "title": "TraceOn",
       "properties": {
         "copilotInsights.retentionDays": {
           "type": "number",

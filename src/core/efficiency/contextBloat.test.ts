@@ -12,7 +12,7 @@ describe('contextBloat', () => {
     expect(CHARS_PER_TOKEN).toBe(4);
   });
 
-  it('flags tool definitions that were never called, with the cost over every request', () => {
+  it('names the largest uncalled definitions without claiming the snapshot was sent on every request', () => {
     const [finding] = contextBloat({
       toolDefs: defs(16, 31),
       systemPromptChars: null,
@@ -20,13 +20,16 @@ describe('contextBloat', () => {
       requests: 11,
     });
     expect(finding?.id).toBe('unused-tools');
-    expect(finding?.evidence).toBe(
-      '31 of 47 tool definitions were never called; about 9,300 tokens of definitions were sent with each of 11 requests (≈ 102,300 tokens)',
+    expect(finding?.evidence).toContain(
+      '31 of 47 definitions in the latest recorded snapshot were not called',
     );
-    expect(finding?.message).toContain('Disabling unused tools or MCP servers may reduce cost');
+    expect(finding?.evidence).toContain('about 9,300 tokens if this snapshot was sent on a request');
+    expect(finding?.evidence).not.toContain('102,300');
+    expect(finding?.message).toContain('Review the largest uncalled tools');
     expect(finding?.provenance).toEqual({
       kind: 'inferred',
-      source: 'characters ÷ 4 as a token estimate; sent on every request',
+      source:
+        'characters ÷ 4 as a token estimate from the latest recorded tool snapshot; request-level association unavailable',
     });
   });
 
@@ -39,8 +42,24 @@ describe('contextBloat', () => {
     });
     expect(finding?.id).toBe('system-prompt');
     expect(finding?.evidence).toBe(
-      'the system prompt is 46,352 characters (about 11,600 tokens) and was sent with each of 11 requests',
+      'the latest recorded system prompt is 46,352 characters (about 11,600 tokens if sent on a request); request-level association is unavailable',
     );
+  });
+
+  it('ranks concrete candidates by definition size', () => {
+    const [finding] = contextBloat({
+      toolDefs: [
+        { name: 'read_file', chars: 100 },
+        { name: 'mcp/search', chars: 8000 },
+        { name: 'mcp/write', chars: 6000 },
+        { name: 'mcp/list', chars: 5000 },
+        { name: 'mcp/other', chars: 1000 },
+      ],
+      systemPromptChars: null,
+      usedToolNames: new Set(['read_file']),
+      requests: 3,
+    });
+    expect(finding?.evidence).toContain('Largest: mcp/search, mcp/write, mcp/list');
   });
 
   it('stays quiet when most tools were used, for few tools, a small prompt, or a single request', () => {

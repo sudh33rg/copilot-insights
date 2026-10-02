@@ -41,9 +41,9 @@ export async function confirmAndClear(
 
 export async function exportToFile(deps: DataCommandDeps): Promise<{ saved: boolean }> {
   const target = await vscode.window.showSaveDialog({
-    defaultUri: vscode.Uri.file(join(deps.storageDir, 'copilot-insights-export.json')),
+    defaultUri: vscode.Uri.file(join(deps.storageDir, 'traceon-export.json')),
     filters: { JSON: ['json'] },
-    title: 'Export the Copilot Insights index',
+    title: 'Export the TraceOn index',
   });
   if (target === undefined) return { saved: false };
   const document = exportIndex(deps.database, Date.now());
@@ -60,7 +60,7 @@ export async function clearFromPalette(deps: DataCommandDeps): Promise<void> {
       { label: 'Delete sessions of a workspace…', scope: 'workspace' },
       { label: 'Delete everything', scope: 'everything' },
     ] as const,
-    { title: 'Copilot Insights: clear data' },
+    { title: 'TraceOn: clear data' },
   );
   if (pick === undefined) return;
   if (pick.scope === 'allContent' || pick.scope === 'everything') {
@@ -91,7 +91,7 @@ export async function deleteLegacyData(deps: DataCommandDeps): Promise<void> {
     return;
   }
   const choice = await vscode.window.showWarningMessage(
-    'Delete data from the previous Copilot Insights version?',
+    'Delete data from the previous TraceOn version?',
     {
       modal: true,
       detail: `${String(files.length)} file(s) in this extension's own storage (usage.sqlite3 / usage.json). The new version does not use them. Copilot's own files are not touched.`,
@@ -106,7 +106,7 @@ export function offerLegacyCleanup(deps: DataCommandDeps): void {
   if (findLegacyFiles(deps.storageDir).length === 0 || deps.globalState.get(LEGACY_PROMPTED) === true) return;
   void vscode.window
     .showInformationMessage(
-      'Copilot Insights found data from the previous version that is no longer used.',
+      'TraceOn found data from the previous version that is no longer used.',
       'Review and delete',
       'Keep',
     )

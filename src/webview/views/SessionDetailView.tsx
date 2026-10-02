@@ -1,6 +1,6 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useDeferredValue, useState } from 'react';
-import type { Analysis, ClearScope, SessionDetail } from '../../shared/dto';
+import type { Analysis, SessionDetail } from '../../shared/dto';
 import { useRpc } from '../rpcContext';
 import { ProvenanceBadge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -16,14 +16,7 @@ import { TurnTrace } from './TurnTrace';
 
 export function SessionDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const rpc = useRpc();
-  const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ['session', id], queryFn: () => rpc.call('getSession', { id }) });
-  // The extension shows the confirmation dialog; `confirmed` is false when the user cancels.
-  const run = async (scope: ClearScope): Promise<boolean> => {
-    const result = await rpc.call('clearData', { scope });
-    if (result.confirmed) await queryClient.invalidateQueries();
-    return result.confirmed;
-  };
   return (
     <section aria-label="Session">
       <div className="toolbar">
@@ -34,26 +27,6 @@ export function SessionDetailView({ id, onBack }: { id: string; onBack: () => vo
         >
           ← Sessions
         </Button>
-        {query.data && (
-          <>
-            <Button
-              onClick={() => {
-                void run({ kind: 'sessionContent', id });
-              }}
-            >
-              Clear conversation text
-            </Button>
-            <Button
-              onClick={() => {
-                void run({ kind: 'session', id }).then((deleted) => {
-                  if (deleted) onBack();
-                });
-              }}
-            >
-              Delete session
-            </Button>
-          </>
-        )}
       </div>
       {query.isPending && <p className="muted">Loading…</p>}
       {query.isError && <p role="alert">Could not load the session: {query.error.message}</p>}
@@ -144,7 +117,7 @@ function Detail({ session }: { session: SessionDetail }) {
       {session.debug === null && (
         <p className="notice muted">
           Agent debug logging is off for this session, so cached tokens, per-call latency and usage are not
-          available. Run “Copilot Insights: Enable Exact Telemetry…” to turn it on for future sessions.
+          available. Run “TraceOn: Enable Exact Telemetry…” to turn it on for future sessions.
         </p>
       )}
       {session.debug !== null && (
@@ -219,6 +192,7 @@ function Detail({ session }: { session: SessionDetail }) {
                   <TurnTrace
                     key={turn.index}
                     turn={turn}
+                    promptArtifacts={session.promptArtifacts}
                     onInspect={(position) => {
                       const call = turn.toolCalls[position];
                       if (call) setSelected({ turn, call, position });
@@ -284,6 +258,11 @@ function Detail({ session }: { session: SessionDetail }) {
 }
 
 function AnalysisCard({ analysis }: { analysis: Analysis }) {
+  const promptRework = analysis.findings.some((finding) =>
+    ['underspecified-start', 'vague-first-prompt', 'repeated-corrections', 'late-constraints'].includes(
+      finding.id,
+    ),
+  );
   return (
     <section className="card" aria-label="Analysis">
       <h3>Analysis</h3>
@@ -327,6 +306,12 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
             </li>
           ))}
         </ul>
+      )}
+      {promptRework && (
+        <p className="notice">
+          <strong>Try next time:</strong> Goal: [desired change]. Files or area: [where to focus].
+          Constraints: [what to preserve or avoid]. Done when: [test or observable result].
+        </p>
       )}
     </section>
   );

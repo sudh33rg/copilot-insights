@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import brandIcon from '../../media/icon.svg';
 import { Button } from './ui/Button';
 import { CompareView } from './views/CompareView';
 import { ToolsView } from './views/ToolsView';
@@ -36,12 +37,10 @@ function DashboardView() {
     <>
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            ◈
-          </span>
+          <img className="brand-mark" src={brandIcon} alt="" />
           <div>
             <p className="eyebrow">Local observability</p>
-            <h1>Copilot Insights</h1>
+            <h1>TraceOn</h1>
           </div>
         </div>
         <IndexStatus />

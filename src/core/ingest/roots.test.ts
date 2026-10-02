@@ -5,8 +5,8 @@ import { defaultUserDir, resolveStorageRoots, userDirsFromGlobalStorage } from '
 
 describe('roots', () => {
   it('derives user directories from the extension global storage path, including profiles', () => {
-    expect(userDirsFromGlobalStorage('/u/User/globalStorage/local.copilot-insights')).toEqual(['/u/User']);
-    expect(userDirsFromGlobalStorage('/u/User/profiles/abc/globalStorage/local.copilot-insights')).toEqual([
+    expect(userDirsFromGlobalStorage('/u/User/globalStorage/local.traceon')).toEqual(['/u/User']);
+    expect(userDirsFromGlobalStorage('/u/User/profiles/abc/globalStorage/local.traceon')).toEqual([
       '/u/User/profiles/abc',
       '/u/User',
     ]);

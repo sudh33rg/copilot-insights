@@ -31,7 +31,7 @@ export function createFixtureUserDir(): { userDir: string; globalStorageDir: str
   const emptyWindowDir = join(userDir, 'globalStorage', 'emptyWindowChatSessions');
   mkdirSync(emptyWindowDir, { recursive: true });
   copyFileSync(fixturePath('byok-failed-session.jsonl'), join(emptyWindowDir, 'fx-byok-1.jsonl'));
-  const globalStorageDir = join(userDir, 'globalStorage', 'local.copilot-insights');
+  const globalStorageDir = join(userDir, 'globalStorage', 'local.traceon');
   mkdirSync(globalStorageDir, { recursive: true });
   return { userDir, globalStorageDir };
 }

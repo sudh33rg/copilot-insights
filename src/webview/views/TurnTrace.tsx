@@ -1,4 +1,4 @@
-import type { TurnDetail } from '../../shared/dto';
+import type { SessionDetail, TurnDetail } from '../../shared/dto';
 import { Button } from '../ui/Button';
 import { ProvenanceBadge } from '../ui/Badge';
 import { formatCredits, formatDateTime, formatDuration, formatInt, formatPercent } from '../ui/format';
@@ -14,7 +14,15 @@ const STATE_LABEL = {
 const HOST_LABEL = { copilot: 'Copilot', byok: 'BYOK / local', unknown: 'Unknown host' } as const;
 const int = (value: number | string) => formatInt(Number(value));
 
-export function TurnTrace({ turn, onInspect }: { turn: TurnDetail; onInspect?: (position: number) => void }) {
+export function TurnTrace({
+  turn,
+  promptArtifacts = [],
+  onInspect,
+}: {
+  turn: TurnDetail;
+  promptArtifacts?: NonNullable<SessionDetail['promptArtifacts']>;
+  onInspect?: (position: number) => void;
+}) {
   const extras = [
     turn.reasoningMs.value !== null ? `reasoning ${formatDuration(turn.reasoningMs.value)}` : null,
     turn.toolRounds.value !== null
@@ -24,6 +32,9 @@ export function TurnTrace({ turn, onInspect }: { turn: TurnDetail; onInspect?: (
       ? `${String(turn.compactions.value)} compaction${turn.compactions.value === 1 ? '' : 's'}`
       : null,
   ].filter((value): value is string => value !== null);
+  const toolShare = turn.promptComposition
+    .filter((part) => `${part.category} ${part.label}`.toLowerCase().includes('tool'))
+    .reduce((sum, part) => sum + (part.share.value ?? 0), 0);
   return (
     <article id={`turn-${String(turn.index)}`} className="turn" aria-label={`Turn ${String(turn.index)}`}>
       <header className="turn-header">
@@ -98,24 +109,73 @@ export function TurnTrace({ turn, onInspect }: { turn: TurnDetail; onInspect?: (
         </section>
         <section aria-label="Prompt composition">
           <h4>What filled the prompt</h4>
+          {toolShare > 0 && (toolShare >= 0.4 || turn.inputTokens.value === 0) && (
+            <p className="muted">
+              Tool definitions occupied {formatPercent(toolShare)} of the recorded prompt. Review enabled
+              tools and MCP servers in Copilot’s tool picker.
+              {turn.inputTokens.value === 0
+                ? ' Zero reported input tokens and unavailable credits prevent a cost estimate.'
+                : ' This share alone does not establish credit savings.'}
+            </p>
+          )}
           {turn.promptComposition.length === 0 ? (
             <p className="muted">Copilot did not record a context breakdown for this turn.</p>
           ) : (
             <ul className="composition">
-              {turn.promptComposition.map((entry, index) => (
-                <li key={`${entry.category}-${String(index)}`}>
-                  <div>
-                    <span>{entry.label || entry.category}</span>
+              {turn.promptComposition.map((entry, index) => {
+                const label = entry.label || entry.category;
+                const normalized = `${entry.category} ${label}`.toLowerCase();
+                const kind = normalized.includes('tool')
+                  ? 'tool-definition'
+                  : normalized.includes('system') || normalized.includes('instruction')
+                    ? 'instructions'
+                    : null;
+                const artifacts =
+                  kind === null
+                    ? []
+                    : promptArtifacts.filter((item) => item.kind === kind && item.content.trim() !== '');
+                const isMessage = normalized.includes('message');
+                const hasDetails = artifacts.length > 0 || (isMessage && Boolean(turn.userText?.trim()));
+                const summary = (
+                  <>
+                    <span>{label}</span>
                     <Measure measure={entry.share} format={(value) => formatPercent(Number(value))} />
-                  </div>
-                  <meter
-                    min={0}
-                    max={1}
-                    value={entry.share.value ?? 0}
-                    aria-label={entry.label || entry.category}
-                  />
-                </li>
-              ))}
+                    <meter min={0} max={1} value={entry.share.value ?? 0} aria-label={label} />
+                  </>
+                );
+                return (
+                  <li key={`${entry.category}-${String(index)}`}>
+                    {hasDetails ? (
+                      <details className="composition-disclosure">
+                        <summary>{summary}</summary>
+                        <div className="composition-details">
+                          {artifacts.length > 0 ? (
+                            <>
+                              <p className="muted">
+                                Latest recorded session artifact; its association with this individual request
+                                is unavailable.
+                              </p>
+                              {artifacts.map((artifact, artifactIndex) => (
+                                <section key={`${artifact.name}-${String(artifactIndex)}`}>
+                                  <p className="label">{artifact.name}</p>
+                                  <pre className="text code-text">{artifact.content}</pre>
+                                </section>
+                              ))}
+                            </>
+                          ) : (
+                            <>
+                              <p className="muted">Recorded user message for this turn.</p>
+                              <pre className="text">{turn.userText}</pre>
+                            </>
+                          )}
+                        </div>
+                      </details>
+                    ) : (
+                      <div className="composition-row">{summary}</div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

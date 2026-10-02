@@ -35,7 +35,7 @@ export class GithubClient {
         Accept: 'application/vnd.github+json',
         Authorization: `Bearer ${this.token}`,
         'X-GitHub-Api-Version': API_VERSION,
-        'User-Agent': 'copilot-insights-vscode',
+        'User-Agent': 'traceon-vscode',
       },
     });
     if (!response.ok) {

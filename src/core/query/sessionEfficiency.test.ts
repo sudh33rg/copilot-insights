@@ -31,18 +31,19 @@ describe('getSessionEfficiency via getSessionDetail', () => {
     const findings = getSessionDetail(database, 'fx-auto-1')?.efficiency.findings ?? [];
     expect(findings.map((finding) => finding.id)).toEqual(['unused-tools', 'system-prompt']);
     // 3 user-facing requests in the fixture debug log (one more is Copilot's own utility call).
-    expect(findings[0]?.evidence).toBe(
-      '8 of 10 tool definitions were never called; about 8,000 tokens of definitions were sent with each of 3 requests (≈ 24,000 tokens)',
+    expect(findings[0]?.evidence).toContain(
+      '8 of 10 definitions in the latest recorded snapshot were not called',
     );
+    expect(findings[0]?.evidence).toContain('about 8,000 tokens if this snapshot was sent on a request');
     expect(findings.every((finding) => finding.provenance.kind === 'inferred')).toBe(true);
   });
 
-  it('counts turns as requests when no debug-log calls exist', () => {
+  it('does not invent request-level exposure when no debug-log calls exist', () => {
     const { database } = seededStore();
     addToolDefs(database, 8);
     database.db.exec("DELETE FROM llm_calls WHERE session_id = 'fx-auto-1'");
     const finding = getSessionDetail(database, 'fx-auto-1')?.efficiency.findings[0];
-    expect(finding?.evidence).toContain('each of 2 requests');
+    expect(finding?.evidence).toContain('Request-level association unavailable');
   });
 
   describe('fresh-session estimate', () => {

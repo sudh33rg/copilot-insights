@@ -9,7 +9,7 @@ accounting, and MLflow's tool analytics. Implement these patterns inside the exi
 
 This is a desk review of first-party repositories, READMEs, official documentation and documented screen
 examples. The products were not all installed or benchmarked. Features below are documented capabilities;
-"borrow" and priority rankings are design judgments for Copilot Insights, not comparative performance results.
+"borrow" and priority rankings are design judgments for TraceOn, not comparative performance results.
 Popularity is a GitHub star snapshot fetched from the GitHub repository API on the review date, rounded to
 one decimal thousand. Stars indicate community interest, not product quality. Repository links identify the
 metadata sources. All 20 primary references were unarchived; last repository pushes were August–October 2026. A recent push is an activity signal, not a guarantee of support.
@@ -86,7 +86,7 @@ These are useful references but do not count toward the 20 maintained OSS produc
 | [Grafana data links](https://grafana.com/docs/grafana/latest/visualizations/panels-visualizations/configure-data-links/)                                                              | Preserve time range and filter context through drill-down.                                                                                  |
 | [OpenCode TUI](https://opencode.ai/docs/tui/)                                                                                                                                         | Session switching and optional tool-detail expansion support quick investigation.                                                           |
 
-## Recommendations for Copilot Insights
+## Recommendations for TraceOn
 
 ### 1. Make the session explorer the main product screen — first priority
 

@@ -5,7 +5,7 @@ describe('describeScope', () => {
   it('words a destructive delete and reassures that Copilot history is untouched', () => {
     const text = describeScope({ kind: 'session', id: 'x' }, 1);
     expect(text).toMatchObject({ destructive: true, confirmLabel: 'Delete session' });
-    expect(text.title).toBe('Delete this session from Copilot Insights?');
+    expect(text.title).toBe('Delete this session from TraceOn?');
     expect(text.detail).toContain("Copilot's own chat history is not touched");
   });
 
@@ -24,7 +24,7 @@ describe('describeScope', () => {
       'Delete 1 session from workspace "alpha"?',
     );
     expect(describeScope({ kind: 'everything' }, 5).title).toBe(
-      'Delete all 5 sessions from Copilot Insights?',
+      'Delete all 5 sessions from TraceOn?',
     );
   });
 });

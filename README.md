@@ -1,4 +1,4 @@
-# Copilot Insights
+# TraceOn
 
 A local VS Code extension that observes your native GitHub Copilot Chat sessions and explains what happened,
 what it cost, and how to get better results next time. You keep using Copilot Chat normally; no chat
@@ -19,7 +19,7 @@ participant, proxy, server, or AI provider is involved.
 - **Exact telemetry (opt-in)** — with Copilot's agent debug log on, each turn shows cached tokens, first-token
   latency and Copilot's own usage figure (nano-AIU), and the Overview accounts for the utility requests Copilot
   makes itself (titles, summaries, …) as a lower bound. Turn it on with _Enable Exact Telemetry…_. Copilot writes
-  your prompts to those log files on this machine; Copilot Insights retains supported system instructions and tool definitions locally with secrets redacted.
+  your prompts to those log files on this machine; TraceOn retains supported system instructions and tool definitions locally with secrets redacted.
 - **Outcomes** — per session: lines changed, Copilot edits kept / undone / modified, whether inserted lines
   are still present an hour, a day and one commit later, terminal and test exit codes, the change in editor error
   and warning counts, and the commits the session led to with the credits that cost. The Overview adds edit
@@ -50,7 +50,7 @@ participant, proxy, server, or AI provider is involved.
 - **GitHub billed credits (opt-in)** — "Sync now" fetches your own daily billed AI credits from GitHub (individual
   billing only). They are shown account-wide, never attributed to sessions.
 
-Commands (Command Palette, category _Copilot Insights_): Open Dashboard, Refresh Copilot Sessions, Rebuild Session
+Commands (Command Palette, category _TraceOn_): Open Dashboard, Refresh Copilot Sessions, Rebuild Session
 Index, Clear Data…, Export Index as JSON…, Sync GitHub Usage, Enable Exact Telemetry…, Delete Data From Previous Version….
 
 ## What it reads
@@ -75,7 +75,7 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
 - The only network access is the GitHub REST API (`api.github.com`) when you click _Sync now_; the token is sent
   nowhere else. No AI provider is ever called.
 - Redacted tool arguments are shown in the session explorer and omitted from portable JSON exports.
-- To tell whether Copilot's inserted lines survive, Copilot Insights stores **salted fingerprints** (truncated
+- To tell whether Copilot's inserted lines survive, TraceOn stores **salted fingerprints** (truncated
   SHA-256 of each inserted line of at least 20 characters, at most 200 per edit) and a salted hash of each
   terminal command after secret redaction. They cannot be turned back into text, the random per-install salt
   never leaves your machine. This fingerprinting does not retain plaintext; separately captured tool/context
@@ -90,6 +90,8 @@ composition, compactions, reasoning time, tool calls, file reads/edits, failures
   text. Clearing a session removes its observations; retention prunes them with the session.
 
 ## Settings
+
+The existing `copilotInsights.*` setting IDs remain supported so current VS Code settings keep working.
 
 | Setting                                  | Default | Meaning                                 |
 | ---------------------------------------- | ------- | --------------------------------------- |

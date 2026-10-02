@@ -1,6 +1,6 @@
-# Copilot Insights — working rules
+# TraceOn — working rules
 
-Copilot Insights is a local VS Code extension that observes native GitHub Copilot Chat sessions and explains
+TraceOn is a local VS Code extension that observes native GitHub Copilot Chat sessions and explains
 what happened, what it cost, and how to get better results next time. Product spec: `docs/PRODUCT_VISION.md`.
 Roadmap: `docs/ROADMAP.md`. Executable plans: `docs/superpowers/plans/`.
 

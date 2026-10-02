@@ -14,10 +14,10 @@ export function debugLoggingExplanation(): ConsentText {
   return {
     title: 'Turn on Copilot’s agent debug log for exact telemetry?',
     detail:
-      'With it on, Copilot Insights can show cached tokens, per-request latency and Copilot’s own usage figures, ' +
+      'With it on, TraceOn can show cached tokens, per-request latency and Copilot’s own usage figures, ' +
       'and can account for utility requests Copilot makes itself.\n\n' +
       'Copilot writes this log as files on this machine, and the files include your prompts, the messages sent to ' +
-      'the model and tool results. Copilot Insights reads only numbers and identifiers from them and never stores ' +
+      'the model and tool results. TraceOn reads only numbers and identifiers from them and never stores ' +
       'or displays that text. It applies to new chat sessions only, and you can turn it off at any time in the ' +
       'setting github.copilot.chat.agentDebugLog.fileLogging.enabled.',
     confirmLabel: 'Enable',

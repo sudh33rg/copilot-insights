@@ -61,8 +61,8 @@ export class BudgetAlerts {
     const amounts = `${number(spent)} of ${number(limit)} recorded on this machine`;
     this.deps.notify(
       highest === 100
-        ? `Copilot Insights: you have reached ${label} (${amounts}).`
-        : `Copilot Insights: you have used ${String(Math.round((spent / limit) * 100))}% of ${label} (${amounts}).`,
+        ? `TraceOn: you have reached ${label} (${amounts}).`
+        : `TraceOn: you have used ${String(Math.round((spent / limit) * 100))}% of ${label} (${amounts}).`,
     );
     try {
       await this.deps.state.update(key, [...new Set([...alerted, ...due])]);

@@ -35,7 +35,7 @@ function Body({ data }: { data: Diagnostics }) {
           <dd>{versions.vscode}</dd>
           <dt>Copilot Chat</dt>
           <dd>{versions.copilotChat ?? 'not found'}</dd>
-          <dt>Copilot Insights</dt>
+          <dt>TraceOn</dt>
           <dd>{versions.extension}</dd>
         </dl>
         <p>Agent debug logging: {data.debugLogging ? 'on' : 'off'}</p>

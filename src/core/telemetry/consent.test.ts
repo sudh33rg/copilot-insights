@@ -36,7 +36,7 @@ describe('enableDebugLogging', () => {
 });
 
 describe('debugLoggingExplanation', () => {
-  it('states what it adds, what it exposes on disk, and what Copilot Insights does with it', () => {
+  it('states what it adds, what it exposes on disk, and what TraceOn does with it', () => {
     const text = debugLoggingExplanation();
     expect(text.title).toContain('exact telemetry');
     expect(text.detail).toContain('cached tokens');

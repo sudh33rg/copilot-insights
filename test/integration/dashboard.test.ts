@@ -16,9 +16,9 @@ async function waitForTab(label: string, timeoutMs: number): Promise<string[]> {
 }
 
 describe('dashboard', () => {
-  it('opens a Copilot Insights editor tab', async () => {
+  it('opens a TraceOn editor tab', async () => {
     await vscode.commands.executeCommand('copilotInsights.openDashboard');
-    const labels = await waitForTab('Copilot Insights', 5000);
-    assert.ok(labels.includes('Copilot Insights'), `open tabs: ${labels.join(', ')}`);
+    const labels = await waitForTab('TraceOn', 5000);
+    assert.ok(labels.includes('TraceOn'), `open tabs: ${labels.join(', ')}`);
   });
 });

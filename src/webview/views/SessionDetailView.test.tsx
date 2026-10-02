@@ -42,9 +42,36 @@ describe('SessionDetailView', () => {
     expect(screen.getByText('No turns match these filters.')).toBeInTheDocument();
   });
 
-  it('shows the header, totals and the analysis with provenance', async () => {
+  it('explains a tool-heavy composition when token counts are zero', async () => {
+    view({
+      getSession: sessionDetail({
+        turns: [
+          turnDetail({
+            inputTokens: { value: 0, provenance: { kind: 'exact', source: 'Copilot' } },
+            outputTokens: { value: 0, provenance: { kind: 'exact', source: 'Copilot' } },
+            promptComposition: [
+              {
+                category: 'System',
+                label: 'Tool definitions',
+                share: { value: 0.58, provenance: { kind: 'exact', source: 'Copilot' } },
+              },
+            ],
+          }),
+        ],
+      }),
+    });
+    const turn = await screen.findByRole('article', { name: 'Turn 1' });
+    expect(
+      within(turn).getByText(/Tool definitions occupied 58% of the recorded prompt/),
+    ).toBeInTheDocument();
+    expect(within(turn).getByText(/Review enabled tools and MCP servers/)).toBeInTheDocument();
+  });
+
+  it('shows the header, totals and the analysis with provenance without destructive actions', async () => {
     view({ getSession: sessionDetail() });
     expect(await screen.findByRole('heading', { name: 'Fix run timeout race' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Clear conversation text' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete session' })).not.toBeInTheDocument();
     expect(screen.getByText(/alpha/)).toBeInTheDocument();
     const analysis = screen.getByRole('region', { name: 'Analysis' });
     // Intent comes from the prompt's keywords; the task type repeats it here because the prompt decided it.
@@ -55,6 +82,28 @@ describe('SessionDetailView', () => {
     expect(within(analysis).getAllByText('Derived').length).toBeGreaterThan(0);
     expect(within(analysis).getByText('Long sessions carry a growing context.')).toBeInTheDocument();
     expect(within(analysis).getByText(/12 user turns/)).toBeInTheDocument();
+  });
+
+  it('offers a concrete opening prompt structure when prompt findings indicate rework', async () => {
+    const detail = sessionDetail();
+    view({
+      getSession: {
+        ...detail,
+        analysis: detail.analysis && {
+          ...detail.analysis,
+          findings: [
+            {
+              id: 'repeated-corrections',
+              message: 'Several follow-ups corrected the previous answer.',
+              evidence: '2 corrections',
+              provenance: { kind: 'inferred', source: 'prompt rules' },
+            },
+          ],
+        },
+      },
+    });
+    const analysis = await screen.findByRole('region', { name: 'Analysis' });
+    expect(within(analysis).getByText(/Goal:.*Files or area:.*Constraints:.*Done when:/)).toBeInTheDocument();
   });
 
   it('shows the outcome card after the analysis, using what was observed', async () => {
@@ -173,42 +222,6 @@ describe('SessionDetailView', () => {
   it('shows an error when the extension fails', async () => {
     view({});
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the session: boom');
-  });
-
-  it('clears text or deletes the session through the extension, which asks for confirmation', async () => {
-    const onBack = vi.fn();
-    const user = userEvent.setup();
-    const { calls } = view(
-      { getSession: sessionDetail(), clearData: { confirmed: true, sessions: 1 } },
-      onBack,
-    );
-    await user.click(await screen.findByRole('button', { name: 'Clear conversation text' }));
-    expect(calls.filter((call) => call.method === 'clearData').at(-1)).toEqual({
-      method: 'clearData',
-      params: { scope: { kind: 'sessionContent', id: 'fx-auto-1' } },
-    });
-    expect(onBack).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Delete session' }));
-    expect(calls.filter((call) => call.method === 'clearData').at(-1)).toEqual({
-      method: 'clearData',
-      params: { scope: { kind: 'session', id: 'fx-auto-1' } },
-    });
-    await vi.waitFor(() => {
-      expect(onBack).toHaveBeenCalledOnce();
-    });
-  });
-
-  it('stays on the session when the user cancels the confirmation', async () => {
-    const onBack = vi.fn();
-    const { calls } = view(
-      { getSession: sessionDetail(), clearData: { confirmed: false, sessions: 0 } },
-      onBack,
-    );
-    await userEvent.click(await screen.findByRole('button', { name: 'Delete session' }));
-    await vi.waitFor(() => {
-      expect(calls.some((call) => call.method === 'clearData')).toBe(true);
-    });
-    expect(onBack).not.toHaveBeenCalled();
   });
 
   it('shows exact debug-log telemetry when a turn has it and a hint when the session has none', async () => {

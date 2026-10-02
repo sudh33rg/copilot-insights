@@ -19,7 +19,7 @@ export class DashboardPanel implements vscode.Disposable {
     }
     const panel = vscode.window.createWebviewPanel(
       'copilotInsights.dashboard',
-      'Copilot Insights',
+      'TraceOn',
       vscode.ViewColumn.One,
       {
         enableScripts: true,
